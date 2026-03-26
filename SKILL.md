@@ -1,16 +1,18 @@
 ---
 name: project-journal
 description: >-
-  Two-layer AI session memory. Layer 1: lightweight Q&A capture per turn.
-  Layer 2: full 9-section daily journal on save. Trigger: any natural
-  save phrase ("save", "保存", "checkpoint", "收工", "done for today").
-  Auto-suggests at session end only. Skip: "don't save" / "skip" / "不用记".
-  Section 9 captures agent observations humans may not notice.
+  Two-layer AI session memory. Layer 1: hook-driven auto-capture of file
+  edits and errors. Layer 2: full 10-section daily journal on save.
+  Trigger: any natural save phrase ("save", "保存", "checkpoint", "收工",
+  "done for today"). Auto-suggests at session end only. Skip: "don't save"
+  / "skip" / "不用记". Section 9 captures agent observations humans may
+  not notice. Section 10 marks cross-project artifacts for global memory.
+  Includes Handoff Protocol for multi-agent pipelines.
   Designed with the Intelligent Distance principle: one file optimized
   for both human scanning and agent parsing. Emoji vocabulary provides
   high-density, low-token semantic markers to reduce communication cost.
 origin: community
-version: 1.2.0
+version: 1.3.0
 author: Goldentrii
 tags: [productivity, memory, journal, multi-session, reflection, two-layer, agent-observations, intelligent-distance]
 ---
@@ -27,7 +29,7 @@ These 5 rules have the highest priority. If context is running low,
 follow these before all other instructions.
 
 1. 🔒 COLD-START BRIEF = structured table (项目/上次做了/下一步/动量). No exceptions.
-2. 🔒 SECTION ORDER = 1→2→3→4→5→6→7→8→9. Never reorder, never skip.
+2. 🔒 SECTION ORDER = 1→2→3→4→5→6→7→8→9→10. Never reorder, never skip.
 3. 🔒 HONEST ISSUES = Section 4: if broken, write it. Never hide problems.
 4. 🔒 LANGUAGE MATCH = follow user's language. 用户说中文就写中文。
 5. 🔒 SAVE ONCE = only suggest saving ONCE per session. Never repeat.
@@ -200,10 +202,11 @@ When reading a journal entry:
 ## SYSTEM OVERVIEW
 
 ```
-Layer 1: Quick Capture
-  → Runs during session after meaningful exchanges
+Layer 1: Quick Capture (hybrid: hook-driven + manual)
+  → Auto-capture: hooks log file edits and errors passively
+  → Manual capture: agent logs meaningful Q&A after exchanges
   → File: journal/YYYY-MM-DD-log.md (append only)
-  → Format: [HH:MM] Q: ... / A: ... / Decision: ...
+  → Format: [HH:MM] 📝/❌/Q:/A: ... (see LAYER 1 section)
   → Cost: ~50–100 tokens per entry
 
 Layer 2: Daily Journal
@@ -273,7 +276,16 @@ Meaningful = file written, decision made, problem solved, important answer given
 3. APPEND one entry (do not rewrite the whole file)
 ```
 
-**Entry format:**
+**Entry formats:**
+
+Hook-driven (automatic — agent does NOT need to remember):
+```
+[HH:MM] 📝 {file_path} — {edit summary}
+[HH:MM] ❌ {command} — exit {code}: {first line of error}
+[HH:MM] ✅ {command} — success
+```
+
+Manual (agent writes after meaningful exchange):
 ```
 [HH:MM] Q: [what user asked — keep to one short line]
 [HH:MM] A: [key answer — one line, focus on conclusion] | Decision: [if any]
@@ -341,6 +353,7 @@ IF not exists → create with JOURNAL TEMPLATE
 
 > **Agent writing guide for cold-start table (internal — do not expose structure to human):**
 > - 项目行: what is it + who owns it (one tight phrase)
+> - 大图行: project's position in overall goals — OKR score, biggest gap, or current phase (one line). Helps zero-context agents orient immediately.
 > - 上次做了: most important thing completed last session
 > - 下一步: THE single most important next action (🔴 level only)
 > - 动量: pick one of 🟢加速/🟡稳定/🔴停滞 + one-line reason
@@ -353,6 +366,7 @@ IF not exists → create with JOURNAL TEMPLATE
 >
 > | 🧠 项目 | [project name] — [what it does in one phrase] |
 > |---------|------------------------------------------------|
+> | 🗺️ 大图 | [project's position: OKR score / biggest gap / current phase] |
 > | 📋 上次做了 | [most important thing completed last session] |
 > | 🔴 下一步 | [single most critical next action] |
 > | ⚡ 动量 | 🟢 加速 / 🟡 稳定 / 🔴 停滞 — [one-line reason] |
@@ -425,15 +439,16 @@ IF not exists → create with JOURNAL TEMPLATE
 > Most valuable for long-term reference. Capture the WHY, not just the WHAT.
 > 长期价值最高的一节。记录为什么这样决策，而不只是决策了什么。
 
-| 决策 | 考虑过的方案 | 选择理由 | 什么情况下会改变 | ⚠️ 常见误解 |
-|------|-------------|----------|-----------------|------------|
-| [decision] | [alternatives] | [why chosen] | [what would change this] | [what a new agent might misread] |
+| 决策 | 源自 | 考虑过的方案 | 选择理由 | 什么情况下会改变 | ⚠️ 常见误解 |
+|------|------|-------------|----------|-----------------|------------|
+| [decision] | [date or "new"] | [alternatives] | [why chosen] | [what would change this] | [what a new agent might misread] |
 
 > **格式选择 / Format rule:**
 > 如果单个决策的任何字段超过 15 个字（或 ~30 tokens），改用键值对格式：
 > If any field in a single decision exceeds ~30 tokens, use key-value format:
 >
 > ### 决策: [decision name]
+> - **源自**: [date of upstream decision, or "new" if first appearance]
 > - **考虑过**: [alternatives]
 > - **选择理由**: [why chosen]
 > - **什么情况下会改变**: [conditions for reversal]
@@ -497,6 +512,24 @@ IF not exists → create with JOURNAL TEMPLATE
 |------|------|--------|-------------|----------|
 | 🔧/🧠 | [what I noticed] | 🔴/🟡/🟢 | 已知/未知/不确定 | [what to do about it] |
 
+---
+
+## 10、跨项目输出 / Cross-Project Artifacts
+
+> **智能距离原则**: 方法论、架构决策、工作偏好等认知不属于单个项目。
+> 如果本次会话产生了跨项目适用的产出，记录在这里并同步到全局记忆。
+> 这样其他项目的 agent 也能获取这些认知，而不是被锁在当前项目的 journal 里。
+
+| 产出 | 写入位置 | 类型 | 说明 |
+|------|----------|------|------|
+| [artifact name] | [file path — memory/rules/skills] | [concept/feedback/rule] | [one line] |
+
+> Agent 保存规则：
+> - 如果产出是方法论/概念 → 写入 `memory/concept_*.md` + 更新 `MEMORY.md`
+> - 如果产出是工作偏好/反馈 → 写入 `memory/feedback_*.md` + 更新 `MEMORY.md`
+> - 如果产出是硬性规则 → 写入 `~/.claude/rules/*.md`
+> - 如果没有跨项目产出 → 写"本次无跨项目输出"，不留空
+
 > Examples:
 > - 🔧 "Project is more complete than user realizes — admin/dashboard already existed"
 > - 🔧 "Mock data is silently returning 200, user may think real API is working"
@@ -523,6 +556,10 @@ decisions_made: {N}
 open_issues: {red: N, yellow: N, green: N}
 section_nine_red: {N}
 layer1_entries: {N}
+cross_project_artifacts: {N}
+decisions_oldest: {YYYY-MM-DD}
+decisions_newest: {YYYY-MM-DD}
+stale_check_needed: true/false
 -->
 ```
 
@@ -608,11 +645,14 @@ When user says: "read the latest journal" / "读一下最新的日志" / "resume
 2. Read journal/{date}.md
 3. Read 冷启动简报 first (top of file)
 4. Check Section 9 (机器观察) for any 🔴 items
+4b. Check MACHINE-READABLE SUMMARY: if `stale_check_needed: true`, note once:
+    "有些决策是 N 天前做的，context 可能已变。要 review 吗？"
 5. Report ONCE at session start — do not repeat during the session.
    Output as markdown table:
 
    | 🧠 项目 | {project} · {date} · {quality} |
    |---------|-------------------------------|
+   | 🗺️ 大图 | {from cold-start brief 大图 row} |
    | 📋 上次做了 | {Section 2 summary, 1–2 lines} |
    | 🔴 下一步 | {top 🔴 from Section 5} |
    | ⚡ 动量 | {🟢/🟡/🔴} {momentum reason} |
@@ -628,6 +668,41 @@ AFTER this briefing:
   → Only surface new observations as they arise naturally
   → Suggest saving only at natural session end (soft triggers or auto-suggest rules)
 ```
+
+---
+
+## HANDOFF PROTOCOL — Agent-to-Agent Transfer
+
+> **When to use**: Work is being passed from one agent role to another
+> (e.g., Research → PM, Dev → QA). This is NOT the same as session resume
+> (same agent continuing). Handoff is a compressed, role-scoped context
+> transfer that gives the receiving agent exactly what it needs — no more.
+
+### Handoff Template
+
+```markdown
+# Handoff: {source_role} → {target_role}
+
+| 字段 | 内容 |
+|------|------|
+| 来源 | {source_agent_role}，session {date} |
+| 交给 | {target_agent_role} |
+| 你的任务 | {一句话：接收方要做什么} |
+| 输入材料 | {文件路径列表，接收方需要读的} |
+| 约束 | {接收方不能做什么 / scope boundary} |
+| 验收标准 | {怎么判断做完了 — measurable} |
+| 上下文 | {3-5 行背景，不是全部历史} |
+| 已知风险 | {来源 agent 发现但未解决的问题} |
+```
+
+### Handoff Rules
+
+1. **Handoff file** → `journal/handoff-{date}-{source}-to-{target}.md`
+2. **上下文 field** = 接收方 **必须知道的最少信息**，不是完整历史
+3. **输入材料** = 具体文件路径，不是"看一下 journal"
+4. **验收标准** = SMART（可衡量），不是"做好一点"
+5. **来源 agent 不规定 How** — 只定义 What 和 Done 标准，让接收方自己选路径
+6. After handoff, source agent writes Section 9 observation about what it couldn't finish and why
 
 ---
 
@@ -654,3 +729,8 @@ AFTER this briefing:
 | Capture invisible context | Deadlines, stress, priority shifts mentioned in passing → Section 9. |
 | Machine summary | 日志末尾的 `<!-- MACHINE-READABLE SUMMARY -->` 必须填充。momentum 用 green/yellow/red（emoji 的文字形式）。 |
 | Emoji consistency | Always use emoji from the Emoji Vocabulary table. Never substitute text for emoji status markers. |
+| Decision chain | Section 6: every decision must have a `源自` field — either a date reference to an upstream decision, or "new". |
+| Cross-project check | Before saving: if session produced methodology, preferences, or rules applicable beyond this project → Section 10 + write to global memory/rules. |
+| Handoff when needed | If work is being passed to a different agent role → generate HANDOFF PROTOCOL file, not just a journal entry. |
+| Stale decision alert | Resume protocol: if `decisions_oldest` is >7 days old, mention it once: "有些决策是 N 天前做的，context 可能已变。" |
+| Layer 1 hybrid | Layer 1 should combine hook-driven auto-capture (file edits, errors) with manual Q&A capture. If Layer 1 has 0 entries at save time, note it in Section 7 reflection. |
