@@ -15,7 +15,7 @@ const execFileAsync = promisify(execFile);
 // Constants
 // ---------------------------------------------------------------------------
 
-const VERSION = "1.0.0";
+const VERSION = "2.1.0";
 const JOURNAL_ROOT =
   process.env.AGENT_RECALL_ROOT ||
   path.join(os.homedir(), ".agent-recall");
@@ -68,6 +68,9 @@ if (args.includes("--list-tools")) {
     { name: "journal_list", description: "List recent journal entries" },
     { name: "journal_projects", description: "List all tracked projects" },
     { name: "journal_search", description: "Full-text search across journals" },
+    { name: "alignment_check", description: "Record confidence + understanding + human corrections" },
+    { name: "nudge", description: "Surface contradiction between current and past input" },
+    { name: "context_synthesize", description: "L3 synthesis: patterns, contradictions, goal evolution" },
   ];
   process.stdout.write(JSON.stringify(tools, null, 2) + "\n");
   process.exit(0);
@@ -961,6 +964,207 @@ server.registerResource(
     };
   }
 );
+
+// ---------------------------------------------------------------------------
+// Tool: alignment_check (Intelligent Distance measurement)
+// ---------------------------------------------------------------------------
+
+server.registerTool("alignment_check", {
+  title: "Alignment Check",
+  description:
+    "Record what the agent understood, its confidence, and any human correction. Measures the Intelligent Distance gap.",
+  inputSchema: {
+    goal: z.string().describe("Agent's understanding of the goal"),
+    confidence: z.enum(["high", "medium", "low"]).describe("Agent's confidence"),
+    assumptions: z.array(z.string()).optional().describe("What agent assumed"),
+    unclear: z.string().optional().describe("What agent is unsure about"),
+    human_correction: z.string().optional().describe("Human's correction or 'confirmed'"),
+    delta: z.string().optional().describe("The gap, or 'none'"),
+    category: z.enum(["goal", "scope", "priority", "technical", "aesthetic"]).default("goal"),
+    project: z.string().default("auto"),
+  },
+}, async ({ goal, confidence, assumptions, unclear, human_correction, delta, category, project }) => {
+  const slug = await resolveProject(project);
+  const date = todayISO();
+  const dir = journalDir(slug);
+  ensureDir(dir);
+
+  const time = new Date().toISOString().slice(11, 19);
+  const assumeStr = assumptions?.length ? assumptions.map(a => `  - ${a}`).join("\n") : "  (none)";
+
+  let entry = `### 🎯 Alignment (${time})\n`;
+  entry += `**Goal**: ${goal}\n**Confidence**: ${confidence}\n**Category**: ${category}\n`;
+  entry += `**Assumptions**:\n${assumeStr}\n`;
+  if (unclear) entry += `**Unclear**: ${unclear}\n`;
+  if (human_correction) entry += `**Human**: ${human_correction}\n**Delta**: ${delta || "not specified"}\n`;
+  entry += "\n";
+
+  const logPath = path.join(dir, `${date}-alignment.md`);
+  if (!fs.existsSync(logPath)) {
+    fs.writeFileSync(logPath, `# ${date} — Alignment Records\n\n---\n\n${entry}`, "utf-8");
+  } else {
+    fs.appendFileSync(logPath, entry, "utf-8");
+  }
+
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify({ success: true, date, confidence, delta: delta || "pending", file: logPath }) }],
+  };
+});
+
+// ---------------------------------------------------------------------------
+// Tool: nudge (surface human inconsistency)
+// ---------------------------------------------------------------------------
+
+server.registerTool("nudge", {
+  title: "Nudge",
+  description:
+    "Surface a contradiction between the human's current input and a prior statement/decision. Helps the human clarify their own thinking.",
+  inputSchema: {
+    past_statement: z.string().describe("What the human said/decided before (with date if known)"),
+    current_statement: z.string().describe("What the human is saying now"),
+    question: z.string().describe("The clarifying question to ask"),
+    category: z.enum(["goal", "scope", "priority", "technical", "aesthetic"]).default("goal"),
+    project: z.string().default("auto"),
+  },
+}, async ({ past_statement, current_statement, question, category, project }) => {
+  const slug = await resolveProject(project);
+  const date = todayISO();
+  const dir = journalDir(slug);
+  ensureDir(dir);
+
+  const time = new Date().toISOString().slice(11, 19);
+  let entry = `### 🔔 Nudge (${time})\n`;
+  entry += `**Past**: ${past_statement}\n`;
+  entry += `**Now**: ${current_statement}\n`;
+  entry += `**Question**: ${question}\n`;
+  entry += `**Category**: ${category}\n\n`;
+
+  // Append to alignment log (nudges and alignment checks live together)
+  const logPath = path.join(dir, `${date}-alignment.md`);
+  if (!fs.existsSync(logPath)) {
+    fs.writeFileSync(logPath, `# ${date} — Alignment Records\n\n---\n\n${entry}`, "utf-8");
+  } else {
+    fs.appendFileSync(logPath, entry, "utf-8");
+  }
+
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify({ success: true, date, category, file: logPath }) }],
+  };
+});
+
+// ---------------------------------------------------------------------------
+// Tool: context_synthesize (L3 semantic memory)
+// ---------------------------------------------------------------------------
+
+server.registerTool("context_synthesize", {
+  title: "Synthesize Context",
+  description:
+    "Generate L3 semantic synthesis from recent journals. Extracts decisions, blockers, goal evolution, and detects contradictions across sessions.",
+  inputSchema: {
+    entries: z.number().int().default(5).describe("Number of recent entries to analyze"),
+    focus: z.enum(["full", "decisions", "blockers", "goals"]).default("full"),
+    project: z.string().default("auto"),
+  },
+}, async ({ entries: count, focus, project }) => {
+  const slug = await resolveProject(project);
+  const journalEntries = listJournalFiles(slug);
+
+  if (journalEntries.length === 0) {
+    return { content: [{ type: "text" as const, text: JSON.stringify({ error: `No entries for '${slug}'` }) }], isError: true };
+  }
+
+  const toRead = journalEntries.slice(0, count);
+  const data: Array<{ date: string; brief: string | null; decisions: string | null; blockers: string | null; next: string | null; observations: string | null }> = [];
+
+  for (const entry of toRead) {
+    const content = fs.readFileSync(path.join(entry.dir, entry.file), "utf-8");
+    data.push({
+      date: entry.date,
+      brief: extractSection(content, "brief"),
+      decisions: extractSection(content, "decisions"),
+      blockers: extractSection(content, "blockers"),
+      next: extractSection(content, "next"),
+      observations: extractSection(content, "observations"),
+    });
+  }
+
+  let syn = `# L3 Synthesis — ${slug}\n`;
+  syn += `> ${toRead.length} entries: ${toRead[toRead.length - 1]?.date} → ${toRead[0]?.date}\n\n`;
+
+  // Goal evolution
+  if (focus === "full" || focus === "goals") {
+    syn += `## Goal Evolution\n\n`;
+    for (const e of data) {
+      if (e.brief) syn += `**${e.date}**: ${e.brief.split("\n")[0]}\n`;
+    }
+    syn += "\n";
+  }
+
+  // Decisions with contradiction detection
+  if (focus === "full" || focus === "decisions") {
+    syn += `## Decisions\n\n`;
+    const allDecisions: string[] = [];
+    for (const e of data) {
+      if (e.decisions) allDecisions.push(`**${e.date}**:\n${e.decisions}\n`);
+    }
+    syn += allDecisions.length > 0 ? allDecisions.join("\n") : "(none recorded)\n";
+
+    // Simple contradiction check: find topics mentioned in multiple entries with different content
+    if (allDecisions.length >= 2) {
+      syn += "\n### Potential Contradictions\n\n";
+      syn += "Review the decisions above. Flag if:\n";
+      syn += "- A decision from an earlier date was reversed without explanation\n";
+      syn += "- The same topic has conflicting approaches across dates\n";
+      syn += "- A goal stated in one entry differs from another\n\n";
+    }
+  }
+
+  // Current blockers
+  if (focus === "full" || focus === "blockers") {
+    syn += `## Active Blockers\n\n`;
+    const latest = data.find(e => e.blockers);
+    syn += latest ? `**${latest.date}**:\n${latest.blockers}\n\n` : "(none)\n\n";
+
+    // Check if old blockers are still present
+    const oldBlockers = data.filter(e => e.blockers && e !== latest);
+    if (oldBlockers.length > 0) {
+      syn += "### Recurring Blockers (appeared in older entries too)\n\n";
+      for (const ob of oldBlockers.slice(0, 2)) {
+        syn += `**${ob.date}**: ${ob.blockers?.split("\n")[0] || ""}\n`;
+      }
+      syn += "\n";
+    }
+  }
+
+  // Cross-session observations
+  if (focus === "full") {
+    const obs = data.filter(e => e.observations);
+    if (obs.length > 0) {
+      syn += `## Patterns from Agent Observations\n\n`;
+      for (const o of obs.slice(0, 3)) {
+        syn += `**${o.date}**: ${o.observations?.split("\n").slice(0, 2).join(" ") || ""}\n`;
+      }
+      syn += "\n";
+    }
+  }
+
+  // Alignment patterns (if alignment log exists for today)
+  const alignPath = path.join(journalDir(slug), `${todayISO()}-alignment.md`);
+  if (fs.existsSync(alignPath)) {
+    const alignContent = fs.readFileSync(alignPath, "utf-8");
+    const checks = (alignContent.match(/### 🎯/g) || []).length;
+    const nudges = (alignContent.match(/### 🔔/g) || []).length;
+    const low = (alignContent.match(/Confidence: low/g) || []).length;
+    if (checks > 0 || nudges > 0) {
+      syn += `## Today's Alignment\n\n`;
+      syn += `- Alignment checks: ${checks}\n- Nudges: ${nudges}\n- Low confidence: ${low}\n\n`;
+    }
+  }
+
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify({ project: slug, entries_analyzed: toRead.length, synthesis: syn }) }],
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Start
