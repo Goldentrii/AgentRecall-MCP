@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/agent-recall-mcp"><img src="https://img.shields.io/npm/v/agent-recall-mcp?style=flat-square&color=5D34F2" alt="npm"></a>
   <a href="https://github.com/NovadaLabs/AgentRecall/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen?style=flat-square" alt="License"></a>
-  <img src="https://img.shields.io/badge/MCP-14_tools-orange?style=flat-square" alt="Tools">
+  <img src="https://img.shields.io/badge/MCP-19_tools-orange?style=flat-square" alt="Tools">
   <img src="https://img.shields.io/badge/protocol-Intelligent_Distance-5B2D8E?style=flat-square" alt="Protocol">
   <img src="https://img.shields.io/badge/cloud-zero-blue?style=flat-square" alt="Zero Cloud">
 </p>
@@ -85,41 +85,82 @@ Say **"save"** to journal. Say **"read the latest journal"** to resume.
 
 ---
 
-## 14 MCP Tools
+## 19 MCP Tools
 
 ### Session Memory (6 tools)
 
 | Tool | Purpose |
 |------|---------|
 | `journal_read` | Read entry by date or "latest". Filter by section. |
-| `journal_write` | Write or update journal content |
-| `journal_capture` | Lightweight L1 Q&A capture |
+| `journal_write` | Write or update journal content. Optional `palace_room` param for palace integration. |
+| `journal_capture` | Lightweight L1 Q&A capture. Optional `palace_room` param. |
 | `journal_list` | List recent entries |
-| `journal_search` | Full-text search across history |
+| `journal_search` | Full-text search across history. `include_palace=true` to also search palace. |
 | `journal_projects` | List all tracked projects |
 
-### v3 Architecture (3 tools) — NEW
+### Memory Palace (5 tools) — NEW
 
 | Tool | Purpose |
 |------|---------|
-| `journal_state` | **JSON state layer** — structured read/write for agent-to-agent handoffs (milliseconds, no prose) |
+| `palace_read` | **Read palace rooms** — list rooms or read specific room/topic content |
+| `palace_write` | **Write with fan-out** — writes memory to a room, auto-updates cross-references via `[[wikilinks]]` |
+| `palace_walk` | **Progressive cold-start** — identity (~50 tok) → active (~200) → relevant (~500) → full (~2000) |
+| `palace_lint` | **Health check** — detect stale, orphan, low-salience rooms. `fix=true` to auto-archive. |
+| `palace_search` | **Salience-ranked search** — search across all palace rooms, results ordered by importance |
+
+### v3 Architecture (3 tools)
+
+| Tool | Purpose |
+|------|---------|
+| `journal_state` | **JSON state layer** — structured read/write for agent-to-agent handoffs |
 | `journal_cold_start` | **Cache-aware cold start** — HOT (today+yesterday), WARM (2-7 days), COLD (7+ days) |
-| `journal_archive` | **Archive old entries** — moves to `archive/` with summaries, keeps journal/ clean |
+| `journal_archive` | **Archive old entries** — moves to `archive/` with summaries |
 
-### Knowledge Loop (2 tools) — NEW
+### Knowledge Loop (2 tools)
 
 | Tool | Purpose |
 |------|---------|
-| `knowledge_write` | **Write permanent lessons** — structured entries by category (extraction, build, verification, tools, general). Agents learn from past mistakes. |
-| `knowledge_read` | **Read past lessons** — filter by project, category, or search query. Agents check what went wrong before starting work. |
+| `knowledge_write` | **Write permanent lessons** — dynamic categories (any string), auto-creates palace room. |
+| `knowledge_read` | **Read past lessons** — filter by project, category, or search query. |
 
 ### Alignment & Synthesis (3 tools)
 
 | Tool | Purpose |
 |------|---------|
-| `alignment_check` | Record confidence + assumptions + human corrections |
+| `alignment_check` | Record confidence + assumptions + human corrections. Auto-writes to palace alignment room. |
 | `nudge` | Surface contradiction between current and past input |
-| `context_synthesize` | L3 synthesis: patterns, contradictions, goal evolution |
+| `context_synthesize` | L3 synthesis. `consolidate=true` writes results into palace rooms. |
+
+---
+
+## Memory Palace Architecture
+
+Inspired by the Method of Loci, Karpathy's LLM Wiki, and nashsu/llm_wiki.
+
+```
+~/.agent-recall/projects/<project>/
+  journal/                    # RAW SOURCES (immutable, backward compatible)
+    YYYY-MM-DD.md             # Daily journal
+    YYYY-MM-DD-log.md         # L1 captures
+  palace/                     # MEMORY PALACE (mutable knowledge wiki)
+    identity.md               # ~50 token project identity card
+    palace-index.json          # Room catalog with salience scores
+    graph.json                # Cross-reference edges
+    log.md                    # Operation audit trail
+    rooms/
+      goals/                  # Active goals, evolution
+      architecture/           # Technical decisions, patterns
+      blockers/               # Current and resolved
+      alignment/              # Human corrections, misunderstandings
+      knowledge/              # Learned lessons by category
+      <custom>/               # Agents can create any room
+```
+
+**Key mechanisms:**
+- **Fan-out writes** — writing to one room updates cross-references in related rooms via `[[wikilinks]]`
+- **Salience scoring** — `importance(0.4) + recency(0.3) + access(0.2) + connections(0.1)`
+- **Obsidian-compatible** — YAML frontmatter + wikilinks. Open `palace/` as an Obsidian vault for graph view.
+- **Operation log** — every palace write, lint, and consolidation is logged for audit
 
 ---
 

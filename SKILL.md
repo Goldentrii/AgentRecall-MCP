@@ -173,6 +173,51 @@ Layer 2: Daily Journal
   → File: journal/YYYY-MM-DD.md (full 9-section report)
   → Synthesizes Layer 1 log + conversation context
   → Cost: ~800 tokens to generate, once per day
+
+Layer 3: Memory Palace (persistent knowledge)
+  → Room-based knowledge organization (goals, architecture, blockers, alignment, knowledge)
+  → Fan-out: writing to one room auto-updates cross-references in related rooms
+  → Salience scoring: importance × recency × access × connections
+  → Obsidian-compatible: YAML frontmatter + [[wikilinks]]
+  → File: palace/rooms/<room>/README.md + <topic>.md
+  → Cost: ~50 tokens per palace_walk(identity), ~200 for active depth
+```
+
+### Palace Cold-Start Protocol
+
+On session start, use progressive loading instead of reading full journal:
+
+```
+1. palace_walk(depth="active")         → ~200 tokens: identity + top 3 rooms
+2. palace_walk(depth="relevant", focus="<task>")  → ~500 tokens if needed
+3. palace_read(room="<specific>")      → deep dive into one room
+```
+
+### Palace Tools (5)
+
+| Tool | Purpose |
+|------|---------|
+| `palace_read` | Read room content or list all rooms |
+| `palace_write` | Write memory + fan-out cross-refs. Use `[[wikilinks]]` in content. |
+| `palace_walk` | Progressive loading: identity → active → relevant → full |
+| `palace_lint` | Health check: stale, orphans, low salience |
+| `palace_search` | Search across rooms, ranked by salience |
+
+### Enhanced Journal Tools (palace integration)
+
+| Tool | New param | Effect |
+|------|-----------|--------|
+| `journal_write` | `palace_room` | Also writes to palace room with fan-out |
+| `journal_capture` | `palace_room` | Routes Q&A to palace room |
+| `journal_search` | `include_palace` | Also searches palace rooms |
+| `context_synthesize` | `consolidate` | Writes synthesis into palace rooms |
+| `knowledge_write` | _(dynamic)_ | Any category string → palace knowledge room |
+
+### End-of-Session Palace Update
+
+After writing the daily journal, consolidate key learnings:
+```
+context_synthesize(consolidate=true)  → promotes decisions, goals, blockers to palace
 ```
 
 ---

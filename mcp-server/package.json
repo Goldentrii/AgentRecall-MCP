@@ -1,7 +1,7 @@
 {
   "name": "agent-recall-mcp",
-  "version": "3.3.0",
-  "description": "AI session memory with Think-Execute-Reflect quality loops — give your agent a brain that survives every session",
+  "version": "3.3.1",
+  "description": "Memory Palace for AI agents — room-based knowledge organization with fan-out cross-referencing, salience scoring, and Obsidian-compatible output",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -17,7 +17,7 @@
     "prepublishOnly": "npm run build",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
-    "test": "node --test test/basics.test.mjs"
+    "test": "node --test test/basics.test.mjs test/palace.test.mjs"
   },
   "keywords": [
     "mcp",
@@ -34,7 +34,11 @@
     "quality-loop",
     "think-execute-reflect",
     "agent-memory",
-    "cold-start"
+    "cold-start",
+    "memory-palace",
+    "obsidian",
+    "knowledge-graph",
+    "fan-out"
   ],
   "license": "MIT",
   "repository": {
