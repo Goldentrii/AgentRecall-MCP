@@ -3,6 +3,11 @@
 <p align="center"><strong>Your AI agent forgets everything between sessions. AgentRecall fixes that.</strong></p>
 
 <p align="center">
+  <a href="#arsave--save-everything-in-one-shot"><img src="https://img.shields.io/badge/%2Farsave-Save_Session-FF6B6B?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+PHBhdGggZD0iTTUgM3YxOGwxNC05TDUgM3oiLz48L3N2Zz4=" alt="/arsave"></a>
+  <a href="#arsave--save-everything-in-one-shot"><img src="https://img.shields.io/badge/%2Farstart-Load_Context-4ECDC4?style=for-the-badge" alt="/arstart"></a>
+</p>
+
+<p align="center">
   <a href="https://www.npmjs.com/package/agent-recall-mcp"><img src="https://img.shields.io/npm/v/agent-recall-mcp?style=flat-square&color=5D34F2" alt="npm"></a>
   <a href="https://github.com/Goldentrii/AgentRecall/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen?style=flat-square" alt="License"></a>
   <img src="https://img.shields.io/badge/MCP-22_tools-orange?style=flat-square" alt="Tools">
