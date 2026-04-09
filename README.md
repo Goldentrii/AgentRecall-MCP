@@ -3,8 +3,10 @@
 <p align="center"><strong>Your AI agent forgets everything between sessions. AgentRecall fixes that.</strong></p>
 
 <p align="center">
-  <a href="#arsave--save-everything-in-one-shot"><img src="https://img.shields.io/badge/%2Farsave-Save_Session-FF6B6B?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+PHBhdGggZD0iTTUgM3YxOGwxNC05TDUgM3oiLz48L3N2Zz4=" alt="/arsave"></a>
+  <a href="#arsave--save-everything-in-one-shot"><img src="https://img.shields.io/badge/%2Farsave-Save_Session-FF6B6B?style=for-the-badge" alt="/arsave"></a>
   <a href="#arsave--save-everything-in-one-shot"><img src="https://img.shields.io/badge/%2Farstart-Load_Context-4ECDC4?style=for-the-badge" alt="/arstart"></a>
+  <a href="#key-mechanisms"><img src="https://img.shields.io/badge/Compounding_Awareness-200_line_cap-FFD93D?style=for-the-badge" alt="Compounding Awareness"></a>
+  <a href="#key-mechanisms"><img src="https://img.shields.io/badge/Cross--Project_Recall-Any_lesson,_any_project-6C63FF?style=for-the-badge" alt="Cross-Project Recall"></a>
 </p>
 
 <p align="center">
@@ -32,6 +34,31 @@
   <a href="#架构">架构</a> ·
   <a href="#贡献">联系</a>
 </p>
+
+---
+
+<table>
+<tr>
+<td align="center" width="50%">
+
+**Compounding Awareness**
+
+Most memory tools accumulate forever. AgentRecall caps awareness at **200 lines**. New insights either **merge** with existing ones (strengthening them) or **replace** the weakest. After 100 sessions, your awareness file is still 200 lines — but each line carries the weight of cross-validated, confirmed observations.
+
+*Memory that gets smarter, not bigger.*
+
+</td>
+<td align="center" width="50%">
+
+**Cross-Project Recall**
+
+Before starting any task, `recall_insight` searches **every project you've ever worked on** for relevant lessons. Built a rate limiter last month? That lesson surfaces when you're building one today — even in a different project. Matched by keyword, ranked by severity and confirmation count.
+
+*Lessons learned once, applied everywhere.*
+
+</td>
+</tr>
+</table>
 
 ---
 
