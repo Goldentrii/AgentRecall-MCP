@@ -1,10 +1,10 @@
-# Intelligent Distance Protocol v1.0
+# Intelligent Distance Protocol v2.0
 
 > **The definitive specification for minimizing information loss between human and AI agents.**
 >
-> This protocol is agent-agnostic. It defines WHAT must happen, not HOW any specific agent implements it. Any AI system — Claude, GPT, Gemini, Llama, Mistral, or custom models — can implement this protocol.
+> This protocol is agent-agnostic. It defines WHAT must happen, not HOW any specific agent implements it. Any AI system — Claude, GPT, Codex, Gemini, Llama, Mistral, or custom models — can implement this protocol.
 >
-> Status: v1.0 · Author: Tongwu · License: MIT
+> Status: v2.0 · Author: Tongwu · License: MIT
 
 ---
 
@@ -22,55 +22,46 @@ The protocol doesn't try to close this gap. It designs around it:
 1. Give agents **full freedom** in how they think and act — they are execution-smart
 2. Focus all protocol effort on **goal understanding** — they are goal-dumb
 3. Actively **detect and surface misunderstanding** — including when the human is the source of inconsistency
+4. **Compound insights** across sessions and projects — learning is not remembering, it's connecting
 
 ---
 
-## Three Pillars
+## Five Pillars
 
 ### Pillar 1: Goal Alignment (not process prescription)
 
-**Principle**: Agents have degrees of freedom in HOW they think and act. They can reason many times before acting. They can act hundreds of times before finishing. These loops are their strength. The protocol's only job is ensuring the agent understands WHAT the human truly wants.
+**Principle**: Agents have full freedom in HOW they think and act. The protocol's only job is ensuring the agent understands WHAT the human truly wants.
 
 **Rules**:
 
-1. **Never prescribe method.** Define the destination, not the route. An agent that understands the goal will find a better path than a human could prescribe.
+1. **Never prescribe method.** Define the destination, not the route.
+2. **Separate WHAT from HOW.** Extract the goal and constraints. Discard process instructions unless they are constraints.
+3. **SMART goals only.** If the human gives a vague goal, the agent's first job is to make it SMART — by asking.
+4. **Success path becomes SOP.** When an agent discovers a working approach, that path is recorded for future agents.
 
-2. **Separate WHAT from HOW.** When receiving human input:
-   - Extract the **goal** (what outcome the human wants)
-   - Extract the **constraints** (what must not happen)
-   - Discard process instructions unless they are constraints
-   - Let the agent determine its own approach
+### Pillar 2: Structured Memory (five layers)
 
-3. **SMART goals only.** Every goal must be Specific, Measurable, Achievable, Relevant, Time-bound. If the human gives a vague goal, the agent's first job is to make it SMART — by asking.
+**Principle**: Memory is the bridge between sessions. Raw logs drown agents in noise. Structured memory gives the right information at the right density at the right time.
 
-4. **Success path becomes SOP.** When an agent discovers a working approach through trial and error, that path is recorded as a Standard Operating Procedure for future agents. Knowledge compounds.
+| Layer | Name | What | When | Cost |
+|-------|------|------|------|------|
+| **L1** | Working Memory | Per-turn Q&A pairs, file edits, errors | During work, append-only | ~50 tokens/entry |
+| **L2** | Episodic Memory | Structured daily journal (10 sections) | End of session | ~800 tokens |
+| **L3** | Memory Palace | Room-based knowledge wiki with cross-references | On write, consolidated from L2 | ~200 tokens/room |
+| **L4** | Awareness | Self-compounding 200-line document | End of session, forced merge | ~400 tokens |
+| **L5** | Insight Index | Cross-project insight matching | On recall, keyword-based | ~50 tokens/match |
 
-### Pillar 2: Structured Memory (not raw logs)
+**L3 Memory Palace** organizes knowledge into themed rooms (goals, architecture, blockers, alignment, knowledge, or custom). Writing to one room auto-updates cross-references in related rooms via `[[wikilinks]]`. Every room has a salience score: `importance(0.4) + recency(0.3) + access_frequency(0.2) + connections(0.1)`.
 
-**Principle**: Memory is the bridge between sessions. Without it, every session starts at zero. With the wrong kind, agents drown in irrelevant context. Structured memory gives the right information at the right density.
+**L4 Awareness** is a living document capped at 200 lines. When a new insight is added, similar existing insights merge (strengthen) or the weakest gets replaced. The constraint forces compression. Compression creates compounding. After 100 sessions, the document is still 200 lines — but each line carries the weight of cross-validated observations.
 
-**Three layers**:
-
-| Layer | Analogy | What | When | Cost |
-|-------|---------|------|------|------|
-| **L1: Working Memory** | Scratchpad | Per-turn Q&A pairs, file edits, errors | During work, append-only | ~50 tokens/entry |
-| **L2: Episodic Memory** | Daily journal | Structured report: decisions, blockers, reflections | End of session | ~800 tokens total |
-| **L3: Semantic Memory** | Synthesized understanding | Cross-session patterns, contradictions, evolved goals | On resume, from L2 history | ~200 tokens |
-
-**L3 is the critical addition.** Most memory systems stop at L2 (writing journals). But writing is not understanding. L3 requires the agent to:
-
-- **Synthesize** across multiple L2 entries (not regurgitate)
-- **Detect contradictions** ("Day 3 says use approach A, Day 8 says use approach B")
-- **Track goal evolution** ("The original goal was X, but it has shifted to Y based on recent sessions")
-- **Prioritize by relevance** to the current task
+**L5 Insight Index** maps insights to situations via keywords, across all projects. When an agent starts a task, it queries the index to surface relevant lessons learned anywhere.
 
 ### Pillar 3: Active Misunderstanding Detection
 
-**Principle**: Most protocols try to prevent misunderstanding. This protocol also **detects** it — including when the human is the source of inconsistency. Humans are not always reasonable or consistent. An agent that blindly follows inconsistent instructions produces suboptimal output. A good agent nudges the human toward clarity.
+**Principle**: Most protocols try to prevent misunderstanding. This protocol also **detects** it — including when the human is the source of inconsistency.
 
-**Three mechanisms**:
-
-#### 3a. Confidence Declaration
+#### 3a. Confidence Declaration (Alignment Check)
 
 Before acting on any non-trivial task, the agent declares its understanding:
 
@@ -82,106 +73,107 @@ ALIGNMENT CHECK:
 - Unclear: [what I'm not sure about]
 ```
 
-- **High confidence** → proceed, log the declaration
-- **Medium confidence** → proceed but flag assumptions for human review
-- **Low confidence** → STOP and ask before acting
+- **High** → proceed, log the declaration
+- **Medium** → proceed but flag assumptions for review
+- **Low** → STOP and ask before acting
 
-The human confirms, corrects, or refines. The delta (difference between agent's understanding and human's correction) is the **measured Intelligent Distance** for that exchange.
+The delta between agent understanding and human correction is the **measured Intelligent Distance**.
 
 #### 3b. Inconsistency Detection (Nudge Protocol)
 
-When the agent detects that the human's current input contradicts:
-- A previous statement in this session
-- A decision recorded in a past journal
-- The stated project goal
-
-The agent **surfaces the inconsistency** — not as an error, but as a clarification:
+When the agent detects the human's current input contradicts a prior statement, decision, or goal:
 
 ```
 NUDGE:
 - You said [X] on [date/earlier].
 - Now you're saying [Y].
 - These seem to conflict. Which is your current intent?
-  Or has the goal changed?
 ```
-
-**Why this matters**: Humans don't realize they're being inconsistent. They think in fragments. When an agent surfaces the contradiction, it helps the human clarify their OWN thinking — not just the agent's understanding. This is the highest-value moment in the protocol: the agent improves the quality of the human's input.
 
 **Nudge rules**:
 1. Never nudge on trivial matters (style preferences, minor wording)
-2. Always nudge on goal-level contradictions (what to build, who it's for, what to prioritize)
-3. Frame as curiosity, not correction ("I noticed..." not "You were wrong about...")
-4. If the human confirms the change, update the record. If they clarify it's not a change, log the clarification.
+2. Always nudge on goal-level contradictions
+3. Frame as curiosity, not correction ("I noticed..." not "You were wrong...")
+4. If confirmed as a change, update the record. If clarified, log the clarification.
 5. Never nudge more than once on the same inconsistency
 
 #### 3c. Feedback Loop
 
-Every alignment check and nudge creates data:
+Every alignment check and nudge creates a record. Over time, patterns reveal:
+- Where misunderstanding is most likely (goal, scope, priority, technical, aesthetic)
+- How the human's communication style works (scattered? linear? contradictory?)
+- What the agent should always confirm vs can safely assume
 
-```
-ALIGNMENT RECORD:
-- Date: [timestamp]
-- Agent understanding: [what agent thought]
-- Human correction: [what human clarified] (or "confirmed")
-- Delta: [the gap — or "none"]
-- Category: [goal / scope / priority / technical / aesthetic]
-```
+### Pillar 4: Progressive Loading (not context dumping)
 
-Over time, these records reveal **patterns**:
-- "This human frequently changes priorities mid-session" → agent should confirm more often
-- "Goal-level alignment is always high, but scope is frequently misunderstood" → agent should always state scope assumptions
-- "Human's aesthetic preferences are unpredictable" → always ask before visual changes
+**Principle**: Context is expensive. Loading everything wastes tokens. Loading nothing wastes time. Progressive loading gives the right amount at the right depth.
+
+| Depth | ~Tokens | Content |
+|-------|---------|---------|
+| `identity` | 50 | Project name, purpose, last session date |
+| `active` | 200 | Identity + top 3 rooms by salience + awareness summary |
+| `relevant` | 500 | Active + rooms matching current task + key memories |
+| `full` | 2000 | All rooms with content |
+
+The agent starts at `identity` and deepens as needed. This replaces the old pattern of loading the entire latest journal entry on cold-start.
+
+### Pillar 5: Compounding (not accumulating)
+
+**Principle**: A filing cabinet with better labels is still a filing cabinet. Knowledge must compound — each new insight makes existing insights more valuable through connection and compression.
+
+**Compounding mechanisms**:
+
+1. **Fan-out writes** — writing to one knowledge room updates cross-references in related rooms. One fact produces N connections.
+2. **Merge-on-insert** — when a new insight resembles an existing one, they merge (strengthening confidence) rather than duplicating.
+3. **Cross-project recall** — insights learned in Project A are available in Project B. Knowledge is not project-scoped.
+4. **Forced compression** — the 200-line awareness limit forces the system to synthesize, not accumulate. Overflow triggers demotion of the least-confirmed insight.
+5. **Contradiction detection** — when new information conflicts with existing knowledge, the system surfaces it rather than silently storing both.
 
 ---
 
 ## Protocol in Practice
 
-### Session Start (Cold Start)
+### Session Start (`/agstart`)
 
 ```
-1. Read the most recent L2 journal entry
-2. Read the Cold-Start Brief (5-row table)
-3. Synthesize L3 understanding if multiple past entries exist
-   → Flag any contradictions across entries
-4. Check for unresolved alignment records from past sessions
-5. Present brief to human
-6. Ask: "Starting from [top priority], or something else?"
+1. recall_insight(context="today's task")       → cross-project insights
+2. palace_walk(depth="active")                   → identity + top rooms + awareness
+3. Present cold-start brief to human
+4. Ask: "Starting from [top priority], or something else?"
 ```
 
 ### During Session (Active Work)
 
 ```
 FOR EACH non-trivial task:
-  1. Alignment Check (3a) — declare understanding, especially on medium/low confidence
+  1. Alignment Check (3a) — declare understanding on medium/low confidence
   2. Act with full freedom — choose approach, iterate, explore
-  3. On human input that contradicts prior context → Nudge (3b)
+  3. On contradictory human input → Nudge (3b)
   4. On completion → Quick Capture (L1)
 
 FOR the session overall:
   - Track decisions with WHY (not just WHAT)
-  - Track what the agent noticed that the human didn't (observations)
+  - Track agent observations (what the agent noticed that the human didn't)
   - Track goal evolution if it happens
 ```
 
-### Session End (Save)
+### Session End (`/agsave`)
 
 ```
-1. Generate L2 journal from L1 captures + conversation context
-2. Include Reflection section (quality self-assessment)
-3. Include Alignment Records from this session
-4. Update Cold-Start Brief for next session
-5. If insights recur 3+ times → promote to permanent memory
+1. journal_write → daily journal (L2) from L1 captures + conversation
+2. context_synthesize(consolidate=true) → promote to palace rooms (L3)
+3. awareness_update(insights=[...]) → compound into awareness (L4)
+4. Cross-project insights auto-indexed (L5)
+5. Optional: git push
 ```
 
 ### Agent-to-Agent Handoff
-
-When work transfers between agents:
 
 ```
 HANDOFF:
 - Source: [who is handing off]
 - Target: [who receives]
-- Goal: [one sentence — what the target agent must accomplish]
+- Goal: [one sentence — what the target must accomplish]
 - Input: [specific file paths / artifacts]
 - Constraints: [what the target must NOT do]
 - Acceptance criteria: [SMART — how to know it's done]
@@ -189,84 +181,90 @@ HANDOFF:
 - Unresolved: [alignment gaps, open nudges, known risks]
 ```
 
-**Critical**: Source agent defines WHAT and DONE. Target agent determines HOW. Never prescribe the receiving agent's method.
+**Critical**: Source defines WHAT and DONE. Target determines HOW.
 
 ---
 
 ## Implementing This Protocol
 
-### For MCP Server Implementations
+### MCP Server (recommended)
 
-Expose these tools at minimum:
+21 tools across 5 categories:
 
-| Tool | Purpose |
-|------|---------|
-| `journal_read` | Read L2 entries (full or by section) |
-| `journal_write` | Write L2 entries |
-| `journal_capture` | L1 quick capture |
-| `alignment_check` | Record alignment declarations + human corrections |
-| `context_synthesize` | Generate L3 synthesis from L2 history |
-| `journal_search` | Search across journal history |
+| Category | Tools |
+|----------|-------|
+| Session Memory | `journal_read`, `journal_write`, `journal_capture`, `journal_list`, `journal_search`, `journal_projects` |
+| Memory Palace | `palace_read`, `palace_write`, `palace_walk`, `palace_lint`, `palace_search` |
+| Awareness | `awareness_update`, `recall_insight` |
+| Architecture | `journal_state`, `journal_cold_start`, `journal_archive` |
+| Knowledge | `knowledge_write`, `knowledge_read` |
+| Alignment | `alignment_check`, `nudge`, `context_synthesize` |
 
-### For Skill/Prompt Implementations
+Install: `npx -y agent-recall-mcp` (works with Claude Code, Cursor, VS Code, Windsurf, Codex, any MCP agent)
 
-Embed these behaviors in the agent's instructions:
+### Skill/Prompt Implementation
+
+Embed these behaviors in agent instructions:
 
 1. **Alignment Check trigger**: Before any task where confidence < high
 2. **Nudge trigger**: When current input contradicts recorded context
-3. **Save trigger**: At natural session end, or on explicit command
-4. **Resume trigger**: At session start, read + synthesize + brief
+3. **Save trigger**: At session end, or on `/agsave` command
+4. **Resume trigger**: At session start, or on `/agstart` command
 
-### For SDK Implementations
+### Data Format
 
-Expose these methods:
+All data is local markdown + JSON. No cloud. No database. Obsidian-compatible.
 
 ```
-journal.read(date?, section?)     → L2 entry
-journal.capture(q, a, tags?)      → L1 entry
-journal.save(content?)            → L2 generation
-journal.synthesize(n?)            → L3 synthesis from last N entries
-journal.align(understanding, confidence, assumptions)  → alignment record
-journal.nudge(past, current, question)                 → nudge record
+~/.agent-recall/
+  awareness.md                    # L4: 200-line compounding document
+  awareness-state.json            # Structured awareness data
+  insights-index.json             # L5: cross-project matching
+  projects/<project>/
+    journal/                      # L1 + L2: immutable session records
+    palace/                       # L3: mutable knowledge wiki
+      rooms/<room>/               # Themed knowledge rooms
+      graph.json                  # Cross-reference edges
+      palace-index.json           # Room catalog + salience
 ```
 
 ---
 
 ## Measuring Protocol Effectiveness
 
-The protocol produces measurable signals:
-
 | Metric | What It Measures | Target |
 |--------|-----------------|--------|
 | **Cold-start time** | How fast an agent resumes context | < 5 seconds |
-| **Alignment delta rate** | % of alignment checks where human corrected the agent | Decreasing over time |
-| **Nudge acceptance rate** | % of nudges where human changed their input | Indicates protocol value |
+| **Alignment delta rate** | % of checks where human corrected agent | Decreasing over time |
+| **Nudge acceptance rate** | % of nudges where human changed input | Indicates protocol value |
 | **Decision retention** | % of past decisions retrievable with WHY | 100% |
-| **Contradiction detection rate** | # of cross-session contradictions surfaced | Higher = more honest |
-| **Goal drift tracking** | Whether goal evolution is explicitly logged | Always logged |
+| **Insight compounding rate** | Average confirmation count per insight | Increasing over time |
+| **Cross-project recall accuracy** | % of recalled insights actually relevant | > 70% |
 
 ---
 
 ## What This Protocol Is NOT
 
-1. **Not a memory database.** It's a communication protocol. Memory is one component.
-2. **Not an agent framework.** It doesn't tell agents how to think or plan. That's their freedom.
-3. **Not a prompt template.** It defines behaviors, not specific text. Each implementation adapts the language.
-4. **Not Claude-specific.** Any agent that can read, write, and compare text can implement this protocol.
-5. **Not a replacement for good human communication.** It acknowledges that human communication is imperfect and designs around that reality instead of demanding perfection.
+1. **Not a memory database.** It's a communication and learning protocol. Memory is one component.
+2. **Not an agent framework.** It doesn't tell agents how to think. That's their freedom.
+3. **Not a prompt template.** It defines behaviors, not specific text.
+4. **Not vendor-specific.** Any agent that can read, write, and compare text can implement it.
+5. **Not a replacement for good human communication.** It acknowledges imperfection and designs around it.
 
 ---
 
-## Design Principles (for implementers)
+## Design Principles
 
-1. **File-based, local-first.** Data stays on the user's machine. No cloud required. No telemetry.
-2. **Low token cost.** L1 ~50 tokens. L2 ~800 tokens. L3 ~200 tokens. The protocol should save more tokens (from re-explanation) than it costs.
-3. **Graceful degradation.** If an agent can only implement L1 + L2, that's still valuable. L3 and nudging are additive.
-4. **Human always wins.** If a human says "ignore the protocol" or "just do it," the agent complies. The protocol serves the human, not the other way around.
-5. **Honest by default.** The journal records what actually happened, not what should have happened. Section 4 (blockers) is never empty when something is broken.
+1. **File-based, local-first.** Data stays on the user's machine. No cloud. No telemetry.
+2. **Low token cost.** L1 ~50 tok. L2 ~800. L3 ~200/room. L4 ~400. L5 ~50/match.
+3. **Graceful degradation.** L1 + L2 alone is valuable. L3-L5 are additive.
+4. **Human always wins.** If a human says "ignore the protocol," the agent complies.
+5. **Honest by default.** The journal records what actually happened, not what should have.
+6. **Compounding over accumulating.** Merge, compress, connect. Never just append.
+7. **Obsidian-compatible.** YAML frontmatter + `[[wikilinks]]`. Open any palace as a vault.
 
 ---
 
-*The structural gap between human and AI intelligence is permanent. Don't try to close it. Design protocols around it.*
+*The structural gap between human and AI intelligence is permanent. Don't try to close it. Design protocols around it. Then make the protocol compound.*
 
-*— Intelligent Distance Principle, Tongwu 2026*
+*— Intelligent Distance Protocol v2.0, Tongwu 2026*

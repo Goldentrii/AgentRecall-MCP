@@ -64,11 +64,32 @@ curl -o ~/.claude/skills/agent-recall/SKILL.md \
   https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/SKILL.md
 ```
 
+### Slash Commands (Claude Code)
+
+Two commands — that's all you need to remember:
+
+| Command | When | What it does |
+|---------|------|-------------|
+| **`/agstart`** | Session start | Recall cross-project insights + walk palace + load context |
+| **`/agsave`** | Session end | Write journal + consolidate to palace + update awareness + optional git push |
+
+Install the commands:
+```bash
+# Download both commands
+mkdir -p ~/.claude/commands
+curl -o ~/.claude/commands/agstart.md \
+  https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/agstart.md
+curl -o ~/.claude/commands/agsave.md \
+  https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/agsave.md
+```
+
+Or just type `/agstart` or `/agsave` in Claude Code — if the commands are installed, they work instantly.
+
 ---
 
 ## How an Agent Uses AgentRecall
 
-### Session Start
+### Session Start (`/agstart`)
 ```
 1. recall_insight(context="current task description")   → relevant cross-project insights
 2. palace_walk(depth="active")                           → project context + awareness
@@ -297,11 +318,29 @@ curl -o ~/.claude/skills/agent-recall/SKILL.md \
   https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/SKILL.md
 ```
 
+### 快捷命令（Claude Code）
+
+只需记住两个命令：
+
+| 命令 | 时机 | 功能 |
+|------|------|------|
+| **`/agstart`** | 会话开始 | 召回跨项目洞察 + 加载宫殿上下文 |
+| **`/agsave`** | 会话结束 | 写日志 + 巩固到宫殿 + 更新感知 + 可选 git push |
+
+安装命令：
+```bash
+mkdir -p ~/.claude/commands
+curl -o ~/.claude/commands/agstart.md \
+  https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/agstart.md
+curl -o ~/.claude/commands/agsave.md \
+  https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/agsave.md
+```
+
 ---
 
 ## 智能体使用流程
 
-### 会话开始
+### 会话开始 (`/agstart`)
 ```
 1. recall_insight(context="当前任务描述")    → 跨项目相关洞察
 2. palace_walk(depth="active")               → 项目上下文 + 感知摘要
