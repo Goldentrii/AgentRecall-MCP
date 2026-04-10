@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { VERSION, setRoot } from "@agent-recall/core";
-import type { Importance, WalkDepth } from "@agent-recall/core";
+import { VERSION, setRoot } from "agent-recall-core";
+import type { Importance, WalkDepth } from "agent-recall-core";
 
 const args = process.argv.slice(2);
 
@@ -88,7 +88,7 @@ async function main(): Promise<void> {
   }
 
   // Import core functions
-  const core = await import("@agent-recall/core");
+  const core = await import("agent-recall-core");
   const project = globalProject;
 
   switch (command) {

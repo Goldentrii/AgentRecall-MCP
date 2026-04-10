@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as z from "zod/v4";
-import { palaceWrite } from "@agent-recall/core";
+import { palaceWrite } from "agent-recall-core";
 
 export function register(server: McpServer): void {
   server.registerTool("palace_write", {

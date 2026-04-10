@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { journalDir, todayISO, listAllProjects, listJournalFiles, readJournalFile } from "@agent-recall/core";
+import { journalDir, todayISO, listAllProjects, listJournalFiles, readJournalFile } from "agent-recall-core";
 
 export function register(server: McpServer): void {
   server.registerResource(

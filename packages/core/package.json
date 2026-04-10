@@ -1,5 +1,5 @@
 {
-  "name": "@agent-recall/core",
+  "name": "agent-recall-core",
   "version": "3.3.4",
   "description": "Core memory palace engine for AgentRecall",
   "type": "module",

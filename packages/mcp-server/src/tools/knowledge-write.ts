@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as z from "zod/v4";
-import { knowledgeWrite } from "@agent-recall/core";
+import { knowledgeWrite } from "agent-recall-core";
 
 export function register(server: McpServer): void {
   server.registerTool("knowledge_write", {

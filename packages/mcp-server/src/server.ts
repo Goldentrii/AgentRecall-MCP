@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { VERSION } from "@agent-recall/core";
+import { VERSION } from "agent-recall-core";
 
 export const server = new McpServer({
   name: "agent-recall",

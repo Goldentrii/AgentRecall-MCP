@@ -4,8 +4,8 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/agent-recall-mcp"><img src="https://img.shields.io/npm/v/agent-recall-mcp?style=flat-square&label=MCP&color=5D34F2" alt="MCP npm"></a>
-  <a href="https://www.npmjs.com/package/@agent-recall/sdk"><img src="https://img.shields.io/npm/v/@agent-recall/sdk?style=flat-square&label=SDK&color=0EA5E9" alt="SDK npm"></a>
-  <a href="https://www.npmjs.com/package/@agent-recall/cli"><img src="https://img.shields.io/npm/v/@agent-recall/cli?style=flat-square&label=CLI&color=10B981" alt="CLI npm"></a>
+  <a href="https://www.npmjs.com/package/agent-recall-sdk"><img src="https://img.shields.io/npm/v/agent-recall-sdk?style=flat-square&label=SDK&color=0EA5E9" alt="SDK npm"></a>
+  <a href="https://www.npmjs.com/package/agent-recall-cli"><img src="https://img.shields.io/npm/v/agent-recall-cli?style=flat-square&label=CLI&color=10B981" alt="CLI npm"></a>
   <a href="https://github.com/Goldentrii/AgentRecall/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen?style=flat-square" alt="License"></a>
   <img src="https://img.shields.io/badge/MCP-22_tools-orange?style=flat-square" alt="Tools">
   <img src="https://img.shields.io/badge/cloud-zero-blue?style=flat-square" alt="Zero Cloud">
@@ -58,15 +58,15 @@ claude mcp add agent-recall -- npx -y agent-recall-mcp
 
 **SDK** — for any JS/TS application (LangChain, CrewAI, Vercel AI SDK, custom):
 ```typescript
-import { AgentRecall } from "@agent-recall/sdk";
+import { AgentRecall } from "agent-recall-sdk";
 const memory = new AgentRecall({ project: "my-app" });
 await memory.capture("What stack?", "Next.js + Postgres");
 ```
 
 **CLI** — for terminal workflows and CI:
 ```bash
-npx @agent-recall/cli capture "What stack?" "Next.js + Postgres"
-npx @agent-recall/cli palace walk --depth active
+npx agent-recall-cli capture "What stack?" "Next.js + Postgres"
+npx agent-recall-cli palace walk --depth active
 ```
 
 ---
@@ -121,11 +121,11 @@ curl -o ~/.claude/skills/agent-recall/SKILL.md \
 ### SDK (for JS/TS applications)
 
 ```bash
-npm install @agent-recall/sdk
+npm install agent-recall-sdk
 ```
 
 ```typescript
-import { AgentRecall } from "@agent-recall/sdk";
+import { AgentRecall } from "agent-recall-sdk";
 
 const memory = new AgentRecall({ project: "my-app" });
 
@@ -148,8 +148,8 @@ const walk = await memory.walk("active");
 ### CLI (for terminal and CI)
 
 ```bash
-npm install -g @agent-recall/cli
-# or use npx: npx @agent-recall/cli <command>
+npm install -g agent-recall-cli
+# or use npx: npx agent-recall-cli <command>
 ```
 
 ```bash
@@ -277,10 +277,10 @@ curl -o ~/.claude/commands/arstart.md https://raw.githubusercontent.com/Goldentr
 
 ## SDK API
 
-The `@agent-recall/sdk` package exposes the `AgentRecall` class — a programmatic interface to the full memory system. Use it to add persistent, compounding memory to any JS/TS agent framework: LangChain, CrewAI, Vercel AI SDK, AutoGen, or your own.
+The `agent-recall-sdk` package exposes the `AgentRecall` class — a programmatic interface to the full memory system. Use it to add persistent, compounding memory to any JS/TS agent framework: LangChain, CrewAI, Vercel AI SDK, AutoGen, or your own.
 
 ```typescript
-import { AgentRecall } from "@agent-recall/sdk";
+import { AgentRecall } from "agent-recall-sdk";
 
 const ar = new AgentRecall({ project: "my-project" });
 ```
@@ -324,7 +324,7 @@ const ar = new AgentRecall({ project: "my-project" });
 ### LangChain / CrewAI Integration Example
 
 ```typescript
-import { AgentRecall } from "@agent-recall/sdk";
+import { AgentRecall } from "agent-recall-sdk";
 
 const memory = new AgentRecall({ project: "langchain-app" });
 
@@ -348,7 +348,7 @@ await memory.awarenessUpdate([{
 
 ## CLI Commands
 
-The `@agent-recall/cli` package provides the `ar` command for terminal workflows, CI pipelines, and quick access to your agent's memory outside of an editor.
+The `agent-recall-cli` package provides the `ar` command for terminal workflows, CI pipelines, and quick access to your agent's memory outside of an editor.
 
 ```
 ar v3.3.4 — AgentRecall CLI
@@ -457,7 +457,7 @@ L5: Insight Index      recall_insight            "cross-project experience"
 | CrewAI | — | ✅ | — | SDK in tool definitions |
 | Vercel AI SDK | — | ✅ | — | SDK in server actions |
 | Custom JS/TS agents | — | ✅ | ✅ | SDK + CLI for any agent framework |
-| CI / GitHub Actions | — | — | ✅ | `npx @agent-recall/cli` in workflows |
+| CI / GitHub Actions | — | — | ✅ | `npx agent-recall-cli` in workflows |
 | Any MCP agent | ✅ | — | — | Standard MCP protocol |
 
 ---
@@ -527,15 +527,15 @@ claude mcp add agent-recall -- npx -y agent-recall-mcp
 
 **SDK** — 面向任何 JS/TS 应用（LangChain、CrewAI、Vercel AI SDK、自定义）：
 ```typescript
-import { AgentRecall } from "@agent-recall/sdk";
+import { AgentRecall } from "agent-recall-sdk";
 const memory = new AgentRecall({ project: "my-app" });
 await memory.capture("用什么技术栈？", "Next.js + Postgres");
 ```
 
 **CLI** — 面向终端工作流和 CI：
 ```bash
-npx @agent-recall/cli capture "用什么技术栈？" "Next.js + Postgres"
-npx @agent-recall/cli palace walk --depth active
+npx agent-recall-cli capture "用什么技术栈？" "Next.js + Postgres"
+npx agent-recall-cli palace walk --depth active
 ```
 
 ---
@@ -586,11 +586,11 @@ curl -o ~/.claude/skills/agent-recall/SKILL.md \
 ### SDK（面向 JS/TS 应用）
 
 ```bash
-npm install @agent-recall/sdk
+npm install agent-recall-sdk
 ```
 
 ```typescript
-import { AgentRecall } from "@agent-recall/sdk";
+import { AgentRecall } from "agent-recall-sdk";
 
 const memory = new AgentRecall({ project: "my-app" });
 await memory.capture("用什么 ORM？", "Drizzle — 类型安全、轻量");
@@ -601,7 +601,7 @@ const context = await memory.coldStart();
 ### CLI（面向终端和 CI）
 
 ```bash
-npm install -g @agent-recall/cli
+npm install -g agent-recall-cli
 
 ar capture "用什么 ORM？" "Drizzle" --project my-app
 ar palace walk --depth active
@@ -692,10 +692,10 @@ ar insight "构建认证中间件"
 
 ## SDK API
 
-`@agent-recall/sdk` 提供 `AgentRecall` 类 — 完整记忆系统的编程接口。可用于 LangChain、CrewAI、Vercel AI SDK 或任何自定义 JS/TS 智能体框架。
+`agent-recall-sdk` 提供 `AgentRecall` 类 — 完整记忆系统的编程接口。可用于 LangChain、CrewAI、Vercel AI SDK 或任何自定义 JS/TS 智能体框架。
 
 ```typescript
-import { AgentRecall } from "@agent-recall/sdk";
+import { AgentRecall } from "agent-recall-sdk";
 const ar = new AgentRecall({ project: "my-project" });
 ```
 
@@ -716,7 +716,7 @@ const ar = new AgentRecall({ project: "my-project" });
 
 ## CLI 命令
 
-`@agent-recall/cli` 提供 `ar` 命令，用于终端工作流和 CI 管道。
+`agent-recall-cli` 提供 `ar` 命令，用于终端工作流和 CI 管道。
 
 ```bash
 # 日志
@@ -781,7 +781,7 @@ L5: 洞察索引     recall_insight            「跨项目的经验」
 | OpenAI Codex | ✅ | ✅ | ✅ | `codex mcp add` |
 | LangChain / CrewAI | — | ✅ | — | SDK 集成到你的 chain 中 |
 | Vercel AI SDK | — | ✅ | — | SDK 在 server actions 中使用 |
-| CI / GitHub Actions | — | — | ✅ | `npx @agent-recall/cli` |
+| CI / GitHub Actions | — | — | ✅ | `npx agent-recall-cli` |
 | 任何 MCP 智能体 | ✅ | — | — | 标准 MCP 协议 |
 
 ---

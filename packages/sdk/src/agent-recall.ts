@@ -29,7 +29,7 @@ import {
   // Palace low-level
   ensurePalaceInitialized, createRoom, getRoomMeta, listRooms, roomExists,
   readGraph, addEdge, getConnectedRooms,
-} from "@agent-recall/core";
+} from "agent-recall-core";
 
 export interface AgentRecallOptions {
   /** Storage root directory. Default: ~/.agent-recall */

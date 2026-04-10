@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { VERSION, getRoot, getLegacyRoot } from "@agent-recall/core";
+import { VERSION, getRoot, getLegacyRoot } from "agent-recall-core";
 import { server } from "./server.js";
 
 // Import all tool registrations

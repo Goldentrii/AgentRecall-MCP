@@ -1,5 +1,5 @@
 /**
- * @agent-recall/core — shared business logic for AgentRecall.
+ * agent-recall-core — shared business logic for AgentRecall.
  *
  * All types, palace operations, storage utilities, and helper functions
  * are re-exported from this barrel.
