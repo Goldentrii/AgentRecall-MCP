@@ -1,6 +1,6 @@
 {
   "name": "agent-recall-mcp",
-  "version": "3.3.4",
+  "version": "3.3.5",
   "description": "Memory Palace MCP server for AI agents",
   "type": "module",
   "main": "dist/index.js",
@@ -11,7 +11,7 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "agent-recall-core": "^3.3.4",
+    "agent-recall-core": "^3.3.5",
     "@modelcontextprotocol/sdk": "^1.28.0",
     "zod": "^3.24.0"
   },
@@ -19,6 +19,36 @@
     "typescript": "^5.7.0",
     "@types/node": "^22.0.0"
   },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "agent-recall",
+    "ai-memory",
+    "session-memory",
+    "journal",
+    "ai-agents",
+    "claude-code",
+    "cursor",
+    "copilot",
+    "intelligent-distance",
+    "quality-loop",
+    "think-execute-reflect",
+    "agent-memory",
+    "cold-start",
+    "memory-palace",
+    "obsidian",
+    "knowledge-graph",
+    "fan-out",
+    "langchain",
+    "crewai"
+  ],
   "engines": { "node": ">=18.0.0" },
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Goldentrii/AgentRecall.git",
+    "directory": "packages/mcp-server"
+  },
+  "homepage": "https://github.com/Goldentrii/AgentRecall#readme"
 }

@@ -1,6 +1,6 @@
 {
   "name": "agent-recall-core",
-  "version": "3.3.4",
+  "version": "3.3.5",
   "description": "Core memory palace engine for AgentRecall",
   "type": "module",
   "main": "dist/index.js",
@@ -19,6 +19,10 @@
     "build": "tsc",
     "test": "node --test test/*.test.mjs"
   },
+  "keywords": [
+    "agent-recall", "ai-memory", "memory-palace", "agent-memory",
+    "mcp", "langchain", "crewai", "knowledge-graph", "obsidian"
+  ],
   "dependencies": {},
   "devDependencies": {
     "typescript": "^5.7.0",

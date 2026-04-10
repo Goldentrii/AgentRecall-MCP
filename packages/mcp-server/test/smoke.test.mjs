@@ -24,7 +24,7 @@ describe("MCP server smoke tests", () => {
   it("--version prints a semver string", async () => {
     const { stdout } = await execFileAsync("node", [ENTRY, "--help"]);
     assert.ok(stdout.includes("agent-recall-mcp v"));
-    assert.ok(stdout.includes("3.3.4"));
+    assert.ok(stdout.includes("3.3.5"));
   });
 
   it("--help shows storage path and usage info", async () => {
