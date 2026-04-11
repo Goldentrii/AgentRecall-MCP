@@ -177,7 +177,7 @@ Layer 2: Daily Journal
 Layer 3: Memory Palace (persistent knowledge)
   → Room-based knowledge organization (goals, architecture, blockers, alignment, knowledge)
   → Fan-out: writing to one room auto-updates cross-references in related rooms
-  → Salience scoring: importance × recency × access × connections
+  → Salience scoring: recency(0.30) + access(0.25) + connections(0.20) + urgency(0.15) + importance(0.10)
   → Obsidian-compatible: YAML frontmatter + [[wikilinks]]
   → File: palace/rooms/<room>/README.md + <topic>.md
   → Cost: ~50 tokens per palace_walk(identity), ~200 for active depth
