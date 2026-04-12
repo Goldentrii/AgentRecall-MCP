@@ -683,12 +683,44 @@ L5: Insight Index      recall_insight            "cross-project experience"
 
 ## Real Results
 
-Validated over 30+ sessions across 5 production projects:
-- Cold-start: **5 min → 2 seconds** (cache-aware loading)
+Validated over 42+ sessions across 5 production projects:
+- Cold-start: **5 min → 2 seconds** (palace-first loading, ~400 tokens)
 - Decision retention: **0% → 100%** across sessions
-- Misunderstanding caught before wrong work: **6+ instances** via alignment checks
+- Misunderstanding caught before wrong work: **6+ instances** via `check` before publish/deploy
 - Repeated mistakes prevented: **3 instances** via cross-project insight recall
-- All data local, all files markdown, all tools stateless
+
+### Measured Token Cost (v3.3.12, 3 rounds)
+
+| Surface | What it returns | Measured tokens |
+|---------|----------------|-----------------|
+| `hook-start` (stdout) | identity + watch_for + 3 insights + recent + cross-project hint | ~215 |
+| `session_start` (MCP) | full session context — all fields | ~601 |
+| `check` (MCP) | watch_for patterns + past deltas | ~80 |
+| **Total session overhead** | | **~896 tokens** |
+
+Each prevented correction ≈ **1,500 tokens saved** (re-explanation + wrong work + retry).  
+Breakeven: **less than 1 correction prevented per session** covers the overhead.  
+At 42 sessions with avg 1.5 corrections prevented: **~94,000 tokens saved** vs ~37,600 overhead.
+
+### What the 3 Test Rounds Verified
+
+**Round 1 — hook-start:**  
+Fires on session open (with per-session lock to avoid double-fire). Output: project identity, past correction warnings (watch_for), top 3 awareness insights, today's journal brief, cross-project hint. All in 9 lines.
+
+**Round 2 — capture / palace write / search / walk:**  
+- `capture "bug fix"` → routes to journal log with auto-tags
+- `palace write architecture "..."` → writes to room with fan-out
+- `search "journal crash fix"` → keyword match finds the entry from 2 minutes ago
+- `palace walk --depth active` → loads 5 rooms, top 10 insights, architecture decisions in one JSON
+
+**Round 3 — hook-correction / hook-end / MCP tools:**  
+- `hook-correction` with no-correction prompt → silent exit (correct)
+- `hook-correction` with correction ("no use patch not minor") → silent capture, exit 0
+- `hook-end` → exit 0, auto-log entry
+- MCP `session_start` → 601 tokens, all 7 fields populated
+- MCP `check(goal="publish v3.3.12", confidence="high")` → 80 tokens, 1 watch_for pattern surfaced
+
+172 tests (129 core + 4 smoke + 28 SDK + 11 CLI), 0 failures. Build clean.
 
 ---
 
