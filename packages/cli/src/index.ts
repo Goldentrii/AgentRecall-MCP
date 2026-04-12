@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
 import { VERSION, setRoot } from "agent-recall-core";
 import type { Importance, WalkDepth } from "agent-recall-core";
 
@@ -68,6 +71,12 @@ META:
   ar synthesize [--entries N]
   ar knowledge write --category <cat> --title "t" --what "w" --cause "c" --fix "f"
   ar knowledge read [--category <cat>]
+
+HOOKS (auto-fired by Claude Code hooks — no agent discipline needed):
+  ar hook-start          Session start: load context, show watch_for warnings
+  ar hook-end            Session end: auto-save journal if not already saved today
+  ar hook-correction     Read UserPromptSubmit JSON from stdin, capture corrections silently
+  ar correct --goal "g" --correction "c" [--delta "d"]  Manually record a correction
 
 GLOBAL FLAGS:
   --root <path>     Storage root (default: ~/.agent-recall)
@@ -343,6 +352,178 @@ async function main(): Promise<void> {
       }
       break;
     }
+    // ── Hook commands — fired automatically by Claude Code hooks ──────────────
+
+    case "hook-start": {
+      // Fires once per session via SessionStart hook.
+      // Loads context and surfaces watch_for warnings for the agent.
+      // Uses a per-session lock file to avoid double-firing.
+      const lockDir = path.join(os.homedir(), ".agent-recall");
+      const lockFile = path.join(lockDir, ".hook-start-lock");
+      const sessionId = process.env.CLAUDE_SESSION_ID ?? process.env.SESSION_ID ?? "";
+      const lockKey = sessionId || new Date().toISOString().slice(0, 13); // hour-granularity fallback
+
+      try {
+        if (fs.existsSync(lockFile) && fs.readFileSync(lockFile, "utf-8").trim() === lockKey) {
+          // Already ran this session — silent exit
+          process.exit(0);
+        }
+        fs.writeFileSync(lockFile, lockKey, "utf-8");
+      } catch { /* non-blocking */ }
+
+      try {
+        const result = await core.sessionStart({ project });
+        const lines: string[] = ["[AgentRecall] Session context loaded"];
+
+        // Project + identity — always show so agent knows the project
+        lines.push(`Project: ${result.project}${result.identity && result.identity !== result.project ? ` — ${result.identity.slice(0, 100)}` : ""}`);
+
+        // Watch-for warnings — most critical, always first
+        if (result.watch_for && result.watch_for.length > 0) {
+          lines.push("⚠️  Past corrections — adjust approach:");
+          for (const w of result.watch_for) {
+            lines.push(`   - ${w.pattern} (×${w.frequency})${w.suggestion ? ` → ${w.suggestion}` : ""}`);
+          }
+        }
+
+        // Top 3 insights (sorted by confirmations — most proven patterns first)
+        if (result.insights.length > 0) {
+          lines.push("💡 Awareness insights:");
+          for (const ins of result.insights.slice(0, 3)) {
+            lines.push(`   [${ins.confirmed}×] ${ins.title.slice(0, 100)}`);
+          }
+        }
+
+        // Recent context
+        const recent = result.recent;
+        if (recent.today) {
+          lines.push(`📓 Today: ${recent.today.replace(/\n/g, " ").slice(0, 150)}`);
+        } else if (recent.yesterday) {
+          lines.push(`📓 Yesterday: ${recent.yesterday.replace(/\n/g, " ").slice(0, 150)}`);
+        }
+        if (recent.older_count > 0) {
+          lines.push(`   (${recent.older_count} older entries in journal)`);
+        }
+
+        // Cross-project hint — signal that related insights exist
+        if (result.cross_project && result.cross_project.length > 0) {
+          lines.push(`🔗 Cross-project: ${result.cross_project.length} related insight(s) from other projects — run /arstart for details`);
+        }
+
+        process.stdout.write(lines.join("\n") + "\n\n");
+      } catch (e) {
+        // Never block the session — fail silently
+        process.stderr.write(`[AgentRecall hook-start] ${String(e)}\n`);
+      }
+      break;
+    }
+
+    case "hook-end": {
+      // Fires at session Stop via Stop hook.
+      // Auto-saves a minimal journal entry IF /arsave wasn't called manually.
+      // Checks today's journal to avoid double-writing.
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        // Check if today's journal already exists (written by /arsave)
+        const journalDir = path.join(os.homedir(), ".agent-recall", "projects",
+          project ?? "auto", "journal");
+        const todayEntry = path.join(journalDir, `${today}.md`);
+
+        if (fs.existsSync(todayEntry)) {
+          // /arsave already ran — nothing to do
+          process.exit(0);
+        }
+
+        // Auto-summarize from today's captures if any
+        const logFile = path.join(journalDir, `${today}-log.md`);
+        let summary = "Session ended (auto-saved via hook)";
+        if (fs.existsSync(logFile)) {
+          const logContent = fs.readFileSync(logFile, "utf-8");
+          const answers = logContent.match(/\*\*A:\*\*\s*(.+)/g) ?? [];
+          if (answers.length > 0) {
+            summary = `Auto-saved: ${answers.slice(0, 2).map((a) => a.replace("**A:** ", "").slice(0, 60)).join("; ")}`;
+          }
+        }
+
+        await core.sessionEnd({ summary, project });
+        process.stderr.write(`[AgentRecall] Session auto-saved\n`);
+      } catch (e) {
+        process.stderr.write(`[AgentRecall hook-end] ${String(e)}\n`);
+      }
+      break;
+    }
+
+    case "hook-correction": {
+      // Reads UserPromptSubmit JSON from stdin.
+      // Detects correction language and silently captures to alignment-log.
+      // Always exits 0 — never blocks the conversation.
+      const CORRECTION_PATTERNS = [
+        /\bthat'?s\s+wrong\b/i,
+        /\byou\s+(missed|didn'?t|forgot|skipped)\b/i,
+        /\bnot\s+what\s+i\s+(asked|wanted|meant|said)\b/i,
+        /\bagain\s+you\b/i,
+        /\bstop\s+(doing|adding|making)\b/i,
+        /\bwrong\s+(approach|direction|file|function)\b/i,
+        /\bi\s+said\b.*\bnot\b/i,
+        /\bdon'?t\s+(do\s+that|change|delete|add)\b/i,
+        /\bno[,!.]\s+(don'?t|that|you|i\s+meant)\b/i,
+      ];
+
+      try {
+        const chunks: Buffer[] = [];
+        for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+        const raw = Buffer.concat(chunks).toString("utf-8").trim();
+        if (!raw) process.exit(0);
+
+        let prompt = "";
+        let lastGoal = "";
+        try {
+          const input = JSON.parse(raw);
+          // Claude Code UserPromptSubmit format
+          prompt = input.prompt ?? input.message ?? input.user_message ?? "";
+          // Try to get last assistant action as the "goal"
+          const transcript = input.transcript ?? [];
+          const lastAssistant = [...transcript].reverse().find((m: {role: string; content: string}) => m.role === "assistant");
+          if (lastAssistant?.content) {
+            lastGoal = String(lastAssistant.content).replace(/\n/g, " ").slice(0, 100);
+          }
+        } catch {
+          prompt = raw; // fallback: treat raw input as the prompt
+        }
+
+        const isCorrection = CORRECTION_PATTERNS.some((p) => p.test(prompt));
+        if (isCorrection && prompt.length > 3) {
+          await core.check({
+            goal: lastGoal || "Unknown — see correction",
+            confidence: "high",
+            human_correction: prompt.slice(0, 200),
+            delta: `Human corrected agent. Goal context: "${lastGoal.slice(0, 80)}"`,
+            project,
+          });
+          // Silent — no stdout output, correction captured in alignment-log
+        }
+      } catch (e) {
+        process.stderr.write(`[AgentRecall hook-correction] ${String(e)}\n`);
+      }
+      process.exit(0);
+    }
+
+    case "correct": {
+      // Manual correction recording — useful when you want to explicitly log a correction.
+      const corrGoal = getFlag("--goal", rest) ?? rest.filter((a) => !a.startsWith("--"))[0] ?? "";
+      const corrCorrection = getFlag("--correction", rest) ?? rest.filter((a) => !a.startsWith("--"))[1] ?? "";
+      const corrDelta = getFlag("--delta", rest) ?? "";
+      const result = await core.check({
+        goal: corrGoal,
+        confidence: "high",
+        human_correction: corrCorrection,
+        delta: corrDelta || `Manual correction recorded: "${corrCorrection.slice(0, 80)}"`,
+        project,
+      });
+      output(result);
+      break;
+    }
+
     default:
       process.stderr.write(`Unknown command: ${command}\n`);
       printHelp();
