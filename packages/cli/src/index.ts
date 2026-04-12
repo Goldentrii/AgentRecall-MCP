@@ -460,7 +460,14 @@ async function main(): Promise<void> {
     case "hook-correction": {
       // Reads UserPromptSubmit JSON from stdin.
       // Detects correction language and silently captures to alignment-log.
+      // Per-session lock prevents duplicate entries from multiple fires in the same session.
       // Always exits 0 — never blocks the conversation.
+      const corrSessionId = process.env.CLAUDE_SESSION_ID ?? process.env.SESSION_ID ?? "";
+      const corrLockKey = corrSessionId || new Date().toISOString().slice(0, 13); // hour-granularity fallback
+      const corrLockFile = path.join(os.homedir(), ".agent-recall", ".hook-correction-lock");
+      let corrLockContent = "";
+      try { corrLockContent = fs.existsSync(corrLockFile) ? fs.readFileSync(corrLockFile, "utf-8").trim() : ""; } catch { /* non-blocking */ }
+
       const CORRECTION_PATTERNS = [
         /\bthat'?s\s+wrong\b/i,
         /\byou\s+(missed|didn'?t|forgot|skipped)\b/i,
@@ -497,6 +504,14 @@ async function main(): Promise<void> {
 
         const isCorrection = CORRECTION_PATTERNS.some((p) => p.test(prompt));
         if (isCorrection && prompt.length > 3) {
+          // Per-session dedup: only write the first correction per session.
+          // Subsequent corrections in the same session would have slightly different text,
+          // but the session lock prevents runaway writes from hook re-fires.
+          if (corrLockContent === corrLockKey) {
+            process.exit(0);
+          }
+          try { fs.writeFileSync(corrLockFile, corrLockKey, "utf-8"); } catch { /* non-blocking */ }
+
           await core.check({
             goal: lastGoal || "Unknown — see correction",
             confidence: "high",

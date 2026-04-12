@@ -60,7 +60,11 @@ export async function knowledgeWrite(input: KnowledgeWriteInput): Promise<Knowle
   if (!fs.existsSync(legacyPath)) {
     fs.writeFileSync(legacyPath, `# Knowledge — ${input.category}\n\n${entry}`, "utf-8");
   } else {
-    fs.appendFileSync(legacyPath, entry, "utf-8");
+    const legacyContent = fs.readFileSync(legacyPath, "utf-8");
+    // Dedup: skip if same title already recorded today
+    if (!legacyContent.includes(`### ${input.title} (${slug}, ${date})`)) {
+      fs.appendFileSync(legacyPath, entry, "utf-8");
+    }
   }
 
   let palaceResult: KnowledgeWriteResult["palace"] = null;
@@ -77,7 +81,10 @@ export async function knowledgeWrite(input: KnowledgeWriteInput): Promise<Knowle
     if (!fs.existsSync(topicPath)) {
       fs.writeFileSync(topicPath, `# knowledge / ${input.category}\n\n${entry}`, "utf-8");
     } else {
-      fs.appendFileSync(topicPath, entry, "utf-8");
+      const topicContent = fs.readFileSync(topicPath, "utf-8");
+      if (!topicContent.includes(`### ${input.title} (${slug}, ${date})`)) {
+        fs.appendFileSync(topicPath, entry, "utf-8");
+      }
     }
 
     fanOut(slug, "knowledge", safeCategory, `${input.title}: ${input.what_happened}`, [], severity === "critical" ? "high" : "medium");

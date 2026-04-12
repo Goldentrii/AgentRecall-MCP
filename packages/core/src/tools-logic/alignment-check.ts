@@ -59,7 +59,12 @@ export async function alignmentCheck(input: AlignmentCheckInput): Promise<Alignm
       if (input.human_correction) {
         const palaceEntry = `\n### ${date} ${time} — ${input.confidence}\n**Goal**: ${input.goal}\n**Human correction**: ${input.human_correction}\n**Delta**: ${input.delta || "pending"}\n`;
         if (fs.existsSync(alignFile)) {
-          fs.appendFileSync(alignFile, palaceEntry, "utf-8");
+          const existing = fs.readFileSync(alignFile, "utf-8");
+          // Dedup: skip if the same goal was already recorded today (prevents double-write from MCP retries)
+          const goalKey = input.goal.slice(0, 60);
+          if (!existing.includes(`### ${date}`) || !existing.includes(goalKey)) {
+            fs.appendFileSync(alignFile, palaceEntry, "utf-8");
+          }
         } else {
           fs.writeFileSync(alignFile, `# alignment / ${category}\n${palaceEntry}`, "utf-8");
         }

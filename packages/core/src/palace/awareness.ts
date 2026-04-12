@@ -213,7 +213,10 @@ export function addInsight(
       // Strong topic match → merge (strengthen)
       existing.confirmations++;
       existing.lastConfirmed = now;
-      existing.evidence += ` | ${newInsight.evidence}`;
+      // Only append evidence if it's not already present (prevents "evidence | evidence")
+      if (!existing.evidence.includes(newInsight.evidence.slice(0, 40))) {
+        existing.evidence += ` | ${newInsight.evidence}`;
+      }
       for (const aw of newInsight.appliesWhen) {
         if (!existing.appliesWhen.includes(aw)) {
           existing.appliesWhen.push(aw);
@@ -234,7 +237,9 @@ export function addInsight(
       // Same topic, similar evidence → merge
       existing.confirmations++;
       existing.lastConfirmed = now;
-      existing.evidence += ` | ${newInsight.evidence}`;
+      if (!existing.evidence.includes(newInsight.evidence.slice(0, 40))) {
+        existing.evidence += ` | ${newInsight.evidence}`;
+      }
       for (const aw of newInsight.appliesWhen) {
         if (!existing.appliesWhen.includes(aw)) {
           existing.appliesWhen.push(aw);
