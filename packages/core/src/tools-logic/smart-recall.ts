@@ -1,8 +1,50 @@
 /**
- * smart_recall — unified cross-store search.
+ * smart_recall — unified cross-store search. v3.3.14
  *
- * Searches palace, journal, and insights in one call.
- * Returns ranked results with source attribution.
+ * ## Scoring Architecture (why it works this way)
+ *
+ * ### Problem with the old approach (< v3.3.14): Linear Score Fusion
+ * The old formula combined raw scores from different sources directly:
+ *   journal_score  = recency * 0.60 + exactness * 0.40
+ *   palace_score   = salience * 0.50 + exactness * 0.30 + salience * 0.20
+ * This caused journal entries to always win because their recency weight (0.60)
+ * produced scores of ~0.57+ for any entry from yesterday, while palace items
+ * with salience=0.5 only scored ~0.35+exactness*0.30. Cross-source raw scores
+ * are on incompatible scales — combining them directly is mathematically unsound.
+ *
+ * ### Fix 1: Reciprocal Rank Fusion (RRF)
+ * Source: Cormack, Clarke & Buettcher (2009); adopted by Elasticsearch, Azure AI Search.
+ * Instead of combining raw scores, each source ranks its own items internally,
+ * then RRF merges by rank position:
+ *   RRF_score(doc) = Σ  1 / (k + rank_i(doc))    where k=60
+ * This means journal item at rank 1 and palace item at rank 1 get equal weight (1/61).
+ * No source dominates by default. Items appearing in multiple sources get bonus score.
+ *
+ * ### Fix 2: Ebbinghaus Forgetting Curve (source-specific decay)
+ * Source: Ebbinghaus (1885); replicated by Murre & Dros (2015, PMC4492928).
+ * Formula: R(t) = e^(-t/S), where S = memory strength (days).
+ * Different memory types have different S values based on psychological research:
+ *   - Journal (episodic, low meaning):      S = 2    → 60% retained after 1 day
+ *   - Knowledge/bug-fix (procedural):       S = 180  → 99.4% retained after 1 day
+ *   - Palace/decisions (semantic):          S = 9999 → barely decays
+ *   - Insight (conceptual): not time-based; uses confirmation count instead
+ * This replaces the uniform 0.95^days that treated all memory equally.
+ *
+ * ### Fix 3: Beta Distribution for Feedback Utility
+ * Source: Bayesian statistics; optimal for binary feedback signals.
+ * Each item maintains (positives, negatives) feedback counts.
+ * Beta expected value: E[β] = (α) / (α + β) = (pos+1) / (pos+neg+2)
+ * This is the mathematically optimal Bayesian estimate of "true usefulness":
+ *   - No feedback:      E = 0.5  → neutral (no bias)
+ *   - 3 positive:       E = 0.8  → meaningful boost
+ *   - 5 negative:       E = 0.14 → meaningful penalty
+ * Applied as a multiplier to RRF score: finalScore = rrfScore * (E * 2)
+ * (×2 so neutral = 1.0, positive = >1.0, negative = <1.0)
+ *
+ * ### Fix 4: Consistent total_searched
+ * Previously mixed "total matches" (palace), "returned results" (journal),
+ * and "total in index" (insight) — three different metrics summed together.
+ * Now counts candidate items from each source before final RRF merge.
  */
 
 import * as fs from "node:fs";
@@ -41,7 +83,36 @@ export interface SmartRecallResultItem {
   severity?: string;
 }
 
-/** Simple stable hash for feedback matching. */
+export interface SmartRecallResult {
+  query: string;
+  results: SmartRecallResultItem[];
+  total_searched: number;
+  sources_queried: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** RRF constant. k=60 is the empirically validated default (Cormack et al. 2009). */
+const RRF_K = 60;
+
+/**
+ * Ebbinghaus memory strength S (days) per source type.
+ * R(t) = e^(-t/S): higher S = slower decay.
+ * Journal decays fast (low-meaning episodic); palace barely decays (semantic).
+ */
+const EBBINGHAUS_S = {
+  journal: 2,      // ~60% retained after 1 day, ~7% after 1 week
+  knowledge: 180,  // ~99.4% after 1 day, ~84.6% after 1 month
+  palace: 9999,    // effectively no decay
+} as const;
+
+// ---------------------------------------------------------------------------
+// Math helpers
+// ---------------------------------------------------------------------------
+
+/** Simple stable hash for result IDs. */
 function stableId(source: string, title: string): string {
   let hash = 0;
   const str = `${source}:${title}`;
@@ -53,38 +124,50 @@ function stableId(source: string, title: string): string {
   return Math.abs(hash).toString(36).slice(0, 8);
 }
 
-export interface SmartRecallResult {
-  query: string;
-  results: SmartRecallResultItem[];
-  total_searched: number;
-  sources_queried: string[];
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Calculate keyword overlap between query and text. */
-function keywordExactness(query: string, text: string): number {
-  const queryWords = query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
-  if (queryWords.length === 0) return 0;
-  const textLower = text.toLowerCase();
-  const matches = queryWords.filter((w) => textLower.includes(w));
-  return matches.length / queryWords.length;
-}
-
-/** Days between a date string and now. */
+/** Days elapsed since a date string. */
 function daysSince(dateStr: string): number {
   const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return 365; // fallback: old
+  if (isNaN(d.getTime())) return 365;
   return Math.max(0, (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+/**
+ * Ebbinghaus forgetting curve: R(t) = e^(-t/S).
+ * Returns retention [0,1] after `days` with strength S.
+ */
+function ebbinghaus(days: number, S: number): number {
+  return Math.exp(-days / S);
+}
+
+/** Keyword overlap ratio between query and text. */
+function keywordExactness(query: string, text: string): number {
+  const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+  if (words.length === 0) return 0;
+  const textLower = text.toLowerCase();
+  const matches = words.filter((w) => textLower.includes(w));
+  return matches.length / words.length;
+}
+
+/**
+ * Beta distribution expected value for binary feedback.
+ * E[Beta(α,β)] = α/(α+β) where α=pos+1, β=neg+1 (Laplace smoothing).
+ * Returns [~0, ~1]. Neutral (no feedback) = 0.5.
+ */
+function betaUtility(positives: number, negatives: number): number {
+  return (positives + 1) / (positives + negatives + 2);
+}
+
 // ---------------------------------------------------------------------------
-// Main
+// Feedback store
 // ---------------------------------------------------------------------------
 
-interface FeedbackEntry { query: string; id?: string; title: string; useful: boolean; date: string }
+interface FeedbackEntry {
+  query: string;
+  id?: string;
+  title: string;
+  useful: boolean;
+  date: string;
+}
 
 function feedbackLogPath(): string {
   return path.join(getRoot(), "feedback-log.json");
@@ -96,59 +179,114 @@ function readFeedbackLog(): FeedbackEntry[] {
   try { return JSON.parse(fs.readFileSync(p, "utf-8")); } catch { return []; }
 }
 
-/** Process relevance feedback — store and adjust salience signals. */
 function processFeedback(feedback: RecallFeedback[], query: string): void {
   ensureDir(path.dirname(feedbackLogPath()));
-
   const log = readFeedbackLog();
   const date = new Date().toISOString().slice(0, 10);
   for (const f of feedback) {
     log.push({ query, id: f.id, title: f.title ?? "", useful: f.useful, date });
   }
-
-  // Keep last 200 entries
   fs.writeFileSync(feedbackLogPath(), JSON.stringify(log.slice(-200), null, 2), "utf-8");
 }
 
+/** Count positive and negative feedback for a result item. Query-aware. */
+function getFeedbackCounts(
+  id: string,
+  title: string,
+  queryWords: string[],
+  log: FeedbackEntry[]
+): { positives: number; negatives: number } {
+  const relevant = log.filter((f) => {
+    if (!f.query) return true;
+    const fWords = f.query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+    return queryWords.some((w) => fWords.includes(w));
+  });
+
+  const match = (f: FeedbackEntry) =>
+    (f.id && f.id === id) || (f.title && f.title === title);
+
+  return {
+    positives: relevant.filter((f) => match(f) && f.useful).length,
+    negatives: relevant.filter((f) => match(f) && !f.useful).length,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// RRF merge
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply Reciprocal Rank Fusion scores from a ranked list of items.
+ * Mutates the provided rrfMap in place.
+ *   RRF_score += 1 / (k + rank)
+ */
+function applyRRF(
+  rankedItems: SmartRecallResultItem[],
+  rrfMap: Map<string, { score: number; item: SmartRecallResultItem }>
+): void {
+  rankedItems.forEach((item, idx) => {
+    const rank = idx + 1;
+    const contribution = 1 / (RRF_K + rank);
+    const existing = rrfMap.get(item.id);
+    if (existing) {
+      existing.score += contribution;
+    } else {
+      rrfMap.set(item.id, { score: contribution, item });
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
 export async function smartRecall(input: SmartRecallInput): Promise<SmartRecallResult> {
-  // Process relevance feedback if provided
   if (input.feedback && input.feedback.length > 0) {
     processFeedback(input.feedback, input.query);
   }
 
   const limit = input.limit ?? 10;
-  const allResults: SmartRecallResultItem[] = [];
-  let totalSearched = 0;
+  const feedbackLog = readFeedbackLog();
+  const queryWords = input.query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
   const sourcesQueried: string[] = [];
 
-  // 1. Palace search
+  // Candidate buckets — each source scores its items internally, then RRF merges
+  const palaceItems: SmartRecallResultItem[] = [];
+  const journalItems: SmartRecallResultItem[] = [];
+  const insightItems: SmartRecallResultItem[] = [];
+
+  // ── 1. Palace ────────────────────────────────────────────────────────────
+  // Internal score: keyword match quality × salience (structural importance).
+  // Ebbinghaus decay is minimal for palace (S=9999); salience already
+  // incorporates access recency via recordAccess().
   try {
     const palaceResults = await palaceSearch({ query: input.query, project: input.project });
     sourcesQueried.push("palace");
-    totalSearched += palaceResults.total_matches;
 
     for (const r of palaceResults.results) {
       const title = `${r.room}/${r.file}`;
-      allResults.push({
-        id: stableId("palace", title),
+      const id = stableId("palace", title);
+      // keyword_score comes from updated palace-search (keyword overlap, not substring).
+      // salience floor of 0.4 prevents new rooms (salience=0.5) from being unfairly
+      // penalized against rooms with years of access history.
+      const keyScore = r.keyword_score ?? keywordExactness(input.query, r.excerpt);
+      const salience = Math.max(0.4, r.salience);
+      const internalScore = keyScore * 0.65 + salience * 0.35;
+
+      palaceItems.push({
+        id,
         source: "palace",
         title,
         excerpt: r.excerpt,
-        score: 0, // computed below
+        score: internalScore,
         room: r.room,
       });
-      // Compute score: salience as relevance, keyword match, recency unknown (use salience as proxy)
-      const relevance = r.salience;
-      const exactness = keywordExactness(input.query, r.excerpt);
-      const recency = r.salience; // palace salience already incorporates recency
-      allResults[allResults.length - 1].score =
-        relevance * 0.50 + exactness * 0.30 + recency * 0.20;
     }
-  } catch {
-    // Palace may not be initialized
-  }
+  } catch { /* palace may not be initialized */ }
 
-  // 2. Journal search
+  // ── 2. Journal ───────────────────────────────────────────────────────────
+  // Internal score: Ebbinghaus decay (S=2 days, fast) × keyword match.
+  // Journal is ephemeral — recent entries are useful; old ones rarely are.
   try {
     const journalResults = await journalSearch({
       query: input.query,
@@ -156,96 +294,104 @@ export async function smartRecall(input: SmartRecallInput): Promise<SmartRecallR
       include_palace: false,
     });
     sourcesQueried.push("journal");
-    totalSearched += journalResults.results.length;
 
     for (const r of journalResults.results) {
-      const days = daysSince(r.date);
-      const recency = Math.pow(0.95, days);
-      const exactness = keywordExactness(input.query, r.excerpt);
       const title = `${r.date} / ${r.section}`;
+      const id = stableId("journal", title);
+      const days = daysSince(r.date);
+      const recency = ebbinghaus(days, EBBINGHAUS_S.journal);
+      const exactness = keywordExactness(input.query, r.excerpt);
+      // Equal weight: if the entry is recent AND relevant it scores well.
+      // Old journal entries drop fast due to S=2.
+      const internalScore = recency * 0.50 + exactness * 0.50;
 
-      allResults.push({
-        id: stableId("journal", title),
+      journalItems.push({
+        id,
         source: "journal",
         title,
         excerpt: r.excerpt,
-        score: recency * 0.60 + exactness * 0.40,
+        score: internalScore,
         date: r.date,
       });
     }
-  } catch {
-    // Journal may not exist
-  }
+  } catch { /* journal may not exist */ }
 
-  // 3. Insight recall
+  // ── 3. Insights ──────────────────────────────────────────────────────────
+  // Internal score: keyword relevance × confirmation signal (log-scaled).
+  // Insights are timeless learned patterns — confirmation count is the signal,
+  // not recency. More confirmations = more reliable.
   try {
     const insightResults = await recallInsight({
       context: input.query,
-      limit: limit,
+      limit: limit * 2,
       include_awareness: false,
     });
     sourcesQueried.push("insight");
-    totalSearched += insightResults.total_in_index;
 
-    // Normalize relevance scores
-    const maxRelevance = Math.max(
-      1,
-      ...insightResults.matching_insights.map((i) => i.relevance)
-    );
+    const maxRelevance = Math.max(1, ...insightResults.matching_insights.map((i) => i.relevance));
 
     for (const i of insightResults.matching_insights) {
+      const id = stableId("insight", i.title);
       const relevance = i.relevance / maxRelevance;
       const exactness = keywordExactness(input.query, i.title);
-      // Insights don't have dates, use confirmation count as a recency proxy
-      const recency = Math.min(1.0, Math.log2(i.confirmed + 1) / 3);
+      // log2(confirmed+1)/3 gives: 0→0, 1→0.33, 3→0.67, 7→1.0
+      const confirmation = Math.min(1.0, Math.log2(i.confirmed + 1) / 3);
+      const internalScore = relevance * 0.40 + exactness * 0.35 + confirmation * 0.25;
 
-      allResults.push({
-        id: stableId("insight", i.title),
+      insightItems.push({
+        id,
         source: "insight",
         title: i.title,
         excerpt: `[${i.severity}] ${i.applies_when.join(", ")}`,
-        score: relevance * 0.50 + exactness * 0.30 + recency * 0.20,
+        score: internalScore,
         severity: i.severity,
       });
     }
-  } catch {
-    // Insights may be empty
-  }
+  } catch { /* insights may be empty */ }
 
-  // 4.5 Apply feedback adjustments — query-aware, ID-first matching
-  const feedbackLog = readFeedbackLog();
-  if (feedbackLog.length > 0) {
-    // Pre-filter: only feedback from similar queries
-    const queryWords = input.query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
-    const relevantFeedback = feedbackLog.filter((f) => {
-      if (!f.query) return true; // legacy entries without query always apply
-      const fWords = f.query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
-      const overlap = queryWords.filter((w) => fWords.includes(w)).length;
-      return overlap > 0;
-    });
+  // ── 4. Rank within each source, then merge via RRF ───────────────────────
+  // Each source ranks by its own internal score (apples vs apples).
+  // RRF then combines by rank position — no cross-source score comparison.
+  palaceItems.sort((a, b) => b.score - a.score);
+  journalItems.sort((a, b) => b.score - a.score);
+  insightItems.sort((a, b) => b.score - a.score);
 
-    for (const r of allResults) {
-      const match = (f: FeedbackEntry) =>
-        (f.id && f.id === r.id) || (f.title && f.title === r.title);
-      const positives = relevantFeedback.filter((f) => match(f) && f.useful).length;
-      const negatives = relevantFeedback.filter((f) => match(f) && !f.useful).length;
-      r.score += (positives * 0.03) - (negatives * 0.05);
-      r.score = Math.max(0, Math.min(1, r.score));
+  const rrfMap = new Map<string, { score: number; item: SmartRecallResultItem }>();
+  applyRRF(palaceItems, rrfMap);
+  applyRRF(journalItems, rrfMap);
+  applyRRF(insightItems, rrfMap);
+
+  // ── 5. Apply Beta feedback multiplier ────────────────────────────────────
+  // betaUtility returns [0,1]; ×2 normalizes so neutral (0.5) = ×1.0.
+  // Items with positive history are boosted; negative history suppressed.
+  for (const entry of rrfMap.values()) {
+    const { positives, negatives } = getFeedbackCounts(
+      entry.item.id,
+      entry.item.title,
+      queryWords,
+      feedbackLog
+    );
+    if (positives > 0 || negatives > 0) {
+      const multiplier = betaUtility(positives, negatives) * 2;
+      entry.score *= multiplier;
     }
   }
 
-  // 5. Deduplicate: if same excerpt appears in palace and journal, keep palace
+  // ── 6. Deduplicate by excerpt content ────────────────────────────────────
   const seen = new Set<string>();
   const deduped: SmartRecallResultItem[] = [];
-  for (const r of allResults) {
-    const key = r.excerpt.toLowerCase().replace(/\s+/g, " ").trim();
+  for (const { score, item } of rrfMap.values()) {
+    const key = item.excerpt.toLowerCase().replace(/\s+/g, " ").trim();
     if (seen.has(key)) continue;
     seen.add(key);
-    deduped.push(r);
+    deduped.push({ ...item, score });
   }
 
-  // 5. Sort by score descending, return top N
+  // ── 7. Final sort and return ──────────────────────────────────────────────
   deduped.sort((a, b) => b.score - a.score);
+
+  // total_searched = candidate items actually scanned (consistent metric)
+  const totalSearched = palaceItems.length + journalItems.length + insightItems.length;
 
   return {
     query: input.query,

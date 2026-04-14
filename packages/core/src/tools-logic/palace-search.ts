@@ -13,7 +13,15 @@ export interface PalaceSearchInput {
 export interface PalaceSearchResult {
   project: string;
   query: string;
-  results: Array<{ room: string; file: string; salience: number; excerpt: string; line: number }>;
+  results: Array<{
+    room: string;
+    file: string;
+    salience: number;
+    excerpt: string;
+    line: number;
+    /** Keyword overlap ratio [0,1]. Added in v3.3.14 — used by smart-recall for RRF internal scoring. */
+    keyword_score: number;
+  }>;
   total_matches: number;
 }
 
@@ -23,7 +31,11 @@ export async function palaceSearch(input: PalaceSearchInput): Promise<PalaceSear
 
   const rooms = listRooms(slug);
   const pd = palaceDir(slug);
-  const queryLower = input.query.toLowerCase();
+  // v3.3.14: use keyword overlap instead of exact substring match.
+  // Old approach: lines[i].toLowerCase().includes(fullQuery) required the entire
+  // query to appear as one continuous substring — too strict, missed relevant entries.
+  // New approach: count matched keywords, compute overlap ratio for scoring.
+  const queryWords = input.query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
   const results: PalaceSearchResult["results"] = [];
 
   const targetRooms = input.room ? rooms.filter((r) => r.slug === input.room) : rooms;
@@ -39,16 +51,32 @@ export async function palaceSearch(input: PalaceSearchInput): Promise<PalaceSear
       const lines = content.split("\n");
 
       for (let i = 0; i < lines.length; i++) {
-        if (lines[i].toLowerCase().includes(queryLower)) {
-          const line = lines[i];
-          const matchIdx = line.toLowerCase().indexOf(queryLower);
-          const start = Math.max(0, matchIdx - 40);
-          const end = Math.min(line.length, matchIdx + input.query.length + 40);
-          let excerpt = line.slice(start, end).trim();
-          if (start > 0) excerpt = "..." + excerpt;
-          if (end < line.length) excerpt = excerpt + "...";
-          results.push({ room: roomMeta.slug, file: file.replace(".md", ""), salience: roomMeta.salience, excerpt, line: i + 1 });
-        }
+        const lineLower = lines[i].toLowerCase();
+        if (queryWords.length === 0) continue;
+
+        // Count how many query keywords appear in this line
+        const matchedWords = queryWords.filter((w) => lineLower.includes(w));
+        if (matchedWords.length === 0) continue;
+
+        const keywordScore = matchedWords.length / queryWords.length;
+
+        // Build excerpt anchored on first keyword match
+        const firstKw = matchedWords[0];
+        const matchIdx = lineLower.indexOf(firstKw);
+        const start = Math.max(0, matchIdx - 40);
+        const end = Math.min(lines[i].length, matchIdx + firstKw.length + 80);
+        let excerpt = lines[i].slice(start, end).trim();
+        if (start > 0) excerpt = "..." + excerpt;
+        if (end < lines[i].length) excerpt = excerpt + "...";
+
+        results.push({
+          room: roomMeta.slug,
+          file: file.replace(".md", ""),
+          salience: roomMeta.salience,
+          excerpt,
+          line: i + 1,
+          keyword_score: keywordScore,
+        });
       }
     }
 
@@ -57,7 +85,8 @@ export async function palaceSearch(input: PalaceSearchInput): Promise<PalaceSear
     }
   }
 
-  results.sort((a, b) => b.salience - a.salience || a.line - b.line);
+  // Sort by keyword_score × salience so most relevant + important rooms surface first
+  results.sort((a, b) => (b.keyword_score * b.salience) - (a.keyword_score * a.salience) || a.line - b.line);
   const limited = results.slice(0, 20);
 
   return { project: slug, query: input.query, results: limited, total_matches: results.length };
