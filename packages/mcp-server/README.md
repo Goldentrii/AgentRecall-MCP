@@ -12,8 +12,9 @@
   <img src="https://img.shields.io/badge/MCP-5_tools-orange?style=flat-square" alt="Tools">
   <img src="https://img.shields.io/badge/cloud-zero-blue?style=flat-square" alt="Zero Cloud">
   <img src="https://img.shields.io/badge/Obsidian-compatible-7C3AED?style=flat-square" alt="Obsidian">
-  <img src="https://img.shields.io/badge/overhead-~831_tokens%2Fsession-22C55E?style=flat-square" alt="Token overhead">
-  <img src="https://img.shields.io/badge/saves-thousands_long--term-22C55E?style=flat-square" alt="Token savings">
+  <img src="https://img.shields.io/badge/overhead-~876_tokens%2Fsession-22C55E?style=flat-square" alt="Token overhead">
+  <img src="https://img.shields.io/badge/saves_up_to-57%25_tokens-FF6B6B?style=flat-square" alt="Token savings">
+  <img src="https://img.shields.io/badge/break--even-3--4_sessions-22C55E?style=flat-square" alt="Break-even">
   <img src="https://img.shields.io/badge/scoring-RRF_(Cormack_2009)-7C3AED?style=flat-square" alt="RRF scoring">
   <img src="https://img.shields.io/badge/decay-Ebbinghaus_(1885)-3B82F6?style=flat-square" alt="Ebbinghaus decay">
   <img src="https://img.shields.io/badge/feedback-Bayesian_Beta-F59E0B?style=flat-square" alt="Beta distribution">
