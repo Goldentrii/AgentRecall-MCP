@@ -6,7 +6,7 @@ description: >-
   capture, cross-project insight matching. Stores everything as local markdown.
   Zero cloud, zero telemetry, Obsidian-compatible.
 origin: community
-version: 3.3.11
+version: 3.3.14
 author: Goldentrii
 platform: clawhub
 tags:
@@ -44,7 +44,7 @@ skip:
   - "算了"
 ---
 
-# AgentRecall v3.3.11 — Agent Instructions
+# AgentRecall v3.3.14 — Agent Instructions
 
 You have access to AgentRecall, a persistent memory system with 5 MCP tools. This file tells you exactly how and when to use them.
 
@@ -156,20 +156,20 @@ remember({
 
 **When:** You need to find something from past sessions. A decision, a pattern, a lesson.
 
-**What it does:** Searches ALL stores at once (palace, journal, insights). Returns ranked results with stable IDs.
+**What it does:** Searches ALL stores at once using Reciprocal Rank Fusion (RRF) — each source (palace, journal, insights) ranks internally, then positions merge so no single source dominates. Journal entries decay fast via Ebbinghaus curve (S=2 days); palace entries are near-permanent (S=9999). Returns ranked results with stable IDs.
 
 **How to use:**
 ```
 recall({ query: "authentication design", limit: 5 })
 ```
 
-**Feedback:** After using results, rate them to improve future ranking:
+**Feedback:** After using results, rate them. Ratings use a Bayesian Beta model — the mathematically optimal estimate of true usefulness:
 ```
 recall({
   query: "auth patterns",
   feedback: [
-    { id: "abc123", useful: true },
-    { id: "def456", useful: false }
+    { id: "abc123", useful: true },   // Beta(2,1) → ×1.33 next time
+    { id: "def456", useful: false }   // Beta(1,2) → ×0.67 next time
   ]
 })
 ```
