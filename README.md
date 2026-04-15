@@ -1365,3 +1365,14 @@ L5: 洞察索引     recall_insight            「跨项目的经验」
 - 网站：[novada.com](https://www.novada.com)
 
 MIT 许可证。
+
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=Goldentrii%2FAgentRecall&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Goldentrii/AgentRecall&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Goldentrii/AgentRecall&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Goldentrii/AgentRecall&type=date&legend=top-left" />
+ </picture>
+</a>
