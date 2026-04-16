@@ -66,6 +66,12 @@ AWARENESS:
 INSIGHT:
   ar insight <context> [--limit N]
 
+DIGEST (context cache):
+  ar digest store --title "t" --scope "s" --content "c" [--ttl 168] [--global]
+  ar digest recall <query> [--limit N] [--stale] [--no-global]
+  ar digest list [--stale]
+  ar digest invalidate <id> [--reason "why"] [--global]
+
 META:
   ar projects
   ar synthesize [--entries N]
@@ -542,6 +548,50 @@ async function main(): Promise<void> {
         project,
       });
       output(result);
+      break;
+    }
+
+    case "digest": {
+      const sub = rest[0];
+      const digRest = rest.slice(1);
+      if (sub === "store") {
+        const title = getFlag("--title", digRest) ?? digRest.find((a) => !a.startsWith("--")) ?? "";
+        const scope = getFlag("--scope", digRest) ?? "";
+        const content = getFlag("--content", digRest) ?? "";
+        const ttl = getFlag("--ttl", digRest);
+        const result = core.createDigest({
+          title, scope, content,
+          source_agent: getFlag("--agent", digRest),
+          source_query: getFlag("--query", digRest),
+          ttl_hours: ttl ? parseFloat(ttl) : undefined,
+          global: hasFlag("--global", digRest),
+          project,
+        });
+        output(result);
+      } else if (sub === "recall") {
+        const query = digRest.find((a) => !a.startsWith("--")) ?? "";
+        const limit = getFlag("--limit", digRest);
+        const proj = project ?? "auto";
+        const resolvedProject = await core.resolveProject(proj);
+        const digests = core.findMatchingDigests(query, resolvedProject, {
+          includeStale: hasFlag("--stale", digRest),
+          includeGlobal: !hasFlag("--no-global", digRest),
+          limit: limit ? parseInt(limit) : 5,
+        });
+        output({ query, digests, result_count: digests.length });
+
+      } else if (sub === "list") {
+        const entries = core.listDigests(project ?? "auto", { stale: hasFlag("--stale", digRest) ? undefined : false });
+        output(entries);
+      } else if (sub === "invalidate") {
+        const id = digRest.find((a) => !a.startsWith("--")) ?? "";
+        const reason = getFlag("--reason", digRest) ?? "manually invalidated";
+        core.markStale(project ?? "auto", id, reason, hasFlag("--global", digRest));
+        output({ success: true, id });
+      } else {
+        process.stderr.write(`Usage: ar digest store|recall|list|invalidate [...opts]\n`);
+        process.exit(1);
+      }
       break;
     }
 

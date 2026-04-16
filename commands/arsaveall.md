@@ -1,81 +1,131 @@
 ---
-description: "Batch save — summarize all today's sessions into one consolidated journal entry. Use when multiple sessions ran in parallel."
+description: "AgentRecall batch save — save this session + sweep all projects for unsaved captures + consolidate cross-project insights."
 ---
 
-# /arsaveall — Batch Session Save
+# /arsaveall — AgentRecall Save All
 
-Summarize all of today's sessions into one consolidated journal + palace + awareness update. Use this instead of running `/arsave` in each window separately.
+One command to close all VS Code sessions cleanly. Saves this session, rescues orphaned captures from parallel agents, and consolidates cross-project patterns into the palace.
 
 ## When to Use
 
-- You ran 3-7 Claude Code sessions in parallel
-- Each session did different work on the same or different projects
-- You want ONE consolidated save instead of saving each separately
+- Closing VS Code or ending a multi-agent work session
+- After running parallel agents across multiple projects simultaneously
+- End-of-day memory sync across everything you worked on
 
 ## What This Does
 
-1. **Scan** — find all of today's session journals and capture logs across all projects
-2. **Summarize** — merge them into one consolidated journal entry per project
-3. **Palace** — consolidate key decisions from all sessions into palace rooms
-4. **Awareness** — extract insights across all sessions (deduplicated)
-5. **Verify** — check that consolidation actually landed
+1. **Save current session** — full /arsave for this tab (journal + palace + awareness + corrections)
+2. **Sweep all projects** — scan for capture logs from today that weren't closed cleanly
+3. **Rescue orphaned sessions** — for each unsaved project, auto-save from its capture log
+4. **Cross-project consolidation** — surface patterns that appeared in multiple projects, promote to palace
+5. **Report** — show exactly what was saved and where
 
 ## Process
 
-### Step 1: Scan today's sessions
+### Step 1: Save current session (same as /arsave)
 
-For each project in `~/.agent-recall/projects/`:
-- Find all `YYYY-MM-DD*.md` and `YYYY-MM-DD*-log.md` files for today
-- Count sessions per project
-- Read the content of each
+1. **Gather ground truth first** — do NOT rely on memory:
+   - Read today's capture log: `~/.agent-recall/projects/<slug>/journal/<today>-log.md`
+   - Check git diff: `git diff --stat HEAD` or `git log --oneline -5`
+   - Supplement with conversation memory for decisions not in the log
 
-Report to user:
+2. **Record corrections** — for each time the human corrected your direction this session:
+   ```
+   check({ goal: "<what you understood>", confidence: "high",
+           human_correction: "<what they actually meant>",
+           delta: "<the gap>" })
+   ```
+   Skip if no corrections happened.
+
+3. **Save via `session_end`**:
+   ```
+   session_end({
+     summary: "<2-3 sentences: what happened, what changed>",
+     insights: [{ title, evidence, applies_when, severity }],  // 1-3 max
+     trajectory: "<where this is heading>"
+   })
+   ```
+
+4. **Verify**: spot-check via `recall(query="<today's key decision>")` — confirm it landed.
+
+### Step 2: Sweep all projects for unsaved sessions
+
+List all known projects:
+```bash
+node ~/Projects/AgentRecall/packages/cli/dist/index.js projects
 ```
-Found N sessions across M projects today:
-  - project-a: 3 sessions (journal + 2 capture logs)
-  - project-b: 2 sessions (journal + 1 capture log)
-  - project-c: 1 session (capture log only)
+
+For each project in the list:
+1. Check if today's journal file exists: `~/.agent-recall/projects/{slug}/journal/<YYYY-MM-DD>*.md`
+   - If a dated journal file exists → already saved, skip
+2. Check if a capture log exists: `~/.agent-recall/projects/{slug}/journal/<YYYY-MM-DD>-log.md`
+   - If yes → unsaved session with captured Q&A data → rescue it
+
+### Step 3: Rescue each unsaved session
+
+For each project with a capture log but no journal entry:
+
+1. Read the capture log:
+   ```bash
+   cat ~/.agent-recall/projects/{slug}/journal/<YYYY-MM-DD>-log.md
+   ```
+
+2. Synthesize a summary from the Q&A pairs (look for `**Q:**` / `**A:**` blocks)
+
+3. Save via session_end with explicit project:
+   ```
+   session_end({
+     project: "{slug}",
+     summary: "<synthesized from capture log>",
+     insights: [],   // only add if log reveals genuine reusable patterns
+     trajectory: "Auto-rescued from orphaned capture log"
+   })
+   ```
+
+4. Note the project slug and number of captures rescued.
+
+### Step 4: Cross-project consolidation
+
+After all individual sessions are saved, look for patterns that span projects:
+
+1. Run recall across each active project:
+   ```
+   recall(query="decisions mistakes blockers insights today", project="{slug}")
+   ```
+
+2. Look for themes that appear in 2+ projects (e.g., same API issue, same architectural decision pattern)
+
+3. For each cross-project pattern found:
+   - If it's an insight: save as global digest via `digest(action="store", global=true, ...)`
+   - If it's a correction/mistake: record via `check()` with clear `delta` field
+   - If it's architectural: use `remember()` with the `architecture` context hint
+
+4. Skip this step if all projects are isolated with no shared themes.
+
+### Step 5: Report
+
+Show a clean summary:
+
 ```
+/arsaveall complete
 
-### Step 2: Summarize per project
+Sessions saved:
+  ✓ {project-1} — journal written, N insights, N palace entries
+  ✓ {project-2} — auto-rescued from capture log (N captures)
+  ~ {project-3} — no activity today, skipped
 
-For each project with 2+ session files today:
+Cross-project:
+  N patterns consolidated
+  M cross-project digests stored
 
-Call `session_end` with a merged summary that includes:
-- **Completed** — union of all work done across sessions
-- **Decisions** — all decisions made (deduplicated)
-- **Blockers** — current blockers (take the latest state)
-- **Next** — merged next steps
-- **Insights** — extract 1-3 insights from the combined sessions
-
-For projects with only 1 session file, check if it already has a proper journal entry. If it's just a capture log, promote it to a journal summary.
-
-### Step 3: Consolidate to palace
-
-Call `context_synthesize(consolidate=true)` once per project to promote decisions and goals to palace rooms.
-
-### Step 4: Update awareness
-
-Call `awareness_update` with insights gathered across ALL projects (not per-project). This gives cross-project visibility.
-
-### Step 5: Verify
-
-Same as `/arsave` Step 5 — check that palace rooms and awareness actually contain today's content.
-
-### Step 6: Report
-
-```
-✅ Batch save complete:
-  - project-a: 3 sessions → 1 consolidated journal
-  - project-b: 2 sessions → 1 consolidated journal
-  - project-c: 1 session (already saved)
-  - Awareness: N insights added
-  - Palace: M rooms updated
+Total: X sessions saved, Y cross-project insights
 ```
 
 ## Important Rules
 
-- **Don't duplicate.** If a session already has a proper `/arsave` journal, don't re-save it. Only consolidate sessions that were capture-only or not yet summarized.
-- **Merge, don't overwrite.** If `YYYY-MM-DD.md` already exists with content from an earlier `/arsave`, append the new sessions as additional sections — don't replace.
-- **Cross-project insights.** The awareness update should look across ALL projects for patterns, not just within one.
-- **Do NOT push to git.** Local-first. Only push if user explicitly asks.
+- **Order matters**: save current session FIRST before sweeping others. If this session crashes mid-sweep, at least the current one is safe.
+- **Don't over-synthesize orphaned logs.** If a capture log has 2 Q&A pairs, just summarize them. Don't invent insights from thin data.
+- **Cross-project promotion is optional.** If nothing connects across projects, skip Step 4. Quality > quantity.
+- **Global digests for genuinely cross-cutting knowledge only.** "Fixed a bug in project X" is not cross-project. "API pagination always requires cursor, not offset" is.
+- **One /arsaveall per close.** Don't re-run if already completed. If you need to add something, use `/arsave` or `remember()` directly.
+- **Always verify the current session** was actually saved before sweeping others (check Step 1's session_end response).

@@ -2,6 +2,11 @@ import {
   setRoot, getRoot,
   type Importance, type WalkDepth,
   type AwarenessState,
+  // Digest
+  digestStore, type DigestStoreInput, type DigestStoreResult,
+  digestRecall, type DigestRecallInput, type DigestRecallResult,
+  digestRead, type DigestReadInput, type DigestReadResult,
+  markStale as digestMarkStale,
   // Tool-logic functions
   journalRead, type JournalReadResult,
   journalWrite, type JournalWriteResult,
@@ -154,6 +159,24 @@ export class AgentRecall {
 
   async knowledgeRead(opts?: Omit<KnowledgeReadInput, never>): Promise<string> {
     return knowledgeRead(opts ?? {});
+  }
+
+  // --- Digest (context cache) ---
+
+  async digestStore(input: Omit<DigestStoreInput, "project"> & { project?: string }): Promise<DigestStoreResult> {
+    return digestStore({ ...input, project: input.project ?? this.project });
+  }
+
+  async digestRecall(query: string, opts?: Omit<DigestRecallInput, "query" | "project"> & { project?: string }): Promise<DigestRecallResult> {
+    return digestRecall({ query, project: opts?.project ?? this.project, ...opts });
+  }
+
+  async digestRead(digestId: string, opts?: { project?: string }): Promise<DigestReadResult> {
+    return digestRead({ digest_id: digestId, project: opts?.project ?? this.project });
+  }
+
+  digestInvalidate(project: string, digestId: string, reason?: string, global?: boolean): void {
+    digestMarkStale(project, digestId, reason ?? "manually invalidated", global);
   }
 
   // --- Low-level access ---
