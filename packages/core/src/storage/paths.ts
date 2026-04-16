@@ -78,3 +78,23 @@ export function roomDir(project: string, roomSlug: string): string {
   }
   return resolved;
 }
+
+/**
+ * Resolve the digest directory for a project.
+ */
+export function digestDir(project: string): string {
+  const safe = project.replace(/[^a-zA-Z0-9_\-\.]/g, "-");
+  const root = getRoot();
+  const resolved = path.join(root, "projects", safe, "digest");
+  if (!resolved.startsWith(root)) {
+    throw new Error(`Invalid project name: ${project}`);
+  }
+  return resolved;
+}
+
+/**
+ * Resolve the global (cross-project) digest directory.
+ */
+export function digestGlobalDir(): string {
+  return path.join(getRoot(), "digest-global");
+}

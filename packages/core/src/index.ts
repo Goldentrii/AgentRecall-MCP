@@ -179,3 +179,30 @@ export { smartRecall, type SmartRecallInput, type SmartRecallResult } from "./to
 export { sessionStart, type SessionStartInput, type SessionStartResult } from "./tools-logic/session-start.js";
 export { sessionEnd, type SessionEndInput, type SessionEndResult } from "./tools-logic/session-end.js";
 export { check, type CheckInput, type CheckResult, type WatchFor, type PastDelta } from "./tools-logic/check.js";
+
+// Digest — context cache (v4.0)
+export {
+  type DigestEntry,
+  type DigestIndex,
+  type DigestInvalidation,
+  type DigestStoreInput,
+  type DigestStoreResult,
+  type DigestRecallInput,
+  type DigestRecallResult,
+  type DigestReadInput,
+  type DigestReadResult,
+  type MatchedDigest,
+  DEFAULT_TTL_HOURS,
+  MAX_DIGESTS_PER_PROJECT,
+  MIN_MATCH_THRESHOLD,
+  REFRESH_OVERLAP_THRESHOLD,
+  DIGEST_HALF_LIFE_DAYS,
+} from "./digest/types.js";
+export { createDigest, readDigest, listDigests, markStale, checkExpiry, pruneStale, recordAccess as recordDigestAccess } from "./digest/store.js";
+export { findMatchingDigests, keywordOverlap } from "./digest/match.js";
+export { digestDir, digestGlobalDir } from "./storage/paths.js";
+
+// Tool logic — digest (v4.0)
+export { digestStore } from "./tools-logic/digest-store.js";
+export { digestRecall } from "./tools-logic/digest-recall.js";
+export { digestRead } from "./tools-logic/digest-read.js";

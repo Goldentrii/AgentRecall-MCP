@@ -26,5 +26,7 @@ export function readJsonSafe<T>(filePath: string): T | null {
 
 export function writeJsonAtomic(filePath: string, data: unknown): void {
   ensureDir(path.dirname(filePath));
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
+  const tmp = filePath + ".tmp." + process.pid;
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), "utf-8");
+  fs.renameSync(tmp, filePath); // atomic on POSIX
 }

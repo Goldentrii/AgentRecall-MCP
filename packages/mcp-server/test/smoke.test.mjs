@@ -10,16 +10,17 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ENTRY = path.join(__dirname, "..", "dist", "index.js");
 
 describe("MCP server smoke tests", () => {
-  it("--list-tools outputs exactly 5 tools (v3.4 surface)", async () => {
+  it("--list-tools outputs 6 tools (5 primary + digest)", async () => {
     const { stdout } = await execFileAsync("node", [ENTRY, "--list-tools"]);
     const tools = JSON.parse(stdout);
-    assert.equal(tools.length, 5);
+    assert.equal(tools.length, 6);
     const names = tools.map((t) => t.name);
     assert.ok(names.includes("session_start"));
     assert.ok(names.includes("remember"));
     assert.ok(names.includes("recall"));
     assert.ok(names.includes("session_end"));
     assert.ok(names.includes("check"));
+    assert.ok(names.includes("digest"));
   });
 
   it("--version prints a semver string", async () => {
@@ -35,11 +36,11 @@ describe("MCP server smoke tests", () => {
     assert.ok(stdout.includes("npx agent-recall-mcp"));
   });
 
-  it("tool names match v3.4 primary surface", async () => {
+  it("tool names match primary surface", async () => {
     const { stdout } = await execFileAsync("node", [ENTRY, "--list-tools"]);
     const tools = JSON.parse(stdout);
     const expected = [
-      "session_start", "remember", "recall", "session_end", "check",
+      "session_start", "remember", "recall", "session_end", "check", "digest",
     ];
     for (const name of expected) {
       assert.ok(

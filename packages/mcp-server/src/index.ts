@@ -10,6 +10,7 @@ import { register as registerRemember } from "./tools/remember.js";
 import { register as registerRecall } from "./tools/recall.js";
 import { register as registerSessionEnd } from "./tools/session-end.js";
 import { register as registerCheck } from "./tools/check.js";
+import { register as registerDigest } from "./tools/digest.js";
 
 // ── Legacy tools (still importable for SDK/CLI, not registered by default) ──
 // DEPRECATED v3.4: use session_start instead
@@ -74,6 +75,7 @@ if (args.includes("--list-tools")) {
     { name: "recall", description: "Search all memory stores, return ranked results" },
     { name: "session_end", description: "Save session summary, insights, and trajectory" },
     { name: "check", description: "Record understanding, get predictive warnings from past corrections" },
+    { name: "digest", description: "Context cache — store/recall/read/invalidate pre-computed analysis results" },
   ];
   process.stdout.write(JSON.stringify(tools, null, 2) + "\n");
   process.exit(0);
@@ -85,6 +87,7 @@ registerRemember(server);
 registerRecall(server);
 registerSessionEnd(server);
 registerCheck(server);
+registerDigest(server);
 registerJournalResources(server);
 
 async function main(): Promise<void> {
