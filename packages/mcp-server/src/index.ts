@@ -45,6 +45,8 @@ import { register as registerDigest } from "./tools/digest.js";
 // import { register as registerPalaceLint } from "./tools/palace-lint.js";
 
 import { register as registerJournalResources } from "./resources/journal-resources.js";
+import { register as registerAwarenessResource } from "./resources/awareness-resource.js";
+import { register as registerSessionPrompts } from "./prompts/session-prompts.js";
 
 const args = process.argv.slice(2);
 
@@ -89,6 +91,8 @@ registerSessionEnd(server);
 registerCheck(server);
 registerDigest(server);
 registerJournalResources(server);
+registerAwarenessResource(server);
+registerSessionPrompts(server);
 
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
