@@ -125,6 +125,10 @@ export { detectProject, resolveProject, listAllProjects } from "./storage/projec
 export { getSessionId, journalFileName, captureLogFileName, resetOwnedFiles } from "./storage/session.js";
 export { acquireLock, withLock } from "./storage/filelock.js";
 
+// Storage — corrections
+export { writeCorrection, readCorrections, readP0Corrections } from "./storage/corrections.js";
+export type { CorrectionRecord } from "./storage/corrections.js";
+
 // Helpers
 export {
   listJournalFiles,
@@ -142,6 +146,9 @@ export { isoWeek, weekKey, groupByWeek, synthesizeWeek } from "./helpers/rollup.
 // Helpers — auto-naming
 export { generateSlug, detectContentType, extractKeywords, generateTopicName } from "./helpers/auto-name.js";
 export type { SlugResult, SlugContext } from "./helpers/auto-name.js";
+
+// Helpers — tag generation
+export { generateTags } from "./helpers/tag-generator.js";
 
 // Helpers — alignment patterns
 export { readAlignmentLog, extractWatchPatterns } from "./helpers/alignment-patterns.js";

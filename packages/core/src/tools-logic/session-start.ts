@@ -14,6 +14,7 @@ import { journalDirs } from "../storage/paths.js";
 import { extractSection } from "../helpers/sections.js";
 import { todayISO } from "../storage/fs-utils.js";
 import { readAlignmentLog, extractWatchPatterns, type WatchForPattern } from "../helpers/alignment-patterns.js";
+import { readP0Corrections, type CorrectionRecord } from "../storage/corrections.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -30,6 +31,7 @@ export interface SessionStartResult {
   cross_project: Array<{ title: string; from_project: string; relevance: number }>;
   recent: { today: string | null; yesterday: string | null; older_count: number };
   watch_for: WatchForPattern[];
+  corrections: CorrectionRecord[];
 }
 
 export async function sessionStart(input: SessionStartInput): Promise<SessionStartResult> {
@@ -115,6 +117,9 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
   const alignLog = readAlignmentLog(slug);
   const watch_for = extractWatchPatterns(alignLog, 2);
 
+  // 7. P0 corrections — always-load behavioral rules (max 5 most recent)
+  const corrections = readP0Corrections(slug).slice(0, 5);
+
   return {
     project: slug,
     identity,
@@ -123,5 +128,6 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
     cross_project,
     recent: { today: todayBrief, yesterday: yesterdayBrief, older_count: olderCount },
     watch_for,
+    corrections,
   };
 }

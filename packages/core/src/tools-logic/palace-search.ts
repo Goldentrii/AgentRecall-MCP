@@ -25,6 +25,29 @@ export interface PalaceSearchResult {
   total_matches: number;
 }
 
+/**
+ * Parse YAML frontmatter tags from markdown content.
+ * Looks for `tags: [...]` line between `---` markers.
+ */
+function parseFrontmatterTags(content: string): string[] {
+  // Find the YAML block between --- markers
+  const match = content.match(/^---\s*\n([\s\S]*?)\n---/);
+  if (!match) return [];
+
+  const yamlBlock = match[1];
+  const tagsLine = yamlBlock.split("\n").find((l) => l.trim().startsWith("tags:"));
+  if (!tagsLine) return [];
+
+  // Parse inline array: tags: ["foo", "bar"] or tags: [foo, bar]
+  const arrayMatch = tagsLine.match(/tags:\s*\[([^\]]*)\]/);
+  if (!arrayMatch) return [];
+
+  return arrayMatch[1]
+    .split(",")
+    .map((t) => t.trim().replace(/^["']|["']$/g, ""))
+    .filter((t) => t.length > 0);
+}
+
 export async function palaceSearch(input: PalaceSearchInput): Promise<PalaceSearchResult> {
   const slug = await resolveProject(input.project);
   ensurePalaceInitialized(slug);
@@ -50,6 +73,14 @@ export async function palaceSearch(input: PalaceSearchInput): Promise<PalaceSear
       const content = fs.readFileSync(filePath, "utf-8");
       const lines = content.split("\n");
 
+      // Parse YAML frontmatter tags for bonus scoring
+      const fileTags = parseFrontmatterTags(content);
+
+      // Check if any query words match file-level tags
+      const tagBonus = queryWords.some((w) =>
+        fileTags.some((t) => t.toLowerCase().includes(w) || w.includes(t.toLowerCase()))
+      ) ? 0.3 : 0;
+
       for (let i = 0; i < lines.length; i++) {
         const lineLower = lines[i].toLowerCase();
         if (queryWords.length === 0) continue;
@@ -58,7 +89,8 @@ export async function palaceSearch(input: PalaceSearchInput): Promise<PalaceSear
         const matchedWords = queryWords.filter((w) => lineLower.includes(w));
         if (matchedWords.length === 0) continue;
 
-        const keywordScore = matchedWords.length / queryWords.length;
+        const rawKeywordScore = matchedWords.length / queryWords.length;
+        const keywordScore = Math.min(1.0, rawKeywordScore + tagBonus);
 
         // Build excerpt anchored on first keyword match
         const firstKw = matchedWords[0];

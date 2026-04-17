@@ -6,6 +6,7 @@
  */
 
 import { generateSlug, detectContentType } from "../helpers/auto-name.js";
+import { generateTags } from "../helpers/tag-generator.js";
 import { journalCapture } from "./journal-capture.js";
 import { palaceWrite } from "./palace-write.js";
 import { knowledgeWrite } from "./knowledge-write.js";
@@ -121,11 +122,13 @@ export async function smartRemember(input: SmartRememberInput): Promise<SmartRem
       // Use content type as room, auto-name generates the topic
       const contentType = detectContentType(input.content);
       const room = contentType === "general" ? "knowledge" : contentType;
+      const tags = generateTags(input.content, contentType !== "general" ? contentType : undefined);
       result = await palaceWrite({
         room,
         content: input.content,
         project: input.project,
         auto_name: true,
+        tags,
       });
       break;
     }

@@ -11,6 +11,8 @@ import { resolveProject } from "../storage/project.js";
 import { getRoot } from "../types.js";
 import { ensureDir, todayISO } from "../storage/fs-utils.js";
 import { extractKeywords } from "../helpers/auto-name.js";
+import { generateTags } from "../helpers/tag-generator.js";
+import { writeCorrection } from "../storage/corrections.js";
 import {
   readAlignmentLog as readLog,
   extractWatchPatterns,
@@ -77,6 +79,31 @@ export async function check(input: CheckInput): Promise<CheckResult> {
   log.push(record);
   const trimmed = log.slice(-50);
   writeAlignmentLog(slug, trimmed);
+
+  // 1b. If there's a human correction, also write to the corrections store
+  if (input.human_correction) {
+    try {
+      const corrText = input.human_correction;
+      const corrTags = generateTags(corrText);
+      const corrDate = todayISO();
+      const corrRule = corrText.split(/[.\n]/)[0]?.trim().slice(0, 100) ?? corrText.slice(0, 100);
+      // Auto-detect severity based on correction language
+      const p0Patterns = /\bnever\b|\balways\b|\bno\b|\bdon'?t\b|\bdo not\b|\bmust not\b|\bforbid/i;
+      const severity: "p0" | "p1" = p0Patterns.test(corrText) ? "p0" : "p1";
+      const corrId = `${corrDate}-${corrRule.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30)}`;
+      writeCorrection(slug, {
+        id: corrId,
+        date: corrDate,
+        severity,
+        project: slug,
+        rule: corrRule,
+        context: corrText,
+        tags: corrTags,
+      });
+    } catch {
+      // Best effort — never block the check flow
+    }
+  }
 
   // 2. Find similar past goals — check BOTH alignment-log AND palace alignment room
   const goalKeywords = extractKeywords(input.goal, 5);

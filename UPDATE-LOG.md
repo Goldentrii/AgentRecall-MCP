@@ -9,9 +9,9 @@ This log tracks phase-by-phase improvements to AgentRecall's architecture, based
 | Phase | Theme | Status |
 |-------|-------|--------|
 | [Phase 1](#phase-1--reliability) | Reliability — stop memories from being lost | ✅ Done |
-| [Phase 2](#phase-2--ambient-recall) | Ambient Recall — remove agent discretion from retrieval | 🔲 Planned |
-| [Phase 3](#phase-3--multi-label-classification) | Multi-label Classification — memories findable from any angle | 🔲 Planned |
-| [Phase 4](#phase-4--corrections-as-first-class-citizens) | Corrections as First-Class Citizens — behavioral calibration layer | 🔲 Planned |
+| [Phase 2](#phase-2--ambient-recall) | Ambient Recall — remove agent discretion from retrieval | ✅ Done |
+| [Phase 3](#phase-3--multi-label-classification) | Multi-label Classification — memories findable from any angle | ✅ Done |
+| [Phase 4](#phase-4--corrections-as-first-class-citizens) | Corrections as First-Class Citizens — behavioral calibration layer | ✅ Done |
 | [Phase 5](#phase-5--protocol-foundations) | Protocol Foundations — schema + cross-LLM interoperability | 🔲 Long-term |
 
 ---
@@ -49,13 +49,13 @@ Human memory doesn't require deciding to remember. Context triggers retrieval au
 ### Plan
 `UserPromptSubmit` hook extracts keywords from the user's message → fires `recall` query → top 3-5 results injected into context before the agent responds. Agent never calls `recall` manually.
 
-### Changes (planned)
+### Changes
 
-| Item | What | Status |
-|------|------|--------|
-| 2a | `ar hook-ambient` command: read user message from stdin, extract keywords, run recall, output formatted results | 🔲 To build |
-| 2b | Add `hook-ambient` to `UserPromptSubmit` hooks in settings.json | 🔲 To wire |
-| 2c | Terse recall output format for context injection (not JSON, plain text) | 🔲 To design |
+| Item | What | Status | Version |
+|------|------|--------|---------|
+| 2a | `ar hook-ambient` command: read user message from stdin, extract keywords, run recall, output formatted results | ✅ Done | v3.3.18 |
+| 2b | Add `hook-ambient` to `UserPromptSubmit` hooks in settings.json | ✅ Done | v3.3.18 |
+| 2c | Terse recall output format for context injection (not JSON, plain text) | ✅ Done | v3.3.18 |
 
 ---
 
@@ -70,14 +70,14 @@ Wrong classification = memory exists but is unfindable. Worse than not saving it
 ### Plan
 At save time: LLM assigns 3-5 semantic tags to each memory. Tags stored in YAML frontmatter. At query time: match any tag before RRF ranking. Memory palace "rooms" become tag namespaces, not exclusive storage silos — a memory can live in multiple rooms simultaneously.
 
-### Changes (planned)
+### Changes
 
-| Item | What | Status |
-|------|------|--------|
-| 3a | Tag assignment at `remember` / `palace write` time (LLM or rule-based) | 🔲 To build |
-| 3b | YAML frontmatter update: add `tags: []` field to all memory files | 🔲 To design |
-| 3c | `recall` tag-union matching before RRF scoring | 🔲 To build |
-| 3d | Migration script: backfill tags on existing memories | 🔲 To build |
+| Item | What | Status | Version |
+|------|------|--------|---------|
+| 3a | `generateTags()` — rule-based tag assignment at `remember` / `palace write` time | ✅ Done | v3.3.18 |
+| 3b | YAML frontmatter: `tags: []` field written to all new palace memory files | ✅ Done | v3.3.18 |
+| 3c | `palaceSearch` tag-union matching (+0.3 bonus to keyword_score, capped at 1.0) | ✅ Done | v3.3.18 |
+| 3d | Migration script: backfill tags on existing memories | 🔲 Skipped — lower priority |
 
 ---
 
@@ -102,14 +102,14 @@ priority: always_load
 expiry: never
 ```
 
-### Changes (planned)
+### Changes
 
-| Item | What | Status |
-|------|------|--------|
-| 4a | Correction type: separate store from palace, never rolled up | 🔲 To design |
-| 4b | `session_start` always loads corrections for project (non-negotiable) | 🔲 To build |
-| 4c | Correction severity: P0 (always load) / P1 (load if context matches) | 🔲 To design |
-| 4d | Cross-agent correction propagation — corrections available to all agents on same project | 🔲 To design |
+| Item | What | Status | Version |
+|------|------|--------|---------|
+| 4a | `corrections.ts` — JSON store separate from palace, never rolled up | ✅ Done | v3.3.18 |
+| 4b | `session_start` loads P0 corrections (max 5 most recent) | ✅ Done | v3.3.18 |
+| 4c | Auto-severity detection: P0 (never/always/don't) / P1 (everything else) | ✅ Done | v3.3.18 |
+| 4d | Cross-agent correction propagation — corrections available to all agents on same project | 🔲 Skipped — later |
 
 ---
 
@@ -145,9 +145,7 @@ When defined, any agent (Claude, GPT, Gemini) can read/write the same memory sto
 |---------|------|-------|---------|
 | v3.3.x | 2026-04 | Phase 1 (partial) | `hook-end`, `hook-correction`, `hook-start` wired into harness |
 | v3.3.18 | 2026-04-17 | Phase 1 complete | Benchmark caveat added; UPDATE-LOG created |
-| — | — | Phase 2 | Ambient recall hook |
-| — | — | Phase 3 | Multi-label classification |
-| — | — | Phase 4 | Corrections as first-class type |
+| v3.3.18 | 2026-04-17 | Phase 2+3+4 | hook-ambient, multi-label tags, corrections store |
 | — | — | Phase 5 | Protocol spec |
 
 ---

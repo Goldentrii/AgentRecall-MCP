@@ -86,6 +86,7 @@ HOOKS (auto-fired by Claude Code hooks — no agent discipline needed):
   ar hook-start          Session start: load context, show watch_for warnings
   ar hook-end            Session end: auto-save journal if not already saved today
   ar hook-correction     Read UserPromptSubmit JSON from stdin, capture corrections silently
+  ar hook-ambient        Read UserPromptSubmit JSON from stdin, inject relevant memories into context
   ar correct --goal "g" --correction "c" [--delta "d"]  Manually record a correction
 
 GLOBAL FLAGS:
@@ -535,6 +536,72 @@ async function main(): Promise<void> {
         }
       } catch (e) {
         process.stderr.write(`[AgentRecall hook-correction] ${String(e)}\n`);
+      }
+      process.exit(0);
+    }
+
+    case "hook-ambient": {
+      // Reads UserPromptSubmit JSON from stdin.
+      // Extracts keywords from the prompt, rate-limits, and injects relevant memories to stdout.
+      // Always exits 0 — never blocks the conversation.
+      const HIGH_VALUE_PATTERNS = /error|bug|fix|crash|broken|wrong|how|why|implement|build|create|design|architecture|correction|remember|recall|what was|last time/i;
+
+      const SHORT_ACKS = /^(ok|yes|done|sure|got it|thanks|k|yep|nope|no|maybe|yup|alright|cool|great|perfect|sounds good|noted|understood|agreed|fine|right)\.?$/i;
+
+      try {
+        const chunks: Buffer[] = [];
+        for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+        const raw = Buffer.concat(chunks).toString("utf-8").trim();
+        if (!raw) process.exit(0);
+
+        let prompt = "";
+        let sessionId = process.env.CLAUDE_SESSION_ID ?? process.env.SESSION_ID ?? "default";
+        try {
+          const parsed = JSON.parse(raw);
+          prompt = parsed.prompt ?? parsed.message ?? parsed.user_message ?? "";
+          if (parsed.session_id) sessionId = String(parsed.session_id);
+        } catch {
+          prompt = raw;
+        }
+
+        // Skip: too short, slash commands, short acks
+        if (prompt.length < 25) process.exit(0);
+        if (prompt.startsWith("/")) process.exit(0);
+        if (SHORT_ACKS.test(prompt.trim())) process.exit(0);
+
+        // Rate limiting: counter file per session
+        const counterFile = path.join(os.homedir(), ".agent-recall", `.ambient-counter-${sessionId.replace(/[^a-z0-9_-]/gi, "_")}`);
+        let counter = 0;
+        try {
+          const raw2 = fs.existsSync(counterFile) ? fs.readFileSync(counterFile, "utf-8").trim() : "0";
+          counter = parseInt(raw2, 10) || 0;
+        } catch { /* non-blocking */ }
+        counter++;
+        try { fs.writeFileSync(counterFile, String(counter), "utf-8"); } catch { /* non-blocking */ }
+
+        const isHighValue = HIGH_VALUE_PATTERNS.test(prompt);
+        const shouldFire = counter === 1 || counter % 5 === 0 || isHighValue;
+        if (!shouldFire) process.exit(0);
+
+        // Extract keywords and do smart recall
+        const keywords = core.extractKeywords(prompt, 6);
+        if (keywords.length === 0) process.exit(0);
+
+        const recalled = await core.smartRecall({ query: keywords.join(" "), project, limit: 3 });
+
+        // Format output
+        const items = recalled.results ?? [];
+        if (items.length === 0) process.exit(0);
+
+        let out = "[AgentRecall] Relevant past context:\n";
+        for (const item of items) {
+          const source = item.source ?? "memory";
+          const title = (item.title ?? item.excerpt ?? "").slice(0, 80).replace(/\n/g, " ");
+          out += `• [${source}] ${title}\n`;
+        }
+        process.stdout.write(out);
+      } catch (e) {
+        process.stderr.write(`[AgentRecall hook-ambient] ${String(e)}\n`);
       }
       process.exit(0);
     }

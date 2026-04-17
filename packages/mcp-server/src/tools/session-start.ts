@@ -12,6 +12,7 @@ export function register(server: McpServer): void {
     },
   }, async ({ project, context }) => {
     const result = await sessionStart({ project, context });
+    // Include corrections in the MCP output so agents see P0 rules at session start
     return { content: [{ type: "text" as const, text: JSON.stringify(result) }] };
   });
 }
