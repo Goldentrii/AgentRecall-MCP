@@ -1,6 +1,6 @@
 {
   "name": "agent-recall-cli",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "CLI for AgentRecall memory system",
   "type": "module",
   "bin": {

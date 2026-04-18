@@ -1,11 +1,16 @@
 {
   "name": "agent-recall-mcp",
-  "version": "3.3.17",
+  "version": "3.3.18",
   "description": "Memory Palace MCP server for AI agents",
   "type": "module",
   "main": "dist/index.js",
-  "bin": { "agent-recall-mcp": "dist/index.js" },
-  "files": ["dist", "README.md"],
+  "bin": {
+    "agent-recall-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "node --test test/*.test.mjs"
@@ -43,7 +48,9 @@
     "langchain",
     "crewai"
   ],
-  "engines": { "node": ">=18.0.0" },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
