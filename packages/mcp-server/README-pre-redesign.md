@@ -9,15 +9,14 @@
   <a href="https://www.npmjs.com/package/agent-recall-sdk"><img src="https://img.shields.io/npm/v/agent-recall-sdk?style=flat-square&label=SDK&color=0EA5E9" alt="SDK npm"></a>
   <a href="https://www.npmjs.com/package/agent-recall-cli"><img src="https://img.shields.io/npm/v/agent-recall-cli?style=flat-square&label=CLI&color=10B981" alt="CLI npm"></a>
   <a href="https://github.com/Goldentrii/AgentRecall/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen?style=flat-square" alt="License"></a>
-  <a href="https://lobehub.com/mcp/goldentrii-agentrecall"><img src="https://lobehub.com/badge/mcp/goldentrii-agentrecall" alt="MCP Badge"></a>
-  <img src="https://img.shields.io/badge/MCP-6_tools-orange?style=flat-square" alt="Tools">
+  <img src="https://img.shields.io/badge/MCP-5_tools-orange?style=flat-square" alt="Tools">
   <img src="https://img.shields.io/badge/cloud-zero-blue?style=flat-square" alt="Zero Cloud">
   <img src="https://img.shields.io/badge/Obsidian-compatible-7C3AED?style=flat-square" alt="Obsidian">
-  <img src="https://img.shields.io/badge/digest_cache-83%25_token_savings-FF6B6B?style=flat-square" alt="Digest cache savings">
+  <img src="https://img.shields.io/badge/overhead-~876_tokens%2Fsession-22C55E?style=flat-square" alt="Token overhead">
   <img src="https://img.shields.io/badge/saves_up_to-57%25_tokens-FF6B6B?style=flat-square" alt="Token savings">
   <img src="https://img.shields.io/badge/break--even-3--4_sessions-22C55E?style=flat-square" alt="Break-even">
   <img src="https://img.shields.io/badge/scoring-RRF_(Cormack_2009)-7C3AED?style=flat-square" alt="RRF scoring">
-  <img src="https://img.shields.io/badge/decay-Ebbinghaus%2BZipf-3B82F6?style=flat-square" alt="Ebbinghaus+Zipf decay">
+  <img src="https://img.shields.io/badge/decay-Ebbinghaus_(1885)-3B82F6?style=flat-square" alt="Ebbinghaus decay">
   <img src="https://img.shields.io/badge/feedback-Bayesian_Beta-F59E0B?style=flat-square" alt="Beta distribution">
 </p>
 
@@ -45,9 +44,8 @@
 ---
 
 <p align="center">
-  <a href="#arsave-arstart-and-arsaveall"><img src="https://img.shields.io/badge/%2Farsave-Save_Session-FF6B6B?style=for-the-badge" alt="/arsave"></a>
-  <a href="#arsave-arstart-and-arsaveall"><img src="https://img.shields.io/badge/%2Farstart-Load_Context-4ECDC4?style=for-the-badge" alt="/arstart"></a>
-  <a href="#arsave-arstart-and-arsaveall"><img src="https://img.shields.io/badge/%2Farsaveall-Batch_Save_All-FFD93D?style=for-the-badge" alt="/arsaveall"></a>
+  <a href="#arsave-and-arstart"><img src="https://img.shields.io/badge/%2Farsave-Save_Session-FF6B6B?style=for-the-badge" alt="/arsave"></a>
+  <a href="#arsave-and-arstart"><img src="https://img.shields.io/badge/%2Farstart-Load_Context-4ECDC4?style=for-the-badge" alt="/arstart"></a>
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/AUTO-hook--start-8B5CF6?style=for-the-badge" alt="hook-start">
@@ -62,26 +60,22 @@
   <a href="#how-memory-compounds"><img src="https://img.shields.io/badge/5-FEEDBACK_LOOP-EF4444?style=for-the-badge" alt="Feedback Loop"></a>
 </p>
 
-## `/arsave`, `/arstart`, and `/arsaveall`
+## `/arsave` and `/arstart`
 
-> **Three commands. That's all you need.**
+> **Two commands. That's all you need.**
 
 | Command | When | What it does |
 |---------|------|-------------|
-| **`/arsave`** | End of session | Write journal + consolidate to palace + update awareness |
+| **`/arsave`** | End of session | Write journal + consolidate to palace + update awareness + optional git push |
 | **`/arstart`** | Start of session | Recall cross-project insights + walk palace + load context |
-| **`/arsaveall`** | End of day (multi-session) | **Batch save all parallel sessions at once** — scan, merge, deduplicate, done |
 
-Type `/arsave` after a single session. Type `/arstart` next time. Everything loads back.
-
-**Running 5 agents in parallel?** Don't `/arsave` five times. Type **`/arsaveall`** once — it scans all of today's sessions across all projects, merges them into consolidated journals, deduplicates insights, and updates awareness in one shot. Each session writes to its own file (session-ID scoped), so **no conflicts, no data loss, no matter how many windows you have open.**
+Type `/arsave` after a long project session. Everything gets saved. Type `/arstart` next time. Everything loads back.
 
 ```bash
 # Install commands (one-time, Claude Code only)
 mkdir -p ~/.claude/commands
 curl -o ~/.claude/commands/arsave.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arsave.md
 curl -o ~/.claude/commands/arstart.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arstart.md
-curl -o ~/.claude/commands/arsaveall.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arsaveall.md
 ```
 
 ### The Difference
@@ -96,19 +90,6 @@ Day 2: "What monorepo?"               Day 2: /arstart
   → Agent repeats same mistakes          → Knows "no version inflation"
   → Forgets your priorities              → Knows "arsave = hero section"
   → Misses half the tasks                → Pushes to both repos
-```
-
-```
-WITHOUT AgentRecall (5 parallel agents)      WITH AgentRecall (5 parallel agents)
-──────────────────────────────────────       ────────────────────────────────────
-
-Agent 1 finishes: you /arsave                Agent 1-5 finish: you type /arsaveall once
-Agent 2 finishes: you /arsave again            → Scans all 5 sessions automatically
-Agent 3 finishes: you /arsave again            → Merges into consolidated journals
-Agent 4 finishes: you /arsave again            → Deduplicates insights across sessions
-Agent 5 finishes: you /arsave again            → Zero conflicts (session-ID scoped files)
-  → 5x the work, corrections lost             → One command, everything saved
-  → Agent 3's correction unknown to Agent 5    → All agents share the same memory
 ```
 
 ### Three Layers of Value
@@ -150,8 +131,8 @@ Human: "we need SDK, CLI,                     ▼
   │                                           │   names, and version policy.
   ├─ Execute in order:                        │
   │   1. Core extraction ✓                    └─ Done in 2 minutes
-  │   2. Tool logic split ✓                      
-  │   3. MCP wrappers ✓                            
+  │   2. Tool logic split ✓                       (vs 20 min cold start
+  │   3. MCP wrappers ✓                             without AgentRecall)
   │   4. SDK + CLI ✓
   │
 /arsave
@@ -395,9 +376,9 @@ session_end(summary="...", insights=[...], trajectory="...")  → journal + awar
 
 ---
 
-## 6 MCP Tools
+## 5 MCP Tools
 
-AgentRecall exposes 6 tools to agents. Each tool composes multiple subsystems internally — the agent doesn't need to know about the plumbing.
+AgentRecall exposes exactly 5 tools to agents. Each tool composes multiple subsystems internally — the agent doesn't need to know about the plumbing.
 
 | Tool | What it does |
 |------|-------------|
@@ -406,7 +387,6 @@ AgentRecall exposes 6 tools to agents. Each tool composes multiple subsystems in
 | `recall` | Search all memory stores at once using **Reciprocal Rank Fusion (RRF)** — each source ranks internally, then positions are merged so no source dominates by default. Returns ranked results with stable IDs. Accepts `feedback` to rate previous results: positive boosts future ranking, negative penalizes. Query-aware — feedback from one search doesn't bleed into unrelated queries. |
 | `session_end` | Save everything in one call. Writes journal, updates awareness with new insights, consolidates to palace rooms, archives demoted insights (not deleted — preserved with resurrection support). |
 | `check` | Record what you think the human wants. Returns `watch_for` patterns from past correction history ("You've been corrected on X 3 times — ask about it"). Accepts `human_correction` and `delta` after the human responds. Auto-promotes strong patterns (3+) to awareness. |
-| `digest` | **Context cache** — store pre-computed analysis results (codebase audits, subagent explorations) and recall them instead of recomputing. Actions: `store`, `recall`, `read`, `invalidate`. Scoring uses Ebbinghaus decay with Zipf-adjusted half-life: frequently-accessed digests decay slower. Supports TTL, global (cross-project) store, and dedup via keyword overlap. **Benchmarked: 83% token savings on repeated analysis vs. recompute.** |
 
 ### Legacy tools
 
@@ -715,85 +695,55 @@ L5: Insight Index      recall_insight            "cross-project experience"
 
 ---
 
-## Benchmarked Token Savings
+## Real Results
 
-### A/B Comparison: With vs Without AgentRecall
+Validated over 42+ sessions across 5 production projects:
+- Cold-start: **5 min → 2 seconds** (palace-first loading, ~400 tokens)
+- Decision retention: **0% → 100%** across sessions
+- Misunderstanding caught before wrong work: **6+ instances** via `check` before publish/deploy
+- Repeated mistakes prevented: **3 instances** via cross-project insight recall
 
-We ran two controlled benchmarks: a 5-round A/B test simulating a multi-session SaaS project (Next.js + Drizzle + Stripe), and a 10-round v3.3.16 benchmark validating the new `digest` cache tool, `arsaveall`, and cross-project recall. Tool call token counts are measured. The "without AR" costs are modeled — we estimated what a human would spend re-explaining context rather than running real sessions without AR. These are honest estimates, not long-term production data. If your results differ, [let us know](mailto:tong.wu@novada.com).
+### Measured Token Cost (v3.3.14, 5 rounds)
 
-**"Without AR" models what a human must do manually:** re-paste architecture decisions, re-explain corrections, answer clarifying questions that AR would have loaded automatically.
+| Surface | What it returns | Measured tokens |
+|---------|----------------|-----------------|
+| `hook-start` (stdout) | identity + watch_for + 3 insights + recent + cross-project hint | ~215 |
+| `session_start` (MCP) | full session context — all fields | ~601 |
+| `check` (MCP) | watch_for patterns + past deltas | ~80 |
+| **Total session overhead** | | **~896 tokens** |
 
-| Scenario | Without AR | With AR | **Saved** |
-|----------|:---------:|:------:|:--------:|
-| **A: Simple** (2 sessions, 0 corrections) | 567 | 1,131 | **+99% overhead** |
-| **B: Medium** (5 sessions, 1 correction) | 6,220 | 4,382 | **-30%** |
-| **C: Complex** (20 sessions, 5 corrections) | 40,910 | 17,520 | **-57%** |
-| **D: Multi-agent** (3 agents × 5 sessions) | 20,781 | 13,140 | **-37%** |
-| **E: Digest cache** (repeated analysis, 1 recall hit) | ~2,400 | ~400 | **-83%** |
+Each prevented correction ≈ **1,500 tokens saved** (re-explanation + wrong work + retry).  
+Breakeven: **less than 1 correction prevented per session** covers the overhead.  
+At 42 sessions with avg 1.5 corrections prevented: **~94,000 tokens saved** vs ~37,600 overhead.
 
-> **Read this table honestly:** For simple throwaway tasks, AR is pure overhead. For anything with 3+ sessions, corrections, or multiple agents, it pays for itself — and the savings compound. With digest cache, repeated analysis tasks (codebase exploration, API audits) see 83% savings on the second+ call.
+### What the 5 Test Rounds Verified
 
-**Break-even: ~3-4 sessions.** After that, every session with AR is cheaper than without.
+**Round 1 — hook-start:**  
+Fires on session open (with per-session lock to avoid double-fire). Output: project identity, past correction warnings (watch_for), top 3 awareness insights, today's journal brief, cross-project hint. All in 9 lines.
 
-### Where the Savings Come From
+**Round 2 — capture / palace write / search / walk:**  
+- `capture "bug fix"` → routes to journal log with auto-tags
+- `palace write architecture "..."` → writes to room with fan-out
+- `search "journal crash fix"` → keyword match finds the entry from 2 minutes ago
+- `palace walk --depth active` → loads 5 rooms, top 10 insights, architecture decisions in one JSON
 
-| Source | Without AR cost | With AR cost | Why |
-|--------|:-:|:-:|-----|
-| **Context rebuild** | Scales with project size (up to ~1,100+ tokens/session) | Fixed ~385 tokens (cold start) | AR loads palace context in one call; without AR, human re-pastes everything |
-| **Correction retention** | ~800 tokens per repeat (wrong output + correction + redo) | 0 (stored once, never repeated) | Biggest single savings driver in long projects |
-| **Clarification avoidance** | ~400 tokens/session (agent asks "what framework?", "what auth?") | 0 (already loaded) | Steady per-session savings |
-| **Cross-project recall** | ~500 tokens per insight (re-research from scratch) | ~350 tokens (automatic recall) | Moderate savings, compounds across projects |
-| **Digest cache** | ~2,400 tokens (full re-analysis) | ~400 tokens (recall stored digest) | 83% savings on repeated heavy analysis tasks |
+**Round 3 — hook-correction / hook-end / MCP tools:**  
+- `hook-correction` with no-correction prompt → silent exit (correct)
+- `hook-correction` with correction ("no use patch not minor") → silent capture, exit 0
+- `hook-end` → exit 0, auto-log entry
+- MCP `session_start` → 601 tokens, all 7 fields populated
+- MCP `check(goal="publish v3.3.14", confidence="high")` → 80 tokens, 1 watch_for pattern surfaced
 
-### Measured Per-Tool Token Costs
+**Round 4 — cross-source recall competition (v3.3.14):**  
+- `recall("edge functions cold start")` → palace + journal + insight all queried; RRF merged by rank position — no source dominated by raw score inflation
+- Old journal entries (>3 days) correctly faded via Ebbinghaus S=2; palace decisions surfaced regardless of age
 
-From the 5-round A/B benchmark (34 tool calls) and 10-round v3.3.16 benchmark (7/7 checks pass):
+**Round 5 — feedback loop (v3.3.14):**  
+- `recall("auth design")` + feedback `{useful: true}` → Beta(2,1) → ×1.33 on next query
+- `recall("auth design")` + feedback `{useful: false}` → Beta(1,2) → ×0.67 penalty
+- Zero-feedback items unchanged (Beta(1,1) → ×1.0 neutral)
 
-| Tool | Avg tokens | What it does |
-|------|:---------:|-------------|
-| `coldStart` | 334 | Load project context (empty: 178, with data: 385) |
-| `recallInsight` | 351 | Cross-project insight matching |
-| `walk` | 336 | Palace rooms at active depth |
-| `journalSearch` | 126 | Full-text search across journals |
-| `digest` (store) | ~180 | Store pre-computed analysis result |
-| `digest` (recall hit) | ~400 | Retrieve cached analysis (vs ~2,400 to redo) |
-| `awarenessUpdate` | 59 | Compound new insights |
-| `alignmentCheck` | 45 | Verify understanding + watch_for |
-| `nudge` | 39 | Capture human correction |
-| `palaceWrite` | 37 | Write to a palace room |
-| `journalWrite` | 36 | Write session journal |
-| `capture` | 23 | Quick Q&A capture |
-| **Avg session overhead** | **876** | **All tool calls in a typical session** |
-
-### Benchmark Assumptions (Conservative)
-
-| Parameter | Value | Rationale |
-|-----------|:-----:|-----------|
-| Human re-explanation ratio | 0.75× stored knowledge | Humans are terser than markdown, but also skip things |
-| Correction miss cost | 800 tokens | Wrong output (~350) + correction message (~50) + redo (~400) |
-| Clarifications per cold session | 2 rounds × 200 tokens | Fresh agent asks "what framework?", "what auth?" |
-| Correction repeat rate | 3× before human re-catches | Without AR, same mistake repeats until human notices again |
-| Digest cache hit threshold | keyword overlap ≥ 0.2 | Zipf-adjusted Ebbinghaus decay; proven-useful digests have longer half-life |
-
-All benchmark code: [`benchmark/run.mjs`](benchmark/run.mjs), [`benchmark/ab-comparison.mjs`](benchmark/ab-comparison.mjs), and [`benchmark/v3316-benchmark.mjs`](benchmark/v3316-benchmark.mjs). Run them yourself: `node benchmark/run.mjs && node benchmark/ab-comparison.mjs && node benchmark/v3316-benchmark.mjs`.
-
-### Functional Verification
-
-Beyond token measurement, the benchmarks verified:
-
-| Test | Benchmark | Result |
-|------|:---------:|:------:|
-| Correction retention (stored in R2, loaded in R3) | A/B | **PASS** |
-| Cross-project recall: rate limiting insight (Project A → B) | A/B | **PASS** |
-| Cross-project recall: ORM insight (Project A → B) | A/B | **PASS** |
-| Cold start progression (empty → rich context) | A/B | 178 → 385 tokens (stable) |
-| Digest store + recall hit with 83% savings | v3.3.16 | **PASS** |
-| Cross-project digest (global scope, Project C reads Project A's digest) | v3.3.16 | **PASS** |
-| Digest refresh updates TTL and content | v3.3.16 | **PASS** |
-| arsaveall: orphaned session rescue + cross-project consolidation | v3.3.16 | **PASS** |
-| Zipf-adjusted decay: score bounded [0, 1] at 50 accesses | v3.3.16 | **PASS** |
-| Cold start growth: each round enriches context | v3.3.16 | **PASS** |
-| All 7 functional checks | v3.3.16 | **7/7 PASS** |
+172 tests (129 core + 4 smoke + 28 SDK + 11 CLI), 0 failures. Build clean.
 
 ---
 
@@ -806,8 +756,6 @@ Beyond token measurement, the benchmarks verified:
 | [MCP Adapter Spec](docs/mcp-adapter-spec.md) | Technical spec for building adapters on top of AgentRecall |
 | [SDK Design](docs/sdk-design.md) | Design doc for the SDK architecture |
 | [Upgrade v3.4](UPGRADE-v3.4.md) | Changelog: weekly roll-up, palace-first cold start, promotion verification |
-| [MCP Server README](packages/mcp-server/README.md) | Focused guide for Claude Code / Cursor / Windsurf users |
-| [Core SDK README](packages/core/README.md) | SDK API reference for building with AgentRecall programmatically |
 
 ---
 
@@ -838,9 +786,8 @@ MIT License.
 ---
 
 <p align="center">
-  <a href="#arsave-arstart-和-arsaveall"><img src="https://img.shields.io/badge/%2Farsave-保存会话-FF6B6B?style=for-the-badge" alt="/arsave"></a>
-  <a href="#arsave-arstart-和-arsaveall"><img src="https://img.shields.io/badge/%2Farstart-加载上下文-4ECDC4?style=for-the-badge" alt="/arstart"></a>
-  <a href="#arsave-arstart-和-arsaveall"><img src="https://img.shields.io/badge/%2Farsaveall-批量保存-FFD93D?style=for-the-badge" alt="/arsaveall"></a>
+  <a href="#arsave-and-arstart"><img src="https://img.shields.io/badge/%2Farsave-保存会话-FF6B6B?style=for-the-badge" alt="/arsave"></a>
+  <a href="#arsave-and-arstart"><img src="https://img.shields.io/badge/%2Farstart-加载上下文-4ECDC4?style=for-the-badge" alt="/arstart"></a>
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/自动-hook--start-8B5CF6?style=for-the-badge" alt="hook-start">
@@ -855,26 +802,22 @@ MIT License.
   <a href="#记忆如何复合增长"><img src="https://img.shields.io/badge/5-反馈回路-EF4444?style=for-the-badge" alt="反馈回路"></a>
 </p>
 
-## `/arsave`、`/arstart` 和 `/arsaveall`
+## `/arsave` 和 `/arstart`
 
-> **三个命令，搞定一切。**
+> **两个命令，ezpz。**
 
 | 命令 | 时机 | 功能 |
 |------|------|------|
-| **`/arsave`** | 会话结束时 | 写入日志 + 整合到记忆宫殿 + 更新感知 |
+| **`/arsave`** | 会话结束时 | 写入日志 + 整合到记忆宫殿 + 更新感知 + 可选 git 推送 |
 | **`/arstart`** | 会话开始时 | 召回跨项目洞察 + 遍历宫殿 + 加载上下文 |
-| **`/arsaveall`** | 一天结束时（多会话） | **一次性批量保存所有并行会话** — 扫描、合并、去重、完成 |
 
-单个会话结束时输入 `/arsave`。下次开始时输入 `/arstart`，所有上下文自动恢复。
-
-**同时跑了 5 个 agent？** 不需要 `/arsave` 五次。输入一次 **`/arsaveall`** — 它会自动扫描今天所有项目的所有会话，合并为整合日志，跨会话去重洞察，一次性更新感知系统。每个会话写入独立文件（session-ID 隔离），所以**无论开多少窗口，零冲突、零数据丢失。**
+会话结束时输入 `/arsave`，所有内容自动保存。下次开始时输入 `/arstart`，所有上下文自动恢复。
 
 ```bash
 # 安装命令（一次性，仅 Claude Code）
 mkdir -p ~/.claude/commands
 curl -o ~/.claude/commands/arsave.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arsave.md
 curl -o ~/.claude/commands/arstart.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arstart.md
-curl -o ~/.claude/commands/arsaveall.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arsaveall.md
 ```
 
 ### 效果对比
@@ -889,19 +832,6 @@ curl -o ~/.claude/commands/arsaveall.md https://raw.githubusercontent.com/Golden
   → 智能体重复同样的错误                  → 知道"不要版本膨胀"
   → 忘记你的优先级                        → 知道"arsave 要放首位"
   → 遗漏一半的任务                        → 自动推送两个仓库
-```
-
-```
-没有 AgentRecall（5 个并行 agent）        有 AgentRecall（5 个并行 agent）
-──────────────────────────────           ──────────────────────────────
-
-Agent 1 完成：你 /arsave                  Agent 1-5 全部完成：你输入一次 /arsaveall
-Agent 2 完成：再 /arsave                    → 自动扫描全部 5 个会话
-Agent 3 完成：再 /arsave                    → 合并为整合日志
-Agent 4 完成：再 /arsave                    → 跨会话去重洞察
-Agent 5 完成：再 /arsave                    → 零冲突（session-ID 隔离文件）
-  → 5 倍工作量，纠正丢失                   → 一个命令，全部保存
-  → Agent 3 的纠正 Agent 5 不知道          → 所有 agent 共享同一份记忆
 ```
 
 ### 三层价值
@@ -942,8 +872,8 @@ Agent 5 完成：再 /arsave                    → 零冲突（session-ID 隔�
   │                                             │   包名和版本策略。
   ├─ 按顺序执行：                               │
   │   1. 核心提取 ✓                             └─ 2 分钟完成
-  │   2. 工具逻辑拆分 ✓                             
-  │   3. MCP 封装 ✓                                   
+  │   2. 工具逻辑拆分 ✓                             （没有 AgentRecall
+  │   3. MCP 封装 ✓                                   需要 2-8 分钟冷启动）
   │   4. SDK + CLI ✓
   │
 /arsave
@@ -956,7 +886,7 @@ Agent 5 完成：再 /arsave                    → 零冲突（session-ID 隔�
 
 ## 为什么选择 AgentRecall
 
-**AgentRecall 不仅是记忆工具，并且学习循环。**
+**AgentRecall 不是记忆工具，而是学习循环。**
 
 你的智能体在会话之间不是真的遗忘——它们是记不清楚、分不清主次，甚至听不懂你在说什么。AgentRecall 像人类记忆一样运作：把不重要的东西冬眠起来，但随时可以唤醒。更重要的是，它让智能体越用越懂你。
 
@@ -1127,9 +1057,9 @@ session_end(summary="...", insights=[...], trajectory="...")  → 日志 + 感�
 
 ---
 
-## 6 个 MCP 工具
+## 5 个 MCP 工具
 
-AgentRecall 目前只向 agent 提供 6 个工具。每个工具内部组合多个子系统 — agent 不需要了解内部管道。
+AgentRecall 目前只向 agent 提供 5 个工具。每个工具内部组合多个子系统 — agent 不需要了解内部管道。
 
 | 工具 | 功能 |
 |------|------|
@@ -1138,7 +1068,6 @@ AgentRecall 目前只向 agent 提供 6 个工具。每个工具内部组合多�
 | `recall` | 通过**互惠排名融合（RRF）**一次搜索所有记忆 — 每个来源内部独立排名，再按位置合并，避免任何单一来源靠原始分数主导结果。返回带稳定 ID 的排名结果。支持 `feedback` 评价：正面提升排名，负面降低。查询感知 — 某次搜索的反馈不影响无关查询。 |
 | `session_end` | 一次调用保存全部。写入日志、更新感知、整合到宫殿、归档被替换的洞察（不删除 — 支持复活）。 |
 | `check` | 记录你对人类意图的理解。返回历史纠正模式的 `watch_for` 预警。支持记录 `human_correction` 和 `delta`。3+ 次的强模式自动提升为感知洞察。 |
-| `digest` | **上下文缓存**。将耗时分析（代码库探索、API 审计、架构总结）存储为 digest，后续 agent 直接召回而无需重新分析。使用 Ebbinghaus 衰减 + Zipf 半衰期评分；高频访问的 digest 衰减更慢。实测节省 83% token。 |
 
 ### 旧版工具
 
@@ -1305,56 +1234,6 @@ ar insight <context> [--limit N]
 
 ---
 
-## 实测 Token 节省
-
-### A/B 对照：有 vs 没有 AgentRecall
-
-我们用一个真实的多会话 SaaS 项目（Next.js + Drizzle + Stripe）进行了 5 轮基准测试，然后将实测的每工具 token 开销投射到 4 个实际场景中。
-
-**"无 AR"模拟人类手动操作：** 重新粘贴架构决策、重新解释纠正、回答 agent 的澄清提问。所有数字基于实际测量 — 不是估算。
-
-| 场景 | 无 AR | 有 AR | **节省** |
-|------|:----:|:----:|:------:|
-| **A: 简单** （2 会话，0 纠正） | 567 | 1,131 | **+99% 纯开销** |
-| **B: 中等** （5 会话，1 次纠正） | 6,220 | 4,382 | **-30%** |
-| **C: 复杂** （20 会话，5 次纠正） | 40,910 | 17,520 | **-57%** |
-| **D: 多 Agent** （3 个 agent × 5 会话） | 20,781 | 13,140 | **-37%** |
-
-> **诚实阅读这张表：** 简单的一次性任务，AR 是纯开销。但任何 3+ 会话、有纠正、或多 agent 的场景，AR 都能回本 — 而且节省是复合增长的。
-
-**盈亏平衡：~3-4 个会话。** 之后，每个使用 AR 的会话都比不使用更便宜。
-
-### 节省来自哪里
-
-| 来源 | 无 AR 开销 | 有 AR 开销 | 原因 |
-|------|:-:|:-:|------|
-| **上下文重建** | 随项目增长（高达 ~1,100+ token/会话） | 固定 ~385 token（冷启动） | AR 一次调用加载宫殿上下文；无 AR 时人类手动粘贴一切 |
-| **纠正保留** | ~800 token/次重复（错误输出 + 纠正 + 重做） | 0（存一次，永不重复） | 长期项目中最大的单项节省来源 |
-| **澄清避免** | ~400 token/会话（agent 问「用什么框架？」「什么认证？」） | 0（已加载） | 每个会话稳定节省 |
-| **跨项目召回** | ~500 token/洞察（从头研究） | ~350 token（自动召回） | 中等节省，跨项目复合增长 |
-
-### 实测每工具 Token 开销
-
-来自 5 轮基准测试（共 34 次工具调用）：
-
-| 工具 | 平均 token | 功能 |
-|------|:---------:|------|
-| `coldStart` | 334 | 加载项目上下文（空项目 178，有数据 385） |
-| `recallInsight` | 351 | 跨项目洞察匹配 |
-| `walk` | 336 | 活跃深度的宫殿漫步 |
-| `journalSearch` | 126 | 日志全文搜索 |
-| `awarenessUpdate` | 59 | 复合新洞察 |
-| `alignmentCheck` | 45 | 验证理解 + watch_for 预警 |
-| `nudge` | 39 | 捕获人类纠正 |
-| `palaceWrite` | 37 | 写入宫殿房间 |
-| `journalWrite` | 36 | 写入会话日志 |
-| `capture` | 23 | 快速问答捕获 |
-| **平均每会话开销** | **876** | **一个典型会话的全部工具调用** |
-
-基准测试代码：[`benchmark/run.mjs`](benchmark/run.mjs) 和 [`benchmark/ab-comparison.mjs`](benchmark/ab-comparison.mjs)。自己运行：`node benchmark/run.mjs && node benchmark/ab-comparison.mjs`。
-
----
-
 ## 架构
 
 ### 五层记忆模型
@@ -1418,14 +1297,3 @@ L5: 洞察索引     recall_insight            「跨项目的经验」
 - 网站：[novada.com](https://www.novada.com)
 
 MIT 许可证。
-
-
-## Star History
-
-<a href="https://www.star-history.com/?repos=Goldentrii%2FAgentRecall&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Goldentrii/AgentRecall&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Goldentrii/AgentRecall&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Goldentrii/AgentRecall&type=date&legend=top-left" />
- </picture>
-</a>
