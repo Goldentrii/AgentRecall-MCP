@@ -5,6 +5,7 @@
  */
 
 import * as fs from "node:fs";
+import * as path from "node:path";
 import { journalWrite } from "./journal-write.js";
 import { awarenessUpdate } from "./awareness-update.js";
 import { consolidateJournalToPalace } from "../palace/consolidate.js";
@@ -14,6 +15,7 @@ import { journalDir } from "../storage/paths.js";
 import { readAwarenessState } from "../palace/awareness.js";
 import { todayISO } from "../storage/fs-utils.js";
 import { getRoot } from "../types.js";
+import { extractKeywords } from "../helpers/auto-name.js";
 import type { SaveType } from "../storage/session.js";
 
 export interface SessionEndInput {
@@ -30,6 +32,13 @@ export interface SessionEndInput {
   saveType?: SaveType;
 }
 
+export interface MergeSuggestion {
+  file: string;
+  date: string;
+  overlap_keywords: string[];
+  reason: string;
+}
+
 export interface SessionEndResult {
   success: boolean;
   journal_written: boolean;
@@ -37,6 +46,7 @@ export interface SessionEndResult {
   awareness_updated: boolean;
   palace_consolidated: boolean;
   card: string;
+  merge_suggestions?: MergeSuggestion[];
 }
 
 export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResult> {
@@ -90,7 +100,55 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
     // Consolidation is best-effort
   }
 
-  // 4. Render save card — server-side, always correct
+  // 4. Detect similar recent entries — suggest merge if high overlap
+  const mergeSuggestions: MergeSuggestion[] = [];
+  try {
+    const newKeywords = extractKeywords(input.summary, 6);
+    if (newKeywords.length >= 2) {
+      const jDirPath = journalDir(slug);
+      if (fs.existsSync(jDirPath)) {
+        const today = todayISO();
+        const files = fs.readdirSync(jDirPath)
+          .filter(f => f.endsWith(".md") && f !== "index.md")
+          .sort()
+          .reverse();
+
+        for (const file of files.slice(0, 15)) { // check last 15 entries
+          const dateMatch = file.match(/^(\d{4}-\d{2}-\d{2})/);
+          if (!dateMatch) continue;
+          const fileDate = dateMatch[1];
+
+          // Skip today's file (we just wrote to it)
+          if (fileDate === today) continue;
+
+          // Only check last 7 days
+          const daysAgo = (Date.now() - new Date(fileDate).getTime()) / (1000 * 60 * 60 * 24);
+          if (daysAgo > 7) break;
+
+          // Read first 500 chars of the file for keyword comparison
+          const filePath = path.join(jDirPath, file);
+          const content = fs.readFileSync(filePath, "utf-8").slice(0, 500);
+          const existingKeywords = extractKeywords(content, 6);
+
+          // Compute overlap
+          const overlap = newKeywords.filter(k =>
+            existingKeywords.some(ek => ek.includes(k) || k.includes(ek))
+          );
+
+          if (overlap.length >= 3) {
+            mergeSuggestions.push({
+              file,
+              date: fileDate,
+              overlap_keywords: overlap,
+              reason: `${overlap.length}/${newKeywords.length} keywords overlap with ${file}`,
+            });
+          }
+        }
+      }
+    }
+  } catch { /* merge detection is best-effort */ }
+
+  // 5. Render save card — server-side, always correct
   const root = getRoot();
   const date = todayISO();
   const jDir = journalDir(slug);
@@ -147,6 +205,14 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
     cardLines.push("");
   }
 
+  if (mergeSuggestions.length > 0) {
+    cardLines.push(`  ⚡ Similar entries found — consider merging:`);
+    for (const s of mergeSuggestions.slice(0, 2)) {
+      cardLines.push(`     ${s.date}  (${s.overlap_keywords.join(", ")})`);
+    }
+    cardLines.push("");
+  }
+
   cardLines.push(line);
 
   const card = cardLines.join("\n");
@@ -158,5 +224,6 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
     awareness_updated: awarenessUpdated,
     palace_consolidated: palaceConsolidated,
     card,
+    merge_suggestions: mergeSuggestions.length > 0 ? mergeSuggestions : undefined,
   };
 }
