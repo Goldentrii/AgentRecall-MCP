@@ -1,116 +1,129 @@
 ---
-description: "AgentRecall full save — journal + palace + awareness + insights + verification. End-of-session brain dump."
+description: "AgentRecall full save — journal + palace + awareness + insights in one shot."
 ---
 
-# /arsave — AgentRecall Full Save (v3.4)
+# /arsave — AgentRecall Full Save (v3.3.20)
 
 One command to save everything. No long prompts needed.
+
+## When to Use
+
+**Default: USE IT.** Most projects are long-term. Memory compounds — insights saved today prevent repeated mistakes and rebuild costs across future sessions.
+
+**Skip /arsave only when** the session was truly throwaway:
+- Pure Q&A with no decisions made
+- Trivial one-off task that won't be revisited
+- Nothing non-obvious happened worth recalling
 
 ## What This Does
 
 Runs the complete AgentRecall end-of-session flow:
 
-1. **Journal** — write today's daily journal entry (10-section format)
-2. **Palace** — consolidate key decisions, goals, blockers into palace rooms
-3. **Awareness** — extract 1-3 insights from this session into the compounding system
-4. **Verify** — check that promotion actually happened (don't trust the consolidation blindly)
-5. **Compact** — auto-trigger weekly roll-up if old journals are piling up
+1. **Gather** — review what happened this session
+2. **Save** — one `session_end` call writes journal + awareness + consolidation
+3. **Verify** — check that key content was promoted
+4. **Git** — push to GitHub if user has configured it
 
 ## Process
 
 ### Step 1: Gather session context
 
-Before writing anything, review:
-- What was discussed, built, decided, and failed this session
-- What files were modified (`git diff --stat` if in a git repo)
-- Current blockers and next steps
-- Any insights or patterns worth remembering
+**Start with machine-captured facts, not memory.** At long context windows your memory of early decisions is compressed and unreliable. Ground truth comes first:
 
-### Step 2: Write the daily journal
+1. **Read today's capture log** — `~/.agent-recall/projects/<slug>/journal/YYYY-MM-DD-log.md` (if it exists). This file contains incremental Q&A captures logged during the session. Pull out the key facts from it.
 
-Call `journal_write` with a complete session entry. Use the user's language (Chinese if they spoke Chinese, English if English).
+2. **Check git diff** — if in a git repo, run `git diff --stat HEAD` or `git log --oneline -5` to see what files actually changed.
 
-Include these sections at minimum:
-- **Brief** (cold-start table: project / last done / next step / momentum)
-- **Completed** (what got done, with specifics)
-- **Blockers** (honest — what's stuck)
-- **Next** (prioritized next actions)
-- **Decisions** (what was decided and WHY)
+3. **Supplement with memory** — now recall what happened that isn't in the log: decisions made in conversation, things we discussed but didn't act on, blockers identified, next steps.
 
-If a section is empty, write "None" — don't skip it.
+Combine all three into a 2-3 sentence summary. The log anchors you; memory fills the gaps.
 
-### Step 3: Consolidate to palace
+### Step 2: Record corrections
 
-Call `context_synthesize(consolidate=true)` to promote journal content into palace rooms:
-- Decisions → architecture room
-- Goals/brief → goals/evolution
-- Blockers → blockers room
+If the human corrected your understanding during this session — "no not that", "I meant X not Y", "wrong priority" — record each significant correction:
 
-### Step 4: Update awareness
+```
+check({
+  goal: "<what you originally understood>",
+  confidence: "high",
+  human_correction: "<what the human actually wanted>",
+  delta: "<the gap — e.g. 'assumed technical priority, human meant business priority'>"
+})
+```
 
-Call `awareness_update` with:
-- **insights**: 1-3 key learnings from this session. Each insight should have:
-  - `title`: one-line summary
-  - `evidence`: what happened that confirmed this
-  - `applies_when`: keywords for when this insight is relevant to future tasks
-  - `source`: project name + today's date
-  - `severity`: critical / important / minor
-- **trajectory** (optional): where is the work heading?
-- **blind_spots** (optional): what might matter but hasn't been explored?
+This feeds the predictive warning system. Future agents on this project will get `watch_for` warnings like: "You tend to misinterpret X — corrected N times."
 
-### Step 5: Verify promotion (NEW in v3.4)
+If no corrections happened this session, skip this step.
 
-After consolidation, verify that content actually made it to palace rooms. Don't trust that Step 3 worked — check:
+### Step 3: Save everything in one call
 
-1. **Decisions check**: Call `palace_read(room="architecture")`. If today's decisions are NOT present, extract them from the journal and call `palace_write(room="architecture", ...)` directly.
+Call `session_end` with:
 
-2. **Blockers check**: Call `palace_read(room="blockers")`. If current blockers are NOT reflected, update the room.
+```
+session_end({
+  summary: "<2-3 sentence session summary>",
+  insights: [
+    {
+      title: "<one-line insight>",
+      evidence: "<what happened that confirmed this>",
+      applies_when: ["keyword1", "keyword2"],
+      severity: "critical" | "important" | "minor"
+    }
+    // 1-3 insights max
+  ],
+  trajectory: "<where is the work heading — one line>"
+})
+```
 
-3. **Awareness check**: Call `awareness_update` result. If 0 insights were added and the session was productive, go back and extract at least 1.
+This single call:
+- Writes the daily journal entry
+- Updates awareness with new insights (merge or add)
+- Consolidates decisions/goals/blockers into palace rooms
+- Archives demoted insights (not deleted — moved to awareness-archive.json)
+
+### Step 4: Verify promotion
+
+After `session_end`, verify that content actually made it to the right places. Use `recall` to spot-check:
+
+1. Call `recall(query="<key decision from today>")` — confirm it appears in palace results
+2. Check the session_end response: `insights_processed` should match what you sent
 
 Report the verification result:
 ```
-✅ Promotion verified:
-  - architecture: 2 decisions promoted
-  - blockers: up to date
-  - awareness: 1 insight added (total: 7)
+Promotion verified:
+  - Journal: written (YYYY-MM-DD)
+  - Awareness: N insights processed
+  - Palace: consolidated
 ```
 
-Or if gaps found:
+Or if gaps found, use `remember` to manually save the missing content:
 ```
-⚠️ Promotion gap detected — fixing:
-  - architecture: decisions missing → extracted and written
-  - blockers: stale → updated
-  - awareness: 0 insights → extracted 1
+remember({
+  content: "<the missing decision/insight>",
+  context: "architecture decision"  // hints the router
+})
 ```
 
-### Step 6: Auto-compact journals (NEW in v3.4)
-
-Call `journal_rollup(dry_run=true)` to check if old journals should be condensed.
-
-If the dry run shows weeks that can be rolled up:
-- Tell the user: "Found N weeks of old journals that can be condensed into weekly summaries."
-- Ask: "Roll up? [yes/no]"
-- If yes, call `journal_rollup(dry_run=false)`
-
-### Step 7: Confirm
+### Step 5: Confirm and offer git push
 
 Show the user a summary:
 ```
-✅ Journal: written (YYYY-MM-DD.md)
-✅ Palace: consolidated (N rooms updated)
-✅ Awareness: N insights added (M total)
-✅ Promotion: verified (or gaps fixed)
-✅ Compact: N weeks rolled up (or "no old journals to compact")
+Journal: written
+Awareness: N insights added (M total)
+Palace: consolidated
 ```
 
-> **Note:** Do NOT offer to push to GitHub. All data is local-first. Only push if the user explicitly asks.
+Then ask: "Push to GitHub?" If yes, run:
+```bash
+cd <project-root> && git add -A && git commit -m "session: YYYY-MM-DD <one-line summary>" && git push
+```
 
 ## Important Rules
 
 - **Be honest in the journal.** If something broke, write it. If nothing got done, say so.
-- **Verify, don't trust.** Step 5 exists because agents skip consolidation or do it superficially. Check the result.
+- **Verify, don't trust.** Step 3 exists because consolidation can be superficial. Check the result.
 - **Insights should be reusable.** "Fixed a bug" is not an insight. "API returns null when session expires — always null-check auth responses" is an insight.
 - **Don't over-save.** 1-3 insights per session is plenty. Quality over quantity.
 - **Match the user's language.** If the session was in Chinese, write in Chinese.
 - **One save per session.** If already saved, say so and offer to update instead.
+- **Use `remember` for manual fixes.** If session_end missed something, use `remember` to route it to the right store.

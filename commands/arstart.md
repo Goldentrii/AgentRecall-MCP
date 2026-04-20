@@ -1,66 +1,92 @@
 ---
-description: "AgentRecall cold start — recall insights + walk palace + load context in one shot."
+description: "AgentRecall cold start — load full project context + task-specific recall in one shot."
 ---
 
-# /agstart — AgentRecall Cold Start
+# /arstart — AgentRecall Cold Start
 
 One command to load all context at session start. No manual memory reading needed.
 
+## When to Use
+
+**Default: USE IT.** Most projects are long-term and benefit from memory. Memory compounds — a small overhead today saves large context-rebuilding costs across future sessions.
+
+**Skip /arstart only when** the task is truly single-session throwaway work:
+- Pure Q&A session (no project context needed)
+- Trivial one-off script that won't be revisited
+- Quick fix with no decisions worth recalling
+
 ## What This Does
 
-Runs the complete AgentRecall session-start flow:
-
-1. **Recall** — surface cross-project insights relevant to today's work
-2. **Walk** — progressive palace loading (identity + top rooms + awareness)
-3. **Brief** — show cold-start summary to the agent
+Runs AgentRecall session-start in **two MCP calls**:
+1. `session_start` — identity + insights + rooms + cross-project matches + recent journal + watch_for
+2. `recall` with today's task — surfaces relevant past knowledge (fixes, decisions, patterns)
 
 ## Process
 
-### Step 1: Ask what we're working on
+### Step 1: Identify the task
 
-Ask the user briefly: "What are we working on today?" (or check if the conversation already has context).
+Check if the user already stated what we're working on in this conversation.
 
-If the user already stated the task, skip asking.
+- **If yes**: Use it directly. Do NOT ask "what are we working on?" — that's friction.
+- **If no context yet**: Ask once, briefly: "What are we working on today?"
 
-### Step 2: Recall relevant insights
+### Step 2: Load full context
 
-Call `recall_insight(context="<task description>")` to surface cross-project insights.
+Call `session_start(project="auto")`.
 
-If insights are returned, display the top 3:
-```
-💡 Relevant insights:
-1. [title] (confirmed Nx) — [applies when]
-2. [title] (confirmed Nx) — [applies when]
-```
+This returns:
+- **identity** — who the user is, what the project is about
+- **insights** — top awareness insights ranked by confirmation count
+- **active_rooms** — top 3 palace rooms by salience
+- **cross_project** — insights from other projects matching this context
+- **recent** — today/yesterday journal briefs + older count
+- **watch_for** — past correction patterns to avoid repeating
 
-### Step 3: Walk the palace
+### Step 3: Recall past knowledge for today's task
 
-Call `palace_walk(depth="active")` to load:
-- Project identity (~50 tokens)
-- Top 3 rooms by salience
-- Awareness summary (top insights + trajectory)
+Call `recall(query="<today's task or topic>")`.
 
-If the user mentioned a specific focus, use `palace_walk(depth="relevant", focus="<focus>")` instead.
+This hits the knowledge store for documented fixes, past decisions, and patterns relevant to what we're about to do. Return up to 3 hits if relevant.
+
+This is the step that surfaces: "last time we touched this module, X broke" or "this API returns null on session expiry — always null-check" — things not in the awareness insights but stored as knowledge entries.
 
 ### Step 4: Show cold-start brief
 
 Present a compact summary:
+
 ```
-🧠 Project: <name>
-📋 Last session: <date> — <what was done>
-🔴 Next: <top priority>
-⚡ Momentum: <emoji>
-💡 Insights: <N relevant to today's task>
-🏛️ Palace: <N rooms, top by salience>
+Project: <name> — <identity>
+Last session: <date> — <what was done>
+Next: <top priority from journal>
+
+Insights (top 3):
+  [N×] <insight>
+  [N×] <insight>
+
+Past corrections — watch out:
+  - <pattern> (corrected N times)
+
+Relevant past knowledge:
+  - <knowledge hit 1>
+  - <knowledge hit 2>
+
+Cross-project: N related insights from <project>
 ```
+
+Skip any section that returned empty — do not say "no insights found."
 
 ### Step 5: Ready to work
 
 Say: "Ready. What's first?" and let the user drive.
 
+If the user already stated the task in Step 1, skip this line and just get to work.
+
 ## Important Rules
 
-- **Be fast.** Cold start should take < 5 seconds. Don't load everything — progressive depth.
+- **Be fast.** Cold start is two tool calls. Don't add extra calls unless recall returned 0 and you want to try a different query.
 - **Don't lecture.** Show the brief, offer insights, then get out of the way.
-- **If no palace exists yet**, that's fine — fall back to `journal_cold_start` or `journal_read(date="latest")`.
-- **If no insights match**, skip that section silently. Don't say "no insights found."
+- **Sparse data is fine.** New project with no palace, no journal — just say so briefly and proceed.
+- **hook-start already ran.** At session start, a quick preview (insights + recent + watch_for) was auto-loaded into the system context. /arstart completes that with cross-project data, rooms, and the task-specific recall. Don't re-explain what the hook already showed unless it's relevant to today's task.
+- **Call check() before significant actions.** If you're about to do something irreversible (publish to npm, push to git, delete files, deploy), call `check(goal="<what you're about to do>", confidence="high")` first. The `watch_for` patterns in the response tell you if you've been corrected on similar things before. This is 1 extra call that prevents repeated mistakes.
+- **One cold start per session.** If already ran, say so and offer to re-run if the project context has changed.
+- **Use `remember` for manual fixes.** If session_start returned sparse data on a project you know has content, use `remember` to re-surface it.
