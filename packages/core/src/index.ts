@@ -155,6 +155,9 @@ export type { ConsistencyWarning, ConsistencyResult } from "./helpers/consistenc
 // Helpers — tag generation
 export { generateTags } from "./helpers/tag-generator.js";
 
+// Helpers — normalize (stemming + synonyms)
+export { stem, getSynonyms, expandQuery } from "./helpers/normalize.js";
+
 // Helpers — alignment patterns
 export { readAlignmentLog, extractWatchPatterns } from "./helpers/alignment-patterns.js";
 export type { WatchForPattern } from "./helpers/alignment-patterns.js";

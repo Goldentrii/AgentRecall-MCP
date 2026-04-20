@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { resolveProject } from "../storage/project.js";
 import { palaceDir } from "../storage/paths.js";
 import { ensurePalaceInitialized, listRooms, recordAccess } from "../palace/rooms.js";
+import { stem, expandQuery } from "../helpers/normalize.js";
 
 export interface PalaceSearchInput {
   query: string;
@@ -58,7 +59,9 @@ export async function palaceSearch(input: PalaceSearchInput): Promise<PalaceSear
   // Old approach: lines[i].toLowerCase().includes(fullQuery) required the entire
   // query to appear as one continuous substring — too strict, missed relevant entries.
   // New approach: count matched keywords, compute overlap ratio for scoring.
-  const queryWords = input.query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+  // v3.3.21: use stemming + synonym expansion for query words
+  const rawQueryWords = input.query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+  const queryWords = expandQuery(rawQueryWords);
   const results: PalaceSearchResult["results"] = [];
 
   const targetRooms = input.room ? rooms.filter((r) => r.slug === input.room) : rooms;
@@ -85,8 +88,12 @@ export async function palaceSearch(input: PalaceSearchInput): Promise<PalaceSear
         const lineLower = lines[i].toLowerCase();
         if (queryWords.length === 0) continue;
 
-        // Count how many query keywords appear in this line
-        const matchedWords = queryWords.filter((w) => lineLower.includes(w));
+        // Stem each line word for matching
+        const lineWords = lineLower.split(/\s+/).filter(w => w.length > 2).map(w => stem(w));
+        const lineWordSet = new Set(lineWords);
+
+        // Count how many query keywords match (stemmed OR substring)
+        const matchedWords = queryWords.filter((w) => lineWordSet.has(w) || lineLower.includes(w));
         if (matchedWords.length === 0) continue;
 
         const rawKeywordScore = matchedWords.length / queryWords.length;

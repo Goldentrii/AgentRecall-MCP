@@ -78,6 +78,9 @@ META:
   ar knowledge write --category <cat> --title "t" --what "w" --cause "c" --fix "f"
   ar knowledge read [--category <cat>]
 
+DIAGNOSTICS:
+  ar stats             Show memory system health: corrections, feedback, insights, graph edges
+
 MULTI-SESSION:
   ar sessions                List all Claude Code sessions active today (diagnostic)
   ar saveall [--dry-run]     Save all today's sessions to AgentRecall automatically
@@ -591,11 +594,14 @@ async function main(): Promise<void> {
 
     case "hook-ambient": {
       // Reads UserPromptSubmit JSON from stdin.
-      // Extracts keywords from the prompt, rate-limits, and injects relevant memories to stdout.
+      // Two-step flow: (1) submit feedback for previous recall, (2) inject new recall.
       // Always exits 0 — never blocks the conversation.
       const HIGH_VALUE_PATTERNS = /error|bug|fix|crash|broken|wrong|how|why|implement|build|create|design|architecture|correction|remember|recall|what was|last time/i;
 
       const SHORT_ACKS = /^(ok|yes|done|sure|got it|thanks|k|yep|nope|no|maybe|yup|alright|cool|great|perfect|sounds good|noted|understood|agreed|fine|right)\.?$/i;
+
+      // Communication file for feedback loop (defined at top of case for both steps)
+      const surfacedFile = path.join(os.homedir(), ".agent-recall", ".ambient-last-surfaced.json");
 
       try {
         const chunks: Buffer[] = [];
@@ -612,6 +618,54 @@ async function main(): Promise<void> {
         } catch {
           prompt = raw;
         }
+
+        // --- FEEDBACK STEP (always runs, no rate limit) ---
+        try {
+          if (fs.existsSync(surfacedFile)) {
+            const surfaced = JSON.parse(fs.readFileSync(surfacedFile, "utf-8"));
+            const age = Date.now() - new Date(surfaced.timestamp).getTime();
+
+            // Only process feedback if surfaced items are recent (< 10 min)
+            if (age < 600_000 && Array.isArray(surfaced.items) && surfaced.items.length > 0) {
+              // Reuse the same CORRECTION_PATTERNS from hook-correction
+              const CORRECTION_PATTERNS = [
+                // English
+                /\bthat'?s\s+wrong\b/i, /\byou\s+(missed|didn'?t|forgot|skipped)\b/i,
+                /\bnot\s+what\s+i\s+(asked|wanted|meant|said)\b/i, /\bagain\s+you\b/i,
+                /\bstop\s+(doing|adding|making)\b/i, /\bwrong\s+(approach|direction|file|function)\b/i,
+                /\bi\s+said\b.*\bnot\b/i, /\bdon'?t\s+(do\s+that|change|delete|add)\b/i,
+                /\bno[,!.]\s+(don'?t|that|you|i\s+meant)\b/i,
+                // Chinese
+                /不对/, /错了/, /不要这样/, /不是这个/, /你搞错了/,
+                /我说的不是/, /别这样做/, /重新来/, /你忘了/, /不是我要的/,
+                /搞反了/, /方向不对/,
+              ];
+
+              const isCorrection = CORRECTION_PATTERNS.some(p => p.test(prompt));
+
+              // Build feedback array
+              const feedback = surfaced.items.map((item: { id: string; title: string }) => ({
+                id: item.id,
+                title: item.title,
+                useful: !isCorrection,  // correction after recall = negative; no correction = positive
+              }));
+
+              // Submit feedback via smartRecall (which processes feedback param)
+              try {
+                await core.smartRecall({
+                  query: surfaced.query || "feedback",
+                  project,
+                  limit: 1,
+                  feedback,
+                });
+              } catch { /* best-effort */ }
+            }
+
+            // Always clear after processing (consumed)
+            try { fs.unlinkSync(surfacedFile); } catch { /* non-blocking */ }
+          }
+        } catch { /* non-blocking — feedback is best-effort */ }
+        // --- END FEEDBACK STEP ---
 
         // Skip: too short, slash commands, short acks
         if (prompt.length < 25) process.exit(0);
@@ -649,6 +703,16 @@ async function main(): Promise<void> {
           out += `• [${source}] ${title}\n`;
         }
         process.stdout.write(out);
+
+        // Save surfaced items for feedback loop on next message
+        try {
+          const surfacedData = {
+            items: items.map(item => ({ id: item.id, title: item.title })),
+            query: keywords.join(" "),
+            timestamp: new Date().toISOString(),
+          };
+          fs.writeFileSync(surfacedFile, JSON.stringify(surfacedData), "utf-8");
+        } catch { /* non-blocking */ }
       } catch (e) {
         process.stderr.write(`[AgentRecall hook-ambient] ${String(e)}\n`);
       }
@@ -834,6 +898,77 @@ async function main(): Promise<void> {
       for (const p of skipped) output(`  ~ ${p} — already journaled, skipped`);
       for (const f of failed) output(`  ✗ ${f.proj} — ${f.err}`);
       output(`\nTotal: ${saved.length} saved, ${skipped.length} skipped, ${failed.length} failed`);
+      break;
+    }
+
+    case "stats": {
+      // Diagnostic: show memory system health numbers
+      const statsRoot = path.join(os.homedir(), ".agent-recall");
+      const statsProject = project ?? "auto";
+
+      // Resolve project
+      const resolvedProject = await core.resolveProject(statsProject);
+      const projectDir = path.join(statsRoot, "projects", resolvedProject);
+
+      let correctionCount = 0;
+      let journalCount = 0;
+      let insightCount = 0;
+      let graphEdges = 0;
+      let feedbackCount = 0;
+      let roomCount = 0;
+      let totalConfirmations = 0;
+
+      // Count corrections
+      const corrDir = path.join(projectDir, "corrections");
+      if (fs.existsSync(corrDir)) {
+        correctionCount = fs.readdirSync(corrDir).filter(f => f.endsWith(".json")).length;
+      }
+
+      // Count journal entries
+      const jDir = path.join(projectDir, "journal");
+      if (fs.existsSync(jDir)) {
+        journalCount = fs.readdirSync(jDir).filter(f => f.endsWith(".md") && f !== "index.md").length;
+      }
+
+      // Count insights from awareness
+      try {
+        const awareness = core.readAwarenessState();
+        if (awareness?.topInsights) {
+          insightCount = awareness.topInsights.length;
+          totalConfirmations = awareness.topInsights.reduce((sum: number, i: { confirmations?: number }) => sum + (i.confirmations ?? 1), 0);
+        }
+      } catch { /* non-blocking */ }
+
+      // Count graph edges
+      try {
+        const graph = core.readGraph(resolvedProject);
+        graphEdges = graph.edges?.length ?? 0;
+      } catch { /* non-blocking */ }
+
+      // Count feedback entries
+      const feedbackFile = path.join(statsRoot, "feedback-log.json");
+      if (fs.existsSync(feedbackFile)) {
+        try {
+          const data = JSON.parse(fs.readFileSync(feedbackFile, "utf-8"));
+          feedbackCount = Array.isArray(data) ? data.length : 0;
+        } catch { /* non-blocking */ }
+      }
+
+      // Count rooms
+      try {
+        const rooms = core.listRooms(resolvedProject);
+        roomCount = rooms.length;
+      } catch { /* non-blocking */ }
+
+      output(`AgentRecall Stats — ${resolvedProject}
+
+  Corrections:    ${correctionCount}
+  Feedback:       ${feedbackCount} signals
+  Journal:        ${journalCount} entries
+  Insights:       ${insightCount} (${totalConfirmations} total confirmations)
+  Palace rooms:   ${roomCount}
+  Graph edges:    ${graphEdges}
+${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the tool for a few sessions." : ""}${feedbackCount === 0 ? "\n  Warning: No feedback signals yet. The ambient hook will start collecting after recalls." : ""}${graphEdges < 3 ? "\n  Warning: Few graph connections. Palace rooms will connect as you write to them." : ""}`);
       break;
     }
 

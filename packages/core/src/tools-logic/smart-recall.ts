@@ -54,6 +54,7 @@ import { journalSearch } from "./journal-search.js";
 import { recallInsight } from "./recall-insight.js";
 import { getRoot } from "../types.js";
 import { ensureDir } from "../storage/fs-utils.js";
+import { stem, expandQuery } from "../helpers/normalize.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -139,13 +140,30 @@ function ebbinghaus(days: number, S: number): number {
   return Math.exp(-days / S);
 }
 
-/** Keyword overlap ratio between query and text. */
+/** Keyword overlap ratio between query and text, with stemming + synonym expansion. */
 function keywordExactness(query: string, text: string): number {
-  const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
-  if (words.length === 0) return 0;
+  const rawWords = query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+  if (rawWords.length === 0) return 0;
+
+  // Expand query with stems + synonyms
+  const expandedQuery = expandQuery(rawWords);
+
+  // Stem the text words for matching
+  const textWords = text.toLowerCase().split(/\s+/)
+    .filter(w => w.length > 2)
+    .map(w => stem(w));
+  const textSet = new Set(textWords);
+
+  // Also check raw text for direct substring matches (preserves old behavior)
   const textLower = text.toLowerCase();
-  const matches = words.filter((w) => textLower.includes(w));
-  return matches.length / words.length;
+
+  // Count matches: expanded query word found in stemmed text OR as substring
+  const matches = expandedQuery.filter(w =>
+    textSet.has(w) || textLower.includes(w)
+  );
+
+  // Score relative to ORIGINAL query length (not expanded), capped at 1.0
+  return Math.min(1.0, matches.length / rawWords.length);
 }
 
 /**
@@ -247,7 +265,7 @@ export async function smartRecall(input: SmartRecallInput): Promise<SmartRecallR
 
   const limit = input.limit ?? 10;
   const feedbackLog = readFeedbackLog();
-  const queryWords = input.query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+  const queryWords = expandQuery(input.query.toLowerCase().split(/\s+/).filter((w) => w.length > 2));
   const sourcesQueried: string[] = [];
 
   // Candidate buckets — each source scores its items internally, then RRF merges
