@@ -7,6 +7,7 @@
 
 import { generateSlug, detectContentType } from "../helpers/auto-name.js";
 import { generateTags } from "../helpers/tag-generator.js";
+import { consistencyCheck, type ConsistencyWarning } from "../helpers/consistency.js";
 import { journalCapture } from "./journal-capture.js";
 import { palaceWrite } from "./palace-write.js";
 import { knowledgeWrite } from "./knowledge-write.js";
@@ -28,6 +29,7 @@ export interface SmartRememberResult {
   classification: string;
   auto_name: string;
   result: unknown;
+  consistency_warnings?: ConsistencyWarning[];
 }
 
 // ---------------------------------------------------------------------------
@@ -162,11 +164,23 @@ export async function smartRemember(input: SmartRememberInput): Promise<SmartRem
     }
   }
 
+  // Consistency check: find contradictions with existing memories
+  let consistency_warnings: ConsistencyWarning[] | undefined;
+  try {
+    const check = await consistencyCheck(input.content, input.project);
+    if (check.warnings.length > 0) {
+      consistency_warnings = check.warnings;
+    }
+  } catch {
+    // Consistency check is best-effort — never blocks save
+  }
+
   return {
     success: true,
     routed_to: route,
     classification: slugResult.contentType,
     auto_name: autoName,
     result,
+    consistency_warnings,
   };
 }

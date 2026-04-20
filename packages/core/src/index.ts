@@ -148,6 +148,10 @@ export { isoWeek, weekKey, groupByWeek, synthesizeWeek } from "./helpers/rollup.
 export { generateSlug, detectContentType, extractKeywords, generateTopicName } from "./helpers/auto-name.js";
 export type { SlugResult, SlugContext } from "./helpers/auto-name.js";
 
+// Helpers — consistency
+export { consistencyCheck } from "./helpers/consistency.js";
+export type { ConsistencyWarning, ConsistencyResult } from "./helpers/consistency.js";
+
 // Helpers — tag generation
 export { generateTags } from "./helpers/tag-generator.js";
 
