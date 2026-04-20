@@ -19,6 +19,10 @@ export function register(server: McpServer): void {
     },
   }, async ({ summary, insights, trajectory, project }) => {
     const result = await sessionEnd({ summary, insights, trajectory, project, saveType: "arsave" });
-    return { content: [{ type: "text" as const, text: JSON.stringify(result) }] };
+    // Return card as primary text (agent displays it directly), JSON as secondary
+    return { content: [
+      { type: "text" as const, text: result.card },
+      { type: "text" as const, text: JSON.stringify({ success: result.success, journal_written: result.journal_written, insights_processed: result.insights_processed, awareness_updated: result.awareness_updated, palace_consolidated: result.palace_consolidated }) },
+    ] };
   });
 }
