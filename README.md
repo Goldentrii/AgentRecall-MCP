@@ -76,6 +76,73 @@ Type `/arsave` after a single session. Type `/arstart` next time. Everything loa
 
 **Running 5 agents in parallel?** Don't `/arsave` five times. Type **`/arsaveall`** once — it scans all of today's sessions across all projects, merges them into consolidated journals, deduplicates insights, and updates awareness in one shot. Each session writes to its own file (session-ID scoped), so **no conflicts, no data loss, no matter how many windows you have open.**
 
+### What You'll See
+
+Type `/arsave` → the system saves everything and renders a card with exact file paths and counts:
+
+```
+──────────────────────────────────────────────────────────────
+  AgentRecall  ✓ Saved    my-project   2026-04-20   #12
+──────────────────────────────────────────────────────────────
+
+  Journal       ~/.agent-recall/projects/my-project/journal/
+                └─ 2026-04-20--arsave--15L--review-feedback.md    [written]
+
+  Awareness     2 insights added  (8 total)
+
+  Palace        ~/.agent-recall/projects/my-project/palace/
+                ├─ rooms/Architecture       [updated]
+                └─ rooms/Goals              [updated]
+
+  Corrections   3 stored  (always loaded at session start)
+
+  ⚡ Similar entries found — consider merging:
+     2026-04-19  (review, feedback, architecture)
+
+──────────────────────────────────────────────────────────────
+```
+
+Type `/arstart` → loads all context from memory in one shot:
+
+```
+──────────────────────────────────────────────────────────────
+  AgentRecall  ↻ Loaded    my-project   2026-04-21
+──────────────────────────────────────────────────────────────
+
+  Project       my-project — SaaS platform for AI agents
+  Last session  2026-04-20 — review + feedback loop shipped
+
+  Insights (top 3):
+    [5×] Server-rendered cards beat agent templates
+    [3×] Per-message dedup beats per-session dedup
+    [2×] Stemming + synonyms improve keyword recall
+
+  ⚠ Past corrections — watch out:
+    - "No dark backgrounds" (corrected 3×)
+    - "Use bb-browser, not Playwright" (corrected 2×)
+
+  Cross-project: 2 related insights from novada-mcp
+
+──────────────────────────────────────────────────────────────
+```
+
+Type `/arsaveall` → batch-saves all parallel sessions at once:
+
+```
+──────────────────────────────────────────────────────────────
+  AgentRecall  ✓ Batch Saved    2026-04-20
+──────────────────────────────────────────────────────────────
+
+  Sessions scanned    5
+  Projects saved      my-project, novada-mcp, prismma-scraper
+  Insights merged     4 (deduplicated from 7)
+  Corrections         2 new (auto-captured via hooks)
+
+──────────────────────────────────────────────────────────────
+```
+
+The cards are **rendered server-side** — computed from actual operation results, not agent interpretation. What you see is always accurate.
+
 ```bash
 # Install commands (one-time, Claude Code only)
 mkdir -p ~/.claude/commands
@@ -870,6 +937,73 @@ MIT License.
 单个会话结束时输入 `/arsave`。下次开始时输入 `/arstart`，所有上下文自动恢复。
 
 **同时跑了 5 个 agent？** 不需要 `/arsave` 五次。输入一次 **`/arsaveall`** — 它会自动扫描今天所有项目的所有会话，合并为整合日志，跨会话去重洞察，一次性更新感知系统。每个会话写入独立文件（session-ID 隔离），所以**无论开多少窗口，零冲突、零数据丢失。**
+
+### 你会看到什么
+
+输入 `/arsave` → 系统保存所有内容并渲染一张卡片，显示准确的文件路径和数量：
+
+```
+──────────────────────────────────────────────────────────────
+  AgentRecall  ✓ 已保存    my-project   2026-04-20   #12
+──────────────────────────────────────────────────────────────
+
+  日志          ~/.agent-recall/projects/my-project/journal/
+                └─ 2026-04-20--arsave--15L--review-feedback.md    [已写入]
+
+  感知          2 条洞察已添加  (共 8 条)
+
+  宫殿          ~/.agent-recall/projects/my-project/palace/
+                ├─ rooms/Architecture       [已更新]
+                └─ rooms/Goals              [已更新]
+
+  纠正          3 条已存储  (每次启动时自动加载)
+
+  ⚡ 发现相似条目 — 建议合并：
+     2026-04-19  (review, feedback, architecture)
+
+──────────────────────────────────────────────────────────────
+```
+
+输入 `/arstart` → 一次加载所有记忆上下文：
+
+```
+──────────────────────────────────────────────────────────────
+  AgentRecall  ↻ 已加载    my-project   2026-04-21
+──────────────────────────────────────────────────────────────
+
+  项目          my-project — AI agent 的 SaaS 平台
+  上次会话      2026-04-20 — review + feedback loop 已上线
+
+  洞察 (前 3)：
+    [5×] 服务端渲染卡片比 agent 模板更可靠
+    [3×] 逐消息去重优于逐会话去重
+    [2×] 词干提取 + 同义词提升关键词召回率
+
+  ⚠ 历史纠正 — 注意避免：
+    - "不要暗色背景" (已纠正 3×)
+    - "用 bb-browser，不要 Playwright" (已纠正 2×)
+
+  跨项目：来自 novada-mcp 的 2 条相关洞察
+
+──────────────────────────────────────────────────────────────
+```
+
+输入 `/arsaveall` → 一次性批量保存所有并行会话：
+
+```
+──────────────────────────────────────────────────────────────
+  AgentRecall  ✓ 批量保存    2026-04-20
+──────────────────────────────────────────────────────────────
+
+  扫描会话      5
+  已保存项目    my-project, novada-mcp, prismma-scraper
+  合并洞察      4 条 (从 7 条去重)
+  纠正          2 条新增 (通过 hooks 自动捕获)
+
+──────────────────────────────────────────────────────────────
+```
+
+卡片由**服务端渲染** — 基于实际操作结果计算，而非 agent 解读。你看到的永远是准确的。
 
 ```bash
 # 安装命令（一次性，仅 Claude Code）
