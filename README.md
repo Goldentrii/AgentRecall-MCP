@@ -45,9 +45,10 @@
 ---
 
 <p align="center">
-  <a href="#arsave-arstart-and-arsaveall"><img src="https://img.shields.io/badge/%2Farsave-Save_Session-FF6B6B?style=for-the-badge" alt="/arsave"></a>
-  <a href="#arsave-arstart-and-arsaveall"><img src="https://img.shields.io/badge/%2Farstart-Load_Context-4ECDC4?style=for-the-badge" alt="/arstart"></a>
-  <a href="#arsave-arstart-and-arsaveall"><img src="https://img.shields.io/badge/%2Farsaveall-Batch_Save_All-FFD93D?style=for-the-badge" alt="/arsaveall"></a>
+  <a href="#arstatus-arsave-arstart-and-arsaveall"><img src="https://img.shields.io/badge/%2Farstatus-START_HERE-22C55E?style=for-the-badge" alt="/arstatus"></a>
+  <a href="#arstatus-arsave-arstart-and-arsaveall"><img src="https://img.shields.io/badge/%2Farstart-Load_Context-4ECDC4?style=for-the-badge" alt="/arstart"></a>
+  <a href="#arstatus-arsave-arstart-and-arsaveall"><img src="https://img.shields.io/badge/%2Farsave-Save_Session-FF6B6B?style=for-the-badge" alt="/arsave"></a>
+  <a href="#arstatus-arsave-arstart-and-arsaveall"><img src="https://img.shields.io/badge/%2Farsaveall-Batch_Save_All-FFD93D?style=for-the-badge" alt="/arsaveall"></a>
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/AUTO-hook--start-8B5CF6?style=for-the-badge" alt="hook-start">
@@ -62,21 +63,49 @@
   <a href="#how-memory-compounds"><img src="https://img.shields.io/badge/5-FEEDBACK_LOOP-EF4444?style=for-the-badge" alt="Feedback Loop"></a>
 </p>
 
-## `/arsave`, `/arstart`, and `/arsaveall`
+## `/arstatus`, `/arsave`, `/arstart`, and `/arsaveall`
 
-> **Three commands. That's all you need.**
+> [!IMPORTANT]
+> **Run `/arstatus` at the start of every session.** It shows all your projects, what's pending, what's blocked, and lets you pick what to work on — by number, not by remembering project names. Without it, a fresh agent has no idea where to begin.
 
 | Command | When | What it does |
 |---------|------|-------------|
+| ⭐ **`/arstatus`** | **Every session — run this first** | **Status board across ALL projects: pending work, blockers, numbered pick list. The true cold start.** |
+| **`/arstart`** | After picking a project | Load deep context for one project: palace rooms, corrections, task-specific recall |
 | **`/arsave`** | End of session | Write journal + consolidate to palace + update awareness |
-| **`/arstart`** | Start of session | Recall cross-project insights + walk palace + load context |
 | **`/arsaveall`** | End of day (multi-session) | **Batch save all parallel sessions at once** — scan, merge, deduplicate, done |
 
-Type `/arsave` after a single session. Type `/arstart` next time. Everything loads back.
+**The session flow:** `/arstatus` → pick a number → `/arstart <project>` → work → `/arsave`.
 
 **Running 5 agents in parallel?** Don't `/arsave` five times. Type **`/arsaveall`** once — it scans all of today's sessions across all projects, merges them into consolidated journals, deduplicates insights, and updates awareness in one shot. Each session writes to its own file (session-ID scoped), so **no conflicts, no data loss, no matter how many windows you have open.**
 
 ### What You'll See
+
+Type `/arstatus` → see everything in flight across all projects, pick by number:
+
+```
+──────────────────────────────────────────────────────────────
+  AgentRecall  Status Board        2026-04-21    5 projects
+──────────────────────────────────────────────────────────────
+
+  1  ⚠ novada-site       2026-04-21   BLOCKED
+       Blocked: .env.local missing — Phase 1 cannot proceed
+
+  2  ● novada-mcp        2026-04-21
+       Next: fix novada_search POST /request → publish v0.8.0
+
+  3  ● prismma-scraper   2026-04-17
+       Next: UI upgrade Option A — light mode + 3D visuals
+
+  4  ✓ AgentRecall       2026-04-21   complete
+       Collecting real production data
+
+──────────────────────────────────────────────────────────────
+  Enter a number, or:
+    N  New project (with memory — agent knows your full history)
+    X  New project (clean slate — no prior context, pure objectivity)
+──────────────────────────────────────────────────────────────
+```
 
 Type `/arsave` → the system saves everything and renders a card with exact file paths and counts:
 
@@ -146,8 +175,9 @@ The cards are **rendered server-side** — computed from actual operation result
 ```bash
 # Install commands (one-time, Claude Code only)
 mkdir -p ~/.claude/commands
-curl -o ~/.claude/commands/arsave.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arsave.md
+curl -o ~/.claude/commands/arstatus.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arstatus.md
 curl -o ~/.claude/commands/arstart.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arstart.md
+curl -o ~/.claude/commands/arsave.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arsave.md
 curl -o ~/.claude/commands/arsaveall.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arsaveall.md
 ```
 
@@ -907,9 +937,10 @@ MIT License.
 ---
 
 <p align="center">
-  <a href="#arsave-arstart-和-arsaveall"><img src="https://img.shields.io/badge/%2Farsave-保存会话-FF6B6B?style=for-the-badge" alt="/arsave"></a>
-  <a href="#arsave-arstart-和-arsaveall"><img src="https://img.shields.io/badge/%2Farstart-加载上下文-4ECDC4?style=for-the-badge" alt="/arstart"></a>
-  <a href="#arsave-arstart-和-arsaveall"><img src="https://img.shields.io/badge/%2Farsaveall-批量保存-FFD93D?style=for-the-badge" alt="/arsaveall"></a>
+  <a href="#arstatus-arsave-arstart-和-arsaveall"><img src="https://img.shields.io/badge/%2Farstatus-从这里开始-22C55E?style=for-the-badge" alt="/arstatus"></a>
+  <a href="#arstatus-arsave-arstart-和-arsaveall"><img src="https://img.shields.io/badge/%2Farstart-加载上下文-4ECDC4?style=for-the-badge" alt="/arstart"></a>
+  <a href="#arstatus-arsave-arstart-和-arsaveall"><img src="https://img.shields.io/badge/%2Farsave-保存会话-FF6B6B?style=for-the-badge" alt="/arsave"></a>
+  <a href="#arstatus-arsave-arstart-和-arsaveall"><img src="https://img.shields.io/badge/%2Farsaveall-批量保存-FFD93D?style=for-the-badge" alt="/arsaveall"></a>
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/自动-hook--start-8B5CF6?style=for-the-badge" alt="hook-start">
@@ -924,21 +955,49 @@ MIT License.
   <a href="#记忆如何复合增长"><img src="https://img.shields.io/badge/5-反馈回路-EF4444?style=for-the-badge" alt="反馈回路"></a>
 </p>
 
-## `/arsave`、`/arstart` 和 `/arsaveall`
+## `/arstatus`、`/arsave`、`/arstart` 和 `/arsaveall`
 
-> **三个命令，搞定一切。**
+> [!IMPORTANT]
+> **每次新会话都先运行 `/arstatus`。** 它会显示你所有项目的状态、待完成的工作、阻塞项，让你用数字选择下一步——无需记住项目名称。没有它，全新的 agent 根本不知道从哪里开始。
 
 | 命令 | 时机 | 功能 |
 |------|------|------|
+| ⭐ **`/arstatus`** | **每次会话——先运行这个** | **跨所有项目的状态看板：待办事项、阻塞项、编号选择列表。真正的冷启动。** |
+| **`/arstart`** | 选好项目后 | 加载单个项目的深度上下文：宫殿房间、纠正记录、任务相关召回 |
 | **`/arsave`** | 会话结束时 | 写入日志 + 整合到记忆宫殿 + 更新感知 |
-| **`/arstart`** | 会话开始时 | 召回跨项目洞察 + 遍历宫殿 + 加载上下文 |
 | **`/arsaveall`** | 一天结束时（多会话） | **一次性批量保存所有并行会话** — 扫描、合并、去重、完成 |
 
-单个会话结束时输入 `/arsave`。下次开始时输入 `/arstart`，所有上下文自动恢复。
+**会话流程：** `/arstatus` → 输入编号 → `/arstart <项目>` → 工作 → `/arsave`。
 
 **同时跑了 5 个 agent？** 不需要 `/arsave` 五次。输入一次 **`/arsaveall`** — 它会自动扫描今天所有项目的所有会话，合并为整合日志，跨会话去重洞察，一次性更新感知系统。每个会话写入独立文件（session-ID 隔离），所以**无论开多少窗口，零冲突、零数据丢失。**
 
 ### 你会看到什么
+
+输入 `/arstatus` → 一眼看清所有项目进展，按编号选择：
+
+```
+──────────────────────────────────────────────────────────────
+  AgentRecall  状态看板        2026-04-21    5 个项目
+──────────────────────────────────────────────────────────────
+
+  1  ⚠ novada-site       2026-04-21   阻塞
+       阻塞：缺少 .env.local — Phase 1 无法继续
+
+  2  ● novada-mcp        2026-04-21
+       下一步：修复 novada_search POST /request → 发布 v0.8.0
+
+  3  ● prismma-scraper   2026-04-17
+       下一步：UI 升级 Option A — 浅色模式 + 3D 视觉
+
+  4  ✓ AgentRecall       2026-04-21   已完成
+       收集真实生产数据中
+
+──────────────────────────────────────────────────────────────
+  输入编号，或：
+    N  新项目（带记忆——agent 了解你的完整历史）
+    X  新项目（空白状态——无历史上下文，纯客观模式）
+──────────────────────────────────────────────────────────────
+```
 
 输入 `/arsave` → 系统保存所有内容并渲染一张卡片，显示准确的文件路径和数量：
 
