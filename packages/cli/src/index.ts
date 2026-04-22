@@ -80,6 +80,8 @@ META:
 
 DIAGNOSTICS:
   ar stats             Show memory system health: corrections, feedback, insights, graph edges
+  ar rooms             Show palace rooms with entry counts and topic keywords
+  ar sync-memory       Sync AgentRecall → Claude auto-memory (corrections + insights + rooms)
 
 MULTI-SESSION:
   ar sessions                List all Claude Code sessions active today (diagnostic)
@@ -423,6 +425,15 @@ async function main(): Promise<void> {
           lines.push(`   (${recent.older_count} older entries in journal)`);
         }
 
+        // Active rooms with topics — help agent navigate the palace
+        if (result.active_rooms && result.active_rooms.length > 0) {
+          lines.push("🏛️  Palace rooms:");
+          for (const room of result.active_rooms) {
+            const topicStr = room.topics && room.topics.length > 0 ? ` — ${room.topics.join(", ")}` : "";
+            lines.push(`   - ${room.name} (salience ${room.salience.toFixed(2)})${topicStr}`);
+          }
+        }
+
         // Cross-project hint — signal that related insights exist
         if (result.cross_project && result.cross_project.length > 0) {
           lines.push(`🔗 Cross-project: ${result.cross_project.length} related insight(s) from other projects — run /arstart for details`);
@@ -500,14 +511,21 @@ async function main(): Promise<void> {
       // Always exits 0 — never blocks the conversation.
       const corrLockFile = path.join(os.homedir(), ".agent-recall", ".hook-correction-seen");
 
-      // Read existing seen hashes (JSON array of recent prompt hashes)
-      let seenHashes: string[] = [];
+      // Read existing seen entries (array of {hash, keywords} for semantic dedup)
+      let seenEntries: Array<{ hash: string; keywords: string[] }> = [];
       try {
         if (fs.existsSync(corrLockFile)) {
-          seenHashes = JSON.parse(fs.readFileSync(corrLockFile, "utf-8"));
-          if (!Array.isArray(seenHashes)) seenHashes = [];
+          const parsed = JSON.parse(fs.readFileSync(corrLockFile, "utf-8"));
+          if (Array.isArray(parsed)) {
+            // Migrate from old format (string[] of hashes) to new format ({hash, keywords}[])
+            if (parsed.length > 0 && typeof parsed[0] === "string") {
+              seenEntries = parsed.map((h: string) => ({ hash: h, keywords: [] }));
+            } else {
+              seenEntries = parsed;
+            }
+          }
         }
-      } catch { seenHashes = []; }
+      } catch { seenEntries = []; }
 
       function quickHash(text: string): string {
         let h = 0;
@@ -568,16 +586,50 @@ async function main(): Promise<void> {
 
         const isCorrection = CORRECTION_PATTERNS.some((p) => p.test(prompt));
         if (isCorrection && prompt.length > 3) {
-          // Per-message dedup: skip only if the exact same prompt was already processed
+          // Per-message dedup: skip if exact same prompt was already processed
           const promptHash = quickHash(prompt);
-          if (seenHashes.includes(promptHash)) {
+          if (seenEntries.some(e => e.hash === promptHash)) {
             process.exit(0);
           }
 
-          // Record this hash; keep only last 20 to prevent unbounded growth
-          seenHashes.push(promptHash);
-          if (seenHashes.length > 20) seenHashes = seenHashes.slice(-20);
-          try { fs.writeFileSync(corrLockFile, JSON.stringify(seenHashes), "utf-8"); } catch { /* non-blocking */ }
+          // Semantic dedup: skip if >60% keyword overlap with a recent correction
+          const promptKeywords = core.extractKeywords(prompt, 8);
+          if (promptKeywords.length > 0) {
+            for (const entry of seenEntries) {
+              if (entry.keywords.length === 0) continue;
+              const overlapCount = promptKeywords.filter(kw => entry.keywords.includes(kw)).length;
+              const overlapRatio = overlapCount / Math.max(promptKeywords.length, 1);
+              if (overlapRatio > 0.6) {
+                // Same correction, different wording — skip
+                process.exit(0);
+              }
+            }
+          }
+
+          // Record this entry; keep only last 20 to prevent unbounded growth
+          seenEntries.push({ hash: promptHash, keywords: promptKeywords });
+          if (seenEntries.length > 20) seenEntries = seenEntries.slice(-20);
+          try { fs.writeFileSync(corrLockFile, JSON.stringify(seenEntries), "utf-8"); } catch { /* non-blocking */ }
+
+          // Extract agent context from transcript (what was the agent doing?)
+          let agentContext = "";
+          try {
+            const input = JSON.parse(raw);
+            const transcript = input.transcript ?? [];
+            // Find last 3 assistant messages with tool use
+            const recentActions = [...transcript]
+              .reverse()
+              .filter((m: {role: string; content?: string}) => m.role === "assistant")
+              .slice(0, 3)
+              .map((m: {role: string; content?: string}) => {
+                const text = String(m.content ?? "").replace(/\n/g, " ").slice(0, 80);
+                return text;
+              })
+              .filter(Boolean);
+            if (recentActions.length > 0) {
+              agentContext = recentActions.join(" | ");
+            }
+          } catch { /* non-blocking — context is best-effort */ }
 
           await core.check({
             goal: lastGoal || "Unknown — see correction",
@@ -585,7 +637,7 @@ async function main(): Promise<void> {
             human_correction: prompt.slice(0, 200),
             // Delta describes the gap using actual content so keyword grouping
             // produces meaningful topics (e.g. "deploy-vercel") not "human-corrected"
-            delta: `${lastGoal ? `Was: "${lastGoal.slice(0, 60)}"` : "Unknown context"} | Correction: "${prompt.slice(0, 80)}"`,
+            delta: `${lastGoal ? `Was: "${lastGoal.slice(0, 60)}"` : "Unknown context"} | Correction: "${prompt.slice(0, 80)}"${agentContext ? ` | Agent was: ${agentContext.slice(0, 120)}` : ""}`,
             project,
           });
           // Silent — no stdout output, correction captured in alignment-log
@@ -1027,6 +1079,154 @@ async function main(): Promise<void> {
   Palace rooms:   ${roomCount}
   Graph edges:    ${graphEdges}
 ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the tool for a few sessions." : ""}${feedbackCount === 0 ? "\n  Warning: No feedback signals yet. The ambient hook will start collecting after recalls." : ""}${graphEdges < 3 ? "\n  Warning: Few graph connections. Palace rooms will connect as you write to them." : ""}`);
+      break;
+    }
+
+    // -----------------------------------------------------------------------
+    // ar sync-memory — generate Claude auto-memory file from AgentRecall data
+    // -----------------------------------------------------------------------
+    case "sync-memory": {
+      const syncProject = project ?? "auto";
+      const resolvedSync = await core.resolveProject(syncProject);
+
+      // 1. Read P0 corrections
+      let corrections: Array<{rule: string; date: string; severity: string}> = [];
+      try {
+        const allCorr = core.readP0Corrections(resolvedSync);
+        corrections = allCorr.slice(0, 5).map(c => ({ rule: c.rule, date: c.date, severity: c.severity }));
+      } catch { /* non-blocking */ }
+
+      // 2. Read top awareness insights
+      let insights: Array<{title: string; confirmed: number}> = [];
+      try {
+        const state = core.readAwarenessState();
+        if (state?.topInsights) {
+          insights = state.topInsights
+            .sort((a: {confirmations?: number}, b: {confirmations?: number}) => (b.confirmations ?? 1) - (a.confirmations ?? 1))
+            .slice(0, 8)
+            .map((i: {title: string; confirmations?: number}) => ({ title: i.title.slice(0, 100), confirmed: i.confirmations ?? 1 }));
+        }
+      } catch { /* non-blocking */ }
+
+      // 3. Read recent journal brief
+      let recentBrief = "";
+      try {
+        const journalEntries = core.listJournalFiles(resolvedSync);
+        if (journalEntries.length > 0) {
+          const latest = core.readJournalFile(resolvedSync, journalEntries[0].date);
+          if (latest) {
+            // Extract ## Brief section
+            const briefMatch = latest.match(/## Brief\n([\s\S]*?)(?=\n##|$)/);
+            recentBrief = briefMatch ? briefMatch[1].trim().slice(0, 300) : latest.split("\n").slice(0, 3).join(" ").slice(0, 300);
+          }
+        }
+      } catch { /* non-blocking */ }
+
+      // 4. Read room summaries
+      let syncRooms: Array<{name: string; topKeywords: string[]}> = [];
+      try {
+        const roomList = core.listRooms(resolvedSync);
+        for (const r of roomList.slice(0, 5)) {
+          try {
+            const pd = core.palaceDir(resolvedSync);
+            const readmePath = path.join(pd, "rooms", r.slug, "README.md");
+            if (fs.existsSync(readmePath)) {
+              const content = fs.readFileSync(readmePath, "utf-8").slice(0, 300);
+              const kw = core.extractKeywords(content, 3);
+              syncRooms.push({ name: r.name, topKeywords: kw });
+            }
+          } catch { /* non-blocking */ }
+        }
+      } catch { /* non-blocking */ }
+
+      // 5. Build the markdown
+      const syncLines: string[] = [
+        `---`,
+        `name: AgentRecall sync — ${resolvedSync}`,
+        `description: Auto-generated from AgentRecall. P0 corrections, top insights, recent context, palace rooms.`,
+        `type: reference`,
+        `---`,
+        ``,
+        `# AgentRecall Context — ${resolvedSync}`,
+        `> Auto-synced. Do not edit manually. Regenerate with: \`ar sync-memory --project ${resolvedSync}\``,
+        ``,
+      ];
+
+      if (corrections.length > 0) {
+        syncLines.push(`## Corrections (always follow)`);
+        for (const c of corrections) {
+          syncLines.push(`- **[${c.severity.toUpperCase()}]** ${c.rule}`);
+        }
+        syncLines.push(``);
+      }
+
+      if (insights.length > 0) {
+        syncLines.push(`## Insights (${insights.length} top, by confirmation)`);
+        for (const i of insights) {
+          syncLines.push(`- [${i.confirmed}x] ${i.title}`);
+        }
+        syncLines.push(``);
+      }
+
+      if (recentBrief) {
+        syncLines.push(`## Recent`);
+        syncLines.push(recentBrief);
+        syncLines.push(``);
+      }
+
+      if (syncRooms.length > 0) {
+        syncLines.push(`## Palace Rooms`);
+        for (const r of syncRooms) {
+          syncLines.push(`- **${r.name}**: ${r.topKeywords.join(", ")}`);
+        }
+        syncLines.push(``);
+      }
+
+      const syncContent = syncLines.join("\n");
+
+      // Write to Claude's memory directory
+      const memDir = path.join(os.homedir(), ".claude", "projects", `-Users-${os.userInfo().username}`, "memory");
+      const arRoot = path.join(os.homedir(), ".agent-recall");
+      if (fs.existsSync(memDir)) {
+        const syncPath = path.join(memDir, `ar_sync_${resolvedSync.toLowerCase()}.md`);
+        fs.writeFileSync(syncPath, syncContent, "utf-8");
+        output(`Synced to ${syncPath} (${syncContent.split("\n").length} lines)`);
+      } else {
+        // Fallback: write to AR directory
+        const projectSyncDir = path.join(arRoot, "projects", resolvedSync);
+        core.ensureDir(projectSyncDir);
+        const syncPath = path.join(projectSyncDir, "SYNC.md");
+        fs.writeFileSync(syncPath, syncContent, "utf-8");
+        output(`Synced to ${syncPath} (${syncContent.split("\n").length} lines)`);
+      }
+      break;
+    }
+
+    // -----------------------------------------------------------------------
+    // ar rooms — show palace rooms with entry counts and topic keywords
+    // -----------------------------------------------------------------------
+    case "rooms": {
+      const roomProject = project ?? "auto";
+      const resolvedRoom = await core.resolveProject(roomProject);
+      const roomList = core.listRooms(resolvedRoom);
+      const pd = core.palaceDir(resolvedRoom);
+
+      output(`Palace rooms — ${resolvedRoom}\n`);
+      for (const r of roomList) {
+        const roomPath = path.join(pd, "rooms", r.slug);
+        let entryCount = 0;
+        let topics: string[] = [];
+        if (fs.existsSync(roomPath)) {
+          const files = fs.readdirSync(roomPath).filter(f => f.endsWith(".md") && f !== "README.md");
+          entryCount = files.length;
+          const allContent = files.slice(0, 5).map(f =>
+            fs.readFileSync(path.join(roomPath, f), "utf-8").slice(0, 200)
+          ).join(" ");
+          topics = core.extractKeywords(allContent, 4);
+        }
+        output(`  ${r.name} (${entryCount} entries, salience ${r.salience.toFixed(2)})`);
+        if (topics.length > 0) output(`    topics: ${topics.join(", ")}`);
+      }
       break;
     }
 

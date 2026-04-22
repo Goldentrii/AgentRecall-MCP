@@ -10,11 +10,12 @@ import { ensurePalaceInitialized, listRooms } from "../palace/rooms.js";
 import { readIdentity } from "../palace/identity.js";
 import { readAwarenessState } from "../palace/awareness.js";
 import { recallInsights, readInsightsIndex } from "../palace/insights-index.js";
-import { journalDirs } from "../storage/paths.js";
+import { journalDirs, palaceDir } from "../storage/paths.js";
 import { extractSection } from "../helpers/sections.js";
 import { todayISO } from "../storage/fs-utils.js";
 import { readAlignmentLog, extractWatchPatterns, type WatchForPattern } from "../helpers/alignment-patterns.js";
 import { readP0Corrections, type CorrectionRecord } from "../storage/corrections.js";
+import { extractKeywords } from "../helpers/auto-name.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -27,7 +28,7 @@ export interface SessionStartResult {
   project: string;
   identity: string;
   insights: Array<{ title: string; confirmed: number; severity: string }>;
-  active_rooms: Array<{ name: string; salience: number; one_liner: string }>;
+  active_rooms: Array<{ name: string; salience: number; one_liner: string; topics?: string[] }>;
   cross_project: Array<{ title: string; from_project: string; relevance: number }>;
   recent: { today: string | null; yesterday: string | null; older_count: number };
   watch_for: WatchForPattern[];
@@ -68,11 +69,29 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
 
   // 3. Active rooms — top 3 by salience
   const rooms = listRooms(slug).slice(0, 3);
-  const active_rooms = rooms.map((r) => ({
+  const active_rooms: Array<{ name: string; salience: number; one_liner: string; topics?: string[] }> = rooms.map((r) => ({
     name: r.name,
     salience: r.salience,
     one_liner: r.description.slice(0, 80),
   }));
+
+  // 3b. Enhance rooms with topic keywords from room content
+  const pd = palaceDir(slug);
+  for (const room of active_rooms) {
+    try {
+      const roomPath = path.join(pd, "rooms", room.name.toLowerCase().replace(/\s+/g, "-"));
+      if (fs.existsSync(roomPath)) {
+        const files = fs.readdirSync(roomPath).filter(f => f.endsWith(".md") && f !== "README.md");
+        const allContent = files.slice(0, 5).map(f =>
+          fs.readFileSync(path.join(roomPath, f), "utf-8").slice(0, 200)
+        ).join(" ");
+        if (allContent.length > 0) {
+          const topics = extractKeywords(allContent, 4);
+          if (topics.length > 0) room.topics = topics;
+        }
+      }
+    } catch { /* non-blocking — topics are best-effort */ }
+  }
 
   // 4. Cross-project insights matching current context
   const context = input.context ?? slug;
