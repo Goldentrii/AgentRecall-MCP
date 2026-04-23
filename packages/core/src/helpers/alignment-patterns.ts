@@ -28,30 +28,62 @@ export function readAlignmentLog(project: string): AlignmentRecord[] {
   try { return JSON.parse(fs.readFileSync(p, "utf-8")); } catch { return []; }
 }
 
+/**
+ * Extract a clean, actionable rule from raw correction text.
+ * Raw: 'Was: "Adding CSS classes" | Correction: "no don't use black backgrounds"'
+ * Clean: "Don't use black backgrounds"
+ */
+function cleanRule(raw: string): string {
+  // Try to extract the "Correction:" part from delta format
+  const corrMatch = raw.match(/Correction:\s*"?([^"|]+)/i);
+  if (corrMatch) {
+    return capitalizeFirst(corrMatch[1].trim().slice(0, 80));
+  }
+
+  // Try to extract "Human correction:" from check format
+  const humanMatch = raw.match(/Human correction:\s*"?([^"|]+)/i);
+  if (humanMatch) {
+    return capitalizeFirst(humanMatch[1].trim().slice(0, 80));
+  }
+
+  // Strip "Was: ..." prefix if present
+  const wasStripped = raw.replace(/^Was:\s*"[^"]*"\s*\|\s*/i, "").trim();
+  if (wasStripped.length > 5 && wasStripped !== raw) {
+    return capitalizeFirst(wasStripped.slice(0, 80));
+  }
+
+  // Fallback: use first sentence, cleaned up
+  const firstSentence = raw.split(/[.!?\n]/)[0]?.trim() ?? raw;
+  return capitalizeFirst(firstSentence.slice(0, 80));
+}
+
+function capitalizeFirst(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export function extractWatchPatterns(records: AlignmentRecord[], limit: number = 3): WatchForPattern[] {
-  const correctionCounts = new Map<string, { count: number; examples: string[] }>();
+  const correctionCounts = new Map<string, { count: number; rules: string[] }>();
 
   for (const past of records) {
+    // Prefer human_correction (direct), fall back to delta (may have Was:/Correction: format)
     const corrections = [...(past.corrections ?? [])];
     if (past.delta) corrections.push(past.delta);
     for (const c of corrections) {
       const cKeywords = extractKeywords(c, 2);
       const key = cKeywords.join("-") || "general";
-      const entry = correctionCounts.get(key) ?? { count: 0, examples: [] };
+      const entry = correctionCounts.get(key) ?? { count: 0, rules: [] };
       entry.count++;
-      if (entry.examples.length < 2) entry.examples.push(c.slice(0, 80));
+      if (entry.rules.length < 2) entry.rules.push(cleanRule(c));
       correctionCounts.set(key, entry);
     }
   }
 
   const patterns: WatchForPattern[] = [];
-  for (const [, { count, examples }] of correctionCounts) {
+  for (const [, { count, rules }] of correctionCounts) {
     if (count >= 2) {
-      // Use the actual correction text as the pattern, not the keyword key
-      // The keyword key is only for grouping — not meaningful to display
-      const displayText = examples[0].slice(0, 80);
       patterns.push({
-        pattern: displayText,
+        pattern: rules[0],
         frequency: count,
         suggestion: `Corrected ${count} times — review your approach before proceeding`,
       });

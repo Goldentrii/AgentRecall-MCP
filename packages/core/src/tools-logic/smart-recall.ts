@@ -79,9 +79,19 @@ export interface SmartRecallResultItem {
   title: string;
   excerpt: string;
   score: number;
+  /** Human-readable confidence: "high", "medium", "low", "weak" */
+  confidence: string;
   room?: string;
   date?: string;
   severity?: string;
+}
+
+/** Convert raw RRF score to a readable label. */
+function scoreLabel(score: number): string {
+  if (score >= 0.10) return "high";
+  if (score >= 0.05) return "medium";
+  if (score >= 0.03) return "low";
+  return "weak";
 }
 
 export interface SmartRecallResult {
@@ -297,6 +307,7 @@ export async function smartRecall(input: SmartRecallInput): Promise<SmartRecallR
         title,
         excerpt: r.excerpt,
         score: internalScore,
+        confidence: scoreLabel(internalScore),
         room: r.room,
       });
     }
@@ -329,6 +340,7 @@ export async function smartRecall(input: SmartRecallInput): Promise<SmartRecallR
         title,
         excerpt: r.excerpt,
         score: internalScore,
+        confidence: scoreLabel(internalScore),
         date: r.date,
       });
     }
@@ -362,6 +374,7 @@ export async function smartRecall(input: SmartRecallInput): Promise<SmartRecallR
         title: i.title,
         excerpt: `[${i.severity}] ${i.applies_when.join(", ")}`,
         score: internalScore,
+        confidence: scoreLabel(internalScore),
         severity: i.severity,
       });
     }
@@ -422,7 +435,7 @@ export async function smartRecall(input: SmartRecallInput): Promise<SmartRecallR
     const key = item.excerpt.toLowerCase().replace(/\s+/g, " ").trim();
     if (seen.has(key)) continue;
     seen.add(key);
-    deduped.push({ ...item, score });
+    deduped.push({ ...item, score, confidence: scoreLabel(score) });
   }
 
   // ── 7. Final sort and return ──────────────────────────────────────────────
