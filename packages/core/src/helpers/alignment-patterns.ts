@@ -81,11 +81,15 @@ export function extractWatchPatterns(records: AlignmentRecord[], limit: number =
 
   const patterns: WatchForPattern[] = [];
   for (const [, { count, rules }] of correctionCounts) {
-    if (count >= 2) {
+    // P0 corrections (never/always/don't) surface after 1 occurrence; others need 2
+    const isP0 = /\bnever\b|\balways\b|\bdon'?t\b|\bno\b.*\bshould\b/i.test(rules[0]);
+    if (count >= 2 || (count >= 1 && isP0)) {
       patterns.push({
         pattern: rules[0],
         frequency: count,
-        suggestion: `Corrected ${count} times — review your approach before proceeding`,
+        suggestion: count === 1
+          ? `P0 correction — follow this rule strictly`
+          : `Corrected ${count} times — review your approach before proceeding`,
       });
     }
   }

@@ -301,6 +301,13 @@ export async function smartRecall(input: SmartRecallInput): Promise<SmartRecallR
       const salience = Math.max(0.4, r.salience);
       const internalScore = keyScore * 0.65 + salience * 0.35;
 
+      // Try to extract a date from the excerpt (many palace entries have ### YYYY-MM-DD headers)
+      let palaceDate: string | undefined;
+      const datePattern = r.excerpt.match(/(\d{4}-\d{2}-\d{2})/);
+      if (datePattern) {
+        palaceDate = datePattern[1];
+      }
+
       palaceItems.push({
         id,
         source: "palace",
@@ -309,6 +316,7 @@ export async function smartRecall(input: SmartRecallInput): Promise<SmartRecallR
         score: internalScore,
         confidence: scoreLabel(internalScore),
         room: r.room,
+        date: palaceDate,
       });
     }
   } catch { /* palace may not be initialized */ }

@@ -111,6 +111,16 @@ function classifyRoute(content: string, context?: string): Route {
 // ---------------------------------------------------------------------------
 
 export async function smartRemember(input: SmartRememberInput): Promise<SmartRememberResult> {
+  if (!input.content || input.content.trim().length < 10) {
+    return {
+      success: false,
+      routed_to: "rejected",
+      classification: "too_short",
+      auto_name: "",
+      result: { error: "Content too short (minimum 10 characters). Memory not saved." },
+    };
+  }
+
   const route = classifyRoute(input.content, input.context);
   const slugResult = generateSlug(input.content);
   const autoName = slugResult.slug;

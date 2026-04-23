@@ -55,8 +55,36 @@ export async function detectProject(): Promise<string> {
     }
   }
 
-  // 4. Basename of cwd
-  _cachedProject = path.basename(cwd);
+  // 4. Basename of cwd — but check if it looks like the home directory username
+  const candidate = path.basename(cwd);
+  const homeDir = process.env.HOME ?? process.env.USERPROFILE ?? "";
+  const homeBasename = homeDir ? path.basename(homeDir) : "";
+
+  if (candidate && candidate !== homeBasename) {
+    _cachedProject = candidate;
+    return _cachedProject;
+  }
+
+  // 5. cwd resolved to home dir username — try package.json in parent dirs
+  let searchDir = cwd;
+  for (let i = 0; i < 3; i++) {
+    const pkg = path.join(searchDir, "package.json");
+    if (fs.existsSync(pkg)) {
+      try {
+        const parsed = JSON.parse(fs.readFileSync(pkg, "utf-8"));
+        if (parsed.name) {
+          _cachedProject = (parsed.name as string).replace(/^@[^/]+\//, "");
+          return _cachedProject!;
+        }
+      } catch { /* fall through */ }
+    }
+    const parent = path.dirname(searchDir);
+    if (parent === searchDir) break;
+    searchDir = parent;
+  }
+
+  // 6. Final fallback: use the directory name even if it matches username
+  _cachedProject = candidate || "default";
   return _cachedProject;
 }
 

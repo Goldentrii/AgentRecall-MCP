@@ -19,6 +19,14 @@ import { extractKeywords } from "../helpers/auto-name.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+/** Slice text at the nearest word boundary, avoiding mid-word truncation. */
+function sliceAtWord(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  const sliced = text.slice(0, maxLen);
+  const lastSpace = sliced.lastIndexOf(" ");
+  return lastSpace > maxLen * 0.6 ? sliced.slice(0, lastSpace) : sliced;
+}
+
 export interface SessionStartInput {
   project?: string;
   context?: string;
@@ -62,7 +70,7 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
     return (b.lastConfirmed ?? "").localeCompare(a.lastConfirmed ?? "");
   });
   const insights = sortedInsights.slice(0, 5).map((i) => ({
-    title: i.title.slice(0, 80),
+    title: sliceAtWord(i.title, 100),
     confirmed: i.confirmations ?? 1,
     severity: "important",
   }));
@@ -72,7 +80,7 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
   const active_rooms: Array<{ name: string; salience: number; one_liner: string; topics?: string[] }> = rooms.map((r) => ({
     name: r.name,
     salience: r.salience,
-    one_liner: r.description.slice(0, 80),
+    one_liner: sliceAtWord(r.description, 100),
   }));
 
   // 3b. Enhance rooms with topic keywords from room content
@@ -97,7 +105,7 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
   const context = input.context ?? slug;
   const matched = recallInsights(context, 3);
   const cross_project = matched.map((i) => ({
-    title: i.title.slice(0, 80),
+    title: sliceAtWord(i.title, 100),
     from_project: (i.source ?? "unknown").slice(0, 30),
     relevance: Math.round((i.relevance ?? 0) * 100) / 100,
   }));
@@ -121,11 +129,11 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
       if (d === today && !todayBrief) {
         const content = fs.readFileSync(path.join(dir, file), "utf-8");
         const brief = extractSection(content, "brief");
-        todayBrief = brief ? brief.slice(0, 200) : content.split("\n").slice(0, 3).join(" ").slice(0, 200);
+        todayBrief = brief ? sliceAtWord(brief, 200) : sliceAtWord(content.split("\n").slice(0, 3).join(" "), 200);
       } else if (d === yesterday && !yesterdayBrief) {
         const content = fs.readFileSync(path.join(dir, file), "utf-8");
         const brief = extractSection(content, "brief");
-        yesterdayBrief = brief ? brief.slice(0, 200) : content.split("\n").slice(0, 3).join(" ").slice(0, 200);
+        yesterdayBrief = brief ? sliceAtWord(brief, 200) : sliceAtWord(content.split("\n").slice(0, 3).join(" "), 200);
       } else if (d < yesterday) {
         olderCount++;
       }
