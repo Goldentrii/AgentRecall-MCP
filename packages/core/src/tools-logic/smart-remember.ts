@@ -127,9 +127,21 @@ export async function smartRemember(input: SmartRememberInput): Promise<SmartRem
       break;
     }
     case "palace_write": {
-      // Use content type as room, auto-name generates the topic
+      // Use content type as room. When "general", pick a better room from context hint or tags.
       const contentType = detectContentType(input.content);
-      const room = contentType === "general" ? "knowledge" : contentType;
+      let room = contentType === "general" ? "knowledge" : contentType;
+
+      // Smarter room routing based on context hint
+      if (input.context) {
+        const ctxLower = input.context.toLowerCase();
+        if (/design|color|theme|style|ui|ux|layout|font/i.test(ctxLower)) room = "design";
+        else if (/architecture|tech.?stack|system|infra/i.test(ctxLower)) room = "architecture";
+        else if (/decision|chose|picked|going.?with/i.test(ctxLower)) room = "decision";
+        else if (/correction|rule|never|always|don.?t/i.test(ctxLower)) room = "alignment";
+        else if (/goal|plan|roadmap|next|priority/i.test(ctxLower)) room = "goals";
+        else if (/blocker|blocked|stuck|waiting/i.test(ctxLower)) room = "blockers";
+      }
+
       const tags = generateTags(input.content, contentType !== "general" ? contentType : undefined);
       result = await palaceWrite({
         room,
