@@ -10,7 +10,7 @@ import { ensurePalaceInitialized, listRooms } from "../palace/rooms.js";
 import { readIdentity } from "../palace/identity.js";
 import { readAwarenessState } from "../palace/awareness.js";
 import { recallInsights, readInsightsIndex } from "../palace/insights-index.js";
-import { journalDirs, palaceDir } from "../storage/paths.js";
+import { journalDirs } from "../storage/paths.js";
 import { extractSection } from "../helpers/sections.js";
 import { todayISO } from "../storage/fs-utils.js";
 import { readAlignmentLog, extractWatchPatterns, type WatchForPattern } from "../helpers/alignment-patterns.js";
@@ -83,22 +83,14 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
     one_liner: sliceAtWord(r.description, 200),
   }));
 
-  // 3b. Enhance rooms with topic keywords from room content
-  const pd = palaceDir(slug);
-  for (const room of active_rooms) {
-    try {
-      const roomPath = path.join(pd, "rooms", room.name.toLowerCase().replace(/\s+/g, "-"));
-      if (fs.existsSync(roomPath)) {
-        const files = fs.readdirSync(roomPath).filter(f => f.endsWith(".md") && f !== "README.md");
-        const allContent = files.slice(0, 5).map(f =>
-          fs.readFileSync(path.join(roomPath, f), "utf-8").slice(0, 1000)
-        ).join(" ");
-        if (allContent.length > 0) {
-          const topics = extractKeywords(allContent, 4);
-          if (topics.length > 0) room.topics = topics;
-        }
-      }
-    } catch { /* non-blocking — topics are best-effort */ }
+  // 3b. Populate topics from room description (clean semantic labels)
+  //     Previously extracted from raw file content — produced noisy date/name keywords.
+  for (let i = 0; i < active_rooms.length; i++) {
+    const meta = rooms[i]; // RoomMeta, aligned with active_rooms by index
+    if (meta.description) {
+      const topics = extractKeywords(meta.description, 4);
+      if (topics.length > 0) active_rooms[i].topics = topics;
+    }
   }
 
   // 4. Cross-project insights matching current context

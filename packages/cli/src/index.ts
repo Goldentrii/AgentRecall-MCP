@@ -1215,17 +1215,12 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
       for (const r of roomList) {
         const roomPath = path.join(pd, "rooms", r.slug);
         let entryCount = 0;
-        let topics: string[] = [];
         if (fs.existsSync(roomPath)) {
           const files = fs.readdirSync(roomPath).filter(f => f.endsWith(".md") && f !== "README.md");
           entryCount = files.length;
-          const allContent = files.slice(0, 5).map(f =>
-            fs.readFileSync(path.join(roomPath, f), "utf-8").slice(0, 200)
-          ).join(" ");
-          topics = core.extractKeywords(allContent, 4);
         }
         output(`  ${r.name} (${entryCount} entries, salience ${r.salience.toFixed(2)})`);
-        if (topics.length > 0) output(`    topics: ${topics.join(", ")}`);
+        if (r.description) output(`    ${r.description}`);
       }
       break;
     }

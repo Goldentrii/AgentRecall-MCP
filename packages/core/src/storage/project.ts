@@ -11,18 +11,15 @@ import type { ProjectInfo } from "../types.js";
 
 const execFileAsync = promisify(execFile);
 
-let _cachedProject: string | null = null;
-
 /**
  * Auto-detect project slug from environment, git, or cwd.
+ * No caching — each call re-detects from the current environment.
+ * Use AGENT_RECALL_PROJECT env var for a stable override across calls.
  */
 export async function detectProject(): Promise<string> {
-  if (_cachedProject) return _cachedProject;
-
-  // 1. Env var
+  // 1. Env var — stable explicit override
   if (process.env.AGENT_RECALL_PROJECT) {
-    _cachedProject = process.env.AGENT_RECALL_PROJECT;
-    return _cachedProject;
+    return process.env.AGENT_RECALL_PROJECT;
   }
 
   // 2. Git repo name (async)
@@ -31,13 +28,13 @@ export async function detectProject(): Promise<string> {
     const remote = stdout.trim();
     if (remote) {
       const name = path.basename(remote, ".git");
-      if (name) { _cachedProject = name; return name; }
+      if (name) return name;
     }
   } catch {
     try {
       const { stdout } = await execFileAsync("git", ["rev-parse", "--show-toplevel"], { timeout: 3000 });
       const root = stdout.trim();
-      if (root) { _cachedProject = path.basename(root); return _cachedProject; }
+      if (root) return path.basename(root);
     } catch {
       // fall through
     }
@@ -49,7 +46,7 @@ export async function detectProject(): Promise<string> {
   if (fs.existsSync(pkgPath)) {
     try {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-      if (pkg.name) { _cachedProject = pkg.name.replace(/^@[^/]+\//, "") as string; return _cachedProject!; }
+      if (pkg.name) return (pkg.name as string).replace(/^@[^/]+\//, "");
     } catch {
       // fall through
     }
@@ -61,8 +58,7 @@ export async function detectProject(): Promise<string> {
   const homeBasename = homeDir ? path.basename(homeDir) : "";
 
   if (candidate && candidate !== homeBasename) {
-    _cachedProject = candidate;
-    return _cachedProject;
+    return candidate;
   }
 
   // 5. cwd resolved to home dir username — try package.json in parent dirs
@@ -72,10 +68,7 @@ export async function detectProject(): Promise<string> {
     if (fs.existsSync(pkg)) {
       try {
         const parsed = JSON.parse(fs.readFileSync(pkg, "utf-8"));
-        if (parsed.name) {
-          _cachedProject = (parsed.name as string).replace(/^@[^/]+\//, "");
-          return _cachedProject!;
-        }
+        if (parsed.name) return (parsed.name as string).replace(/^@[^/]+\//, "");
       } catch { /* fall through */ }
     }
     const parent = path.dirname(searchDir);
@@ -84,8 +77,7 @@ export async function detectProject(): Promise<string> {
   }
 
   // 6. Final fallback: use the directory name even if it matches username
-  _cachedProject = candidate || "default";
-  return _cachedProject;
+  return candidate || "default";
 }
 
 /**
