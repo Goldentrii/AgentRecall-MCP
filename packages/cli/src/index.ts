@@ -319,14 +319,26 @@ async function main(): Promise<void> {
       }
       break;
     }
-    case "insight": {
+    case "insight":
+    case "recall": {
       const context = rest.filter((a) => !a.startsWith("--")).join(" ");
       const limit = getFlag("--limit", rest);
-      const result = await core.recallInsight({
-        context,
-        limit: limit ? parseInt(limit) : 5,
-      });
-      output(result);
+      const insightProject = getFlag("--project", rest) ?? project;
+      if (insightProject) {
+        // Scoped recall: use smartRecall which accepts project and filters palace/journal/insights
+        const result = await core.smartRecall({
+          query: context,
+          project: insightProject,
+          limit: limit ? parseInt(limit) : 5,
+        });
+        output(result);
+      } else {
+        const result = await core.recallInsight({
+          context,
+          limit: limit ? parseInt(limit) : 5,
+        });
+        output(result);
+      }
       break;
     }
     case "synthesize": {
@@ -973,7 +985,6 @@ async function main(): Promise<void> {
 
         if (dryRun) {
           output(`[DRY RUN] Would save: ${proj}\n  ${summary.slice(0, 120)}\n`);
-          saved.push(proj);
           continue;
         }
 
@@ -990,7 +1001,11 @@ async function main(): Promise<void> {
       for (const p of saved) output(`  ✓ ${p}`);
       for (const p of skipped) output(`  ~ ${p} — already journaled, skipped`);
       for (const f of failed) output(`  ✗ ${f.proj} — ${f.err}`);
-      output(`\nTotal: ${saved.length} saved, ${skipped.length} skipped, ${failed.length} failed`);
+      if (dryRun) {
+        output(`\n(dry run — no data written)`);
+      } else {
+        output(`\nTotal: ${saved.length} saved, ${skipped.length} skipped, ${failed.length} failed`);
+      }
       break;
     }
 
