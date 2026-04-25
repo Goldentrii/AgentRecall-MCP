@@ -58,6 +58,7 @@ export const SECTION_HEADERS: Record<string, string> = {
 export const DEFAULT_PALACE_ROOMS = [
   { slug: "goals", name: "Goals", description: "Active goals, completed goals, goal evolution", tags: ["planning"] },
   { slug: "architecture", name: "Architecture", description: "Technical decisions, patterns, tech stack", tags: ["technical"] },
+  { slug: "decisions", name: "Decisions", description: "Decision trails with prior/posterior tracking, evidence chains, and outcomes. Bayesian-inspired audit trail for major decisions.", tags: ["technical"] },
   { slug: "blockers", name: "Blockers", description: "Current and resolved blockers", tags: ["status"] },
   { slug: "alignment", name: "Alignment", description: "Frequently misunderstood areas, human corrections", tags: ["communication"] },
   { slug: "knowledge", name: "Knowledge", description: "Learned lessons by category", tags: ["learning"] },

@@ -10,7 +10,7 @@ import * as path from "node:path";
 import { resolveProject } from "../storage/project.js";
 import { getRoot } from "../types.js";
 import { ensureDir, todayISO } from "../storage/fs-utils.js";
-import { extractKeywords } from "../helpers/auto-name.js";
+import { extractKeywords, generateSlug } from "../helpers/auto-name.js";
 import { generateTags } from "../helpers/tag-generator.js";
 import { writeCorrection } from "../storage/corrections.js";
 import {
@@ -22,6 +22,13 @@ import {
 import { awarenessUpdate } from "./awareness-update.js";
 import { palaceDir } from "../storage/paths.js";
 import { listRooms } from "../palace/rooms.js";
+import { palaceWrite } from "./palace-write.js";
+
+export interface EvidenceFactor {
+  factor: string;
+  direction: "supports" | "weakens";
+  weight?: number;
+}
 
 export interface CheckInput {
   goal: string;
@@ -30,6 +37,11 @@ export interface CheckInput {
   human_correction?: string;
   delta?: string;
   project?: string;
+  prior?: number;
+  evidence?: EvidenceFactor[];
+  posterior?: number;
+  outcome?: "confirmed" | "rejected" | "partial" | string;
+  decision_id?: string;
 }
 
 export interface WatchFor {
@@ -50,6 +62,9 @@ export interface CheckResult {
   watch_for: WatchFor[];
   similar_past_deltas: PastDelta[];
   auto_promoted?: number;
+  decision_id?: string;
+  decision_trail_saved?: boolean;
+  calibration_note?: string;
 }
 
 function alignmentLogPath(project: string): string {
@@ -197,11 +212,73 @@ export async function check(input: CheckInput): Promise<CheckResult> {
     }
   }
 
+  // 5. Decision trail: persist when outcome is closed. ID only generated when writing.
+  let decisionId: string | undefined;
+  let decisionTrailSaved = false;
+  let calibrationNote: string | undefined;
+
+  if (input.outcome !== undefined) {
+    decisionId = input.decision_id ?? `decision-${Date.now()}`;
+    try {
+      const decisionContent = [
+        `# Decision: ${input.goal}`,
+        ``,
+        `## Summary`,
+        `- Prior: ${input.prior ?? "not set"}`,
+        `- Posterior: ${input.posterior ?? "not set"}`,
+        `- Outcome: ${input.outcome}`,
+        `- Date: ${todayISO()}`,
+        `- Confidence: ${input.confidence}`,
+        ``,
+        input.evidence?.length ? `## Evidence chain` : "",
+        ...(input.evidence ?? []).map(
+          (e, i) =>
+            `${i + 1}. [${e.direction}] ${e.factor}${e.weight !== undefined ? ` (weight: ${e.weight})` : ""}`
+        ),
+        ``,
+        input.assumptions?.length ? `## Assumptions` : "",
+        ...(input.assumptions ?? []).map((a) => `- ${a}`),
+        input.delta ? `\n## Correction\n${input.delta}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const topicSlug = generateSlug(input.goal, { room: "decisions" }).slug;
+      await palaceWrite({
+        room: "decisions",
+        topic: topicSlug,
+        content: decisionContent,
+        project: slug,
+      });
+      decisionTrailSaved = true;
+
+      // Simple calibration hint: flag when prior is high but outcome is rejected
+      if (
+        input.prior !== undefined &&
+        input.prior >= 0.7 &&
+        input.outcome === "rejected"
+      ) {
+        calibrationNote = `Prior was ${input.prior} but outcome was rejected — consider revisiting confidence calibration for similar goals.`;
+      } else if (
+        input.prior !== undefined &&
+        input.prior <= 0.3 &&
+        input.outcome === "confirmed"
+      ) {
+        calibrationNote = `Prior was ${input.prior} but outcome was confirmed — you may be underestimating confidence on similar goals.`;
+      }
+    } catch {
+      // Best effort — never block the check flow
+    }
+  }
+
   return {
     recorded: true,
     project: slug,
     watch_for: watchFor,
     similar_past_deltas: similarDeltas.slice(0, 3),
     auto_promoted: autoPromoted > 0 ? autoPromoted : undefined,
+    decision_id: decisionId,
+    decision_trail_saved: decisionTrailSaved || undefined,
+    calibration_note: calibrationNote,
   };
 }

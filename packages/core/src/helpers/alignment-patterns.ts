@@ -62,6 +62,92 @@ function capitalizeFirst(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+export interface CalibrationWarning {
+  pattern: string;      // e.g. "API design decisions"
+  avg_prior: number;    // average initial confidence
+  avg_outcome: number;  // average outcome success (confirmed=1, rejected=0, partial=0.5)
+  sample_size: number;  // how many decisions
+  suggestion: string;   // e.g. "Your priors tend to be overconfident — consider starting lower"
+}
+
+export function computeDecisionCalibration(project: string): CalibrationWarning[] {
+  const decisionsDir = path.join(getRoot(), "projects", project, "palace", "rooms", "decisions");
+  if (!fs.existsSync(decisionsDir)) return [];
+
+  let files: string[];
+  try {
+    files = fs.readdirSync(decisionsDir).filter((f) => f.endsWith(".md"));
+  } catch {
+    return [];
+  }
+
+  if (files.length === 0) return [];
+
+  const priors: number[] = [];
+  const outcomes: number[] = [];
+
+  for (const file of files) {
+    try {
+      const content = fs.readFileSync(path.join(decisionsDir, file), "utf-8");
+
+      // Parse prior: look for "- Prior: 0.7" or "Prior: 0.7"
+      const priorMatch = content.match(/[-*]?\s*Prior:\s*([\d.]+)/i);
+      if (!priorMatch) continue;
+      const prior = parseFloat(priorMatch[1]);
+      if (isNaN(prior)) continue;
+
+      // Parse outcome: look for "- Outcome: confirmed" etc.
+      const outcomeMatch = content.match(/[-*]?\s*Outcome:\s*(\w+)/i);
+      if (!outcomeMatch) continue;
+      const outcomeRaw = outcomeMatch[1].toLowerCase();
+
+      let outcome: number;
+      if (outcomeRaw === "confirmed") outcome = 1.0;
+      else if (outcomeRaw === "rejected") outcome = 0.0;
+      else if (outcomeRaw === "partial") outcome = 0.5;
+      else continue; // skip unknown outcomes
+
+      priors.push(prior);
+      outcomes.push(outcome);
+    } catch {
+      continue;
+    }
+  }
+
+  const sampleSize = priors.length;
+  const skippedCount = files.length - sampleSize; // files without numeric prior or standard outcome
+  if (sampleSize < 3) return [];
+
+  const avgPrior = priors.reduce((a, b) => a + b, 0) / sampleSize;
+  const avgOutcome = outcomes.reduce((a, b) => a + b, 0) / sampleSize;
+
+  const roundedPrior = Math.round(avgPrior * 100) / 100;
+  const roundedOutcome = Math.round(avgOutcome * 100) / 100;
+  const sampleNote = skippedCount > 0 ? ` (${skippedCount} decisions without numeric prior/outcome excluded)` : "";
+
+  const warnings: CalibrationWarning[] = [];
+
+  if (avgPrior > avgOutcome + 0.15) {
+    warnings.push({
+      pattern: "Decision calibration",
+      avg_prior: roundedPrior,
+      avg_outcome: roundedOutcome,
+      sample_size: sampleSize,
+      suggestion: `Your priors tend to be overconfident (avg ${roundedPrior} vs outcome ${roundedOutcome}, n=${sampleSize}${sampleNote}) — consider starting lower`,
+    });
+  } else if (avgPrior < avgOutcome - 0.15) {
+    warnings.push({
+      pattern: "Decision calibration",
+      avg_prior: roundedPrior,
+      avg_outcome: roundedOutcome,
+      sample_size: sampleSize,
+      suggestion: `Your priors tend to be underconfident (avg ${roundedPrior} vs outcome ${roundedOutcome}, n=${sampleSize}${sampleNote}) — consider starting higher`,
+    });
+  }
+
+  return warnings;
+}
+
 export function extractWatchPatterns(records: AlignmentRecord[], limit: number = 3): WatchForPattern[] {
   const correctionCounts = new Map<string, { count: number; rules: string[] }>();
 

@@ -13,7 +13,7 @@ import { recallInsights, readInsightsIndex } from "../palace/insights-index.js";
 import { journalDirs } from "../storage/paths.js";
 import { extractSection } from "../helpers/sections.js";
 import { todayISO } from "../storage/fs-utils.js";
-import { readAlignmentLog, extractWatchPatterns, type WatchForPattern } from "../helpers/alignment-patterns.js";
+import { readAlignmentLog, extractWatchPatterns, computeDecisionCalibration, type WatchForPattern } from "../helpers/alignment-patterns.js";
 import { readP0Corrections, type CorrectionRecord } from "../storage/corrections.js";
 import { extractKeywords } from "../helpers/auto-name.js";
 import * as fs from "node:fs";
@@ -143,6 +143,16 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
   // 6. Watch for — predictive warnings from past corrections
   const alignLog = readAlignmentLog(slug);
   const watch_for = extractWatchPatterns(alignLog, 2);
+
+  // 8b. Decision calibration warnings
+  const calibration = computeDecisionCalibration(slug);
+  for (const cal of calibration) {
+    watch_for.push({
+      pattern: cal.pattern,
+      frequency: cal.sample_size,
+      suggestion: cal.suggestion,
+    });
+  }
 
   // 7. P0 corrections — always-load behavioral rules (max 10 most recent)
   const corrections = readP0Corrections(slug).slice(0, 10);
