@@ -13,6 +13,7 @@ import { register as registerCheck } from "./tools/check.js";
 import { register as registerDigest } from "./tools/digest.js";
 import { register as registerProjectBoard } from "./tools/project-board.js";
 import { register as registerProjectStatus } from "./tools/project-status.js";
+import { register as registerBootstrap } from "./tools/bootstrap.js";
 
 // ── Legacy tools (still importable for SDK/CLI, not registered by default) ──
 // DEPRECATED v3.4: use session_start instead
@@ -81,6 +82,8 @@ if (args.includes("--list-tools")) {
     { name: "session_end", description: "Save session summary, insights, and trajectory" },
     { name: "check", description: "Record understanding, get predictive warnings from past corrections" },
     { name: "digest", description: "Context cache — store/recall/read/invalidate pre-computed analysis results" },
+    { name: "bootstrap_scan", description: "Discover existing projects on this machine — read-only scan" },
+    { name: "bootstrap_import", description: "Import discovered projects into AgentRecall" },
   ];
   process.stdout.write(JSON.stringify(tools, null, 2) + "\n");
   process.exit(0);
@@ -95,6 +98,7 @@ registerRecall(server);
 registerSessionEnd(server);
 registerCheck(server);
 registerDigest(server);
+registerBootstrap(server);
 registerJournalResources(server);
 registerAwarenessResource(server);
 registerSessionPrompts(server);

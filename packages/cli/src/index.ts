@@ -83,6 +83,12 @@ DIAGNOSTICS:
   ar rooms             Show palace rooms with entry counts and topic keywords
   ar sync-memory       Sync AgentRecall → Claude auto-memory (corrections + insights + rooms)
 
+BOOTSTRAP:
+  ar bootstrap               Scan machine for projects and show summary card
+  ar bootstrap --dry-run     Preview what would be imported
+  ar bootstrap --import      Import all new projects into AgentRecall
+  ar bootstrap --import --project <slug>  Import a single project
+
 MULTI-SESSION:
   ar sessions                List all Claude Code sessions active today (diagnostic)
   ar saveall [--dry-run]     Save all today's sessions to AgentRecall automatically
@@ -1241,6 +1247,164 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
         }
         output(`  ${r.name} (${entryCount} entries, salience ${r.salience.toFixed(2)})`);
         if (r.description) output(`    ${r.description}`);
+      }
+      break;
+    }
+
+    // -----------------------------------------------------------------------
+    // ar bootstrap — scan machine for projects and import into AgentRecall
+    // -----------------------------------------------------------------------
+    case "bootstrap": {
+      const dryRun = hasFlag("--dry-run", rest);
+      const doImport = hasFlag("--import", rest);
+      const targetProject = getFlag("--project", rest);
+
+      const scan = await core.bootstrapScan();
+
+      const today = new Date().toISOString().slice(0, 10);
+      const LINE = "─".repeat(62);
+
+      if (doImport) {
+        // ── ar bootstrap --import [--project <slug>] ──────────────────────
+        if (targetProject && !scan.projects.some((p) => p.slug === targetProject)) {
+          const available = scan.projects.filter((p) => !p.already_in_ar).map((p) => p.slug).slice(0, 10);
+          output(`  Error: no project matching slug '${targetProject}' found in scan results.`);
+          output(`  Available: ${available.join(", ") || "(none)"}`);
+          break;
+        }
+        const importSelection = targetProject
+          ? { project_slugs: [targetProject] }
+          : undefined;
+        const result = await core.bootstrapImport(scan, importSelection);
+
+        output(`${LINE}`);
+        output(`  AgentRecall  Bootstrap Import        ${today}`);
+        output(`${LINE}`);
+        output(``);
+        output(`  Imported:`);
+        output(`    ${String(result.projects_created).padStart(4)} projects created`);
+        output(`    ${String(result.items_imported).padStart(4)} items imported`);
+        output(`    ${String(result.items_skipped).padStart(4)} items skipped`);
+        output(`    ${String(result.errors.length).padStart(4)} errors`);
+        if (result.errors.length > 0) {
+          output(``);
+          output(`  Errors:`);
+          for (const e of result.errors.slice(0, 5)) {
+            output(`    ${e.project}/${e.item}: ${e.error.slice(0, 80)}`);
+          }
+        }
+        output(``);
+        output(`  Run ar cold-start to see your projects.`);
+        output(`${LINE}`);
+      } else if (dryRun) {
+        // ── ar bootstrap --dry-run ────────────────────────────────────────
+        const newProjects = scan.projects.filter((p) => !p.already_in_ar);
+        const totalItems = newProjects.reduce((acc, p) => acc + p.importable_items.length, 0);
+
+        output(`${LINE}`);
+        output(`  AgentRecall  Bootstrap Dry Run       ${today}`);
+        output(`${LINE}`);
+        output(``);
+        output(`  Would import ${newProjects.length} new projects, ${totalItems} items:`);
+        output(``);
+
+        for (const proj of newProjects.slice(0, 15)) {
+          const lang = proj.language ?? "unknown";
+          const activity = proj.last_activity?.slice(0, 10) ?? "unknown";
+          const itemSummary = proj.importable_items
+            .map((i) => `${i.type}(${(i.size_bytes / 1024).toFixed(0)}KB)`)
+            .join(", ");
+          output(`    ${proj.slug.padEnd(30)} ${lang.padEnd(14)} ${activity}`);
+          output(`       Items: ${itemSummary}`);
+        }
+        if (newProjects.length > 15) {
+          output(`    ... and ${newProjects.length - 15} more`);
+        }
+
+        output(``);
+        output(`  Total: ${totalItems} items across ${newProjects.length} projects`);
+        output(`  To import: ar bootstrap --import`);
+        output(`${LINE}`);
+      } else {
+        // ── ar bootstrap (default scan card) ─────────────────────────────
+        const { stats, projects, global_items } = scan;
+        const newProjects = projects.filter((p) => !p.already_in_ar);
+        const alreadyIn = stats.total_already_in_ar;
+
+        // Summarize source counts
+        let gitCount = 0;
+        let memFileCount = 0;
+        let claudemdCount = 0;
+        const scanDirsFound = new Set<string>();
+
+        for (const p of projects) {
+          for (const s of p.sources) {
+            if (s.type === "git") {
+              gitCount++;
+              // Extract parent scan dir
+              const parts = p.path.split(path.sep);
+              const homeDir = os.homedir().split(path.sep).length;
+              const topDir = parts.slice(0, homeDir + 2).join(path.sep);
+              scanDirsFound.add(topDir);
+            }
+            if (s.type === "claude-memory") {
+              const match = s.detail.match(/(\d+)/);
+              if (match) memFileCount += parseInt(match[1]);
+            }
+          }
+          for (const item of p.importable_items) {
+            if (item.id === "claudemd") claudemdCount++;
+          }
+        }
+        const globalMemFiles = global_items.length;
+
+        output(`${LINE}`);
+        output(`  AgentRecall  Bootstrap Scan          ${today}`);
+        output(`${LINE}`);
+        output(``);
+        output(`  Found on your machine:`);
+        output(`    ${String(gitCount).padStart(4)} git repos`);
+        output(`    ${String(memFileCount + globalMemFiles).padStart(4)} Claude memory files (~/.claude/projects/)`);
+        output(`    ${String(claudemdCount).padStart(4)} CLAUDE.md files`);
+        output(``);
+        output(`  Projects:`);
+        output(`    ${String(newProjects.length).padStart(4)} new (not yet in AgentRecall)`);
+        output(`    ${String(alreadyIn).padStart(4)} already imported`);
+        output(``);
+        output(`  Scan time: ${stats.scan_duration_ms}ms`);
+        output(``);
+        output(`  To import:  ar bootstrap --import`);
+        output(`  To preview: ar bootstrap --dry-run`);
+        output(`${LINE}`);
+        output(``);
+
+        if (newProjects.length > 0) {
+          output(`  New projects found:`);
+          const top10 = newProjects
+            .sort((a, b) => {
+              // Sort by last_activity desc, then by slug
+              const aDate = a.last_activity ?? "0000";
+              const bDate = b.last_activity ?? "0000";
+              return bDate.localeCompare(aDate);
+            })
+            .slice(0, 10);
+
+          for (let i = 0; i < top10.length; i++) {
+            const p = top10[i];
+            const num = String(i + 1).padStart(2);
+            const slug = p.slug.padEnd(26);
+            const lang = (p.language ?? "unknown").padEnd(14);
+            const activity = p.last_activity?.slice(0, 10) ?? "unknown   ";
+            const sourceTypes = [...new Set(p.sources.map((s) => s.type))].join("+");
+            output(`  ${num}  ${slug} ${lang} ${activity}   ${sourceTypes}`);
+          }
+
+          if (newProjects.length > 10) {
+            output(`       ... and ${newProjects.length - 10} more`);
+          }
+        } else {
+          output(`  All discovered projects are already in AgentRecall.`);
+        }
       }
       break;
     }

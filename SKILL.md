@@ -1,8 +1,9 @@
 ---
 name: agent-recall
 description: >-
-  Persistent compounding memory for AI agents. 8 MCP tools: session_start,
-  remember, recall, session_end, check, digest, project_board, project_status.
+  Persistent compounding memory for AI agents. 10 MCP tools: session_start,
+  remember, recall, session_end, check, digest, project_board, project_status,
+  bootstrap_scan, bootstrap_import.
   Correction-first memory with decision trail tracking,
   watch_for warnings, palace rooms with salience scoring, cross-project insight
   matching, same-day journal merging, ambient recall hooks. Local markdown only.
@@ -60,7 +61,7 @@ skip:
 
 # AgentRecall v3.3.28 — Usage Guide
 
-AgentRecall is a persistent memory system with 8 MCP tools. This guide describes how and when to use them.
+AgentRecall is a persistent memory system with 10 MCP tools. This guide describes how and when to use them.
 
 ## Setup
 
@@ -309,6 +310,59 @@ project_board()
 project_status({ project: "auto" })
 ```
 
+### `bootstrap_scan`
+
+**When:** First time using AgentRecall, or when /arstatus shows an empty board.
+
+**What it does:** Scans your machine for existing projects — git repos, Claude AutoMemory (`~/.claude/projects/`), and CLAUDE.md files. Returns a structured report of what CAN be imported. Read-only, no writes.
+
+**What it scans:**
+- `~/Projects/`, `~/work/`, `~/code/`, `~/dev/`, `~/src/`, `~/repos/`, `~/github/` for git repos
+- `~/.claude/projects/` for Claude AutoMemory (user profile, project memories, feedback)
+- CLAUDE.md files in project roots
+
+**How to use:**
+```
+bootstrap_scan()
+```
+
+**Returns:** `projects` (array of discovered projects with importable items), `global_items` (user profile), `stats` (totals + scan duration)
+
+### `bootstrap_import`
+
+**When:** After reviewing bootstrap_scan results, to import selected projects.
+
+**What it does:** Creates AgentRecall entries for discovered projects — palace rooms, identity.md, knowledge entries from Claude memory, initial journal from git history.
+
+**How to use:**
+```
+bootstrap_import({
+  scan_result: "<JSON from bootstrap_scan>",
+  project_slugs: ["my-app", "api-server"],    // optional: import only these
+  item_types: ["identity", "architecture"]     // optional: import only these types
+})
+```
+
+**CLI equivalent:**
+```bash
+ar bootstrap                    # scan and show what's available
+ar bootstrap --dry-run          # preview what would be imported
+ar bootstrap --import           # import all new projects
+ar bootstrap --import --project my-app  # import one project
+```
+
+**What gets imported per project:**
+- `identity` — palace identity.md from project name + description + language
+- `memory` — Claude AutoMemory .md files → palace knowledge room
+- `architecture` — CLAUDE.md content → palace architecture room
+- `trajectory` — git log → initial journal entry with recent activity
+
+**Safety:**
+- Scan is read-only — never writes to your machine or to AgentRecall
+- Import only writes to `~/.agent-recall/`, never modifies source files
+- Skips `.env`, credentials, `.pem`, `.key` files — never reads secrets
+- Projects already in AgentRecall are skipped (no double-import)
+
 ---
 
 ## Session Flow
@@ -371,6 +425,7 @@ COMPOUND: After 10 sessions
 6. **Rate your recall results.** Feedback makes future retrievals better.
 7. **Use `check` for ambiguous tasks.** 5 seconds of verification beats 30 minutes of wrong work.
 8. **Read `watch_for` warnings.** If `session_start` or `check` returns warnings, adjust your approach.
+9. **Run bootstrap on first install.** If `/arstatus` shows no projects, `bootstrap_scan` discovers what's already on your machine and imports it in seconds.
 
 ---
 
