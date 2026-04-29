@@ -255,3 +255,7 @@ export type { EmbeddingProvider } from "./supabase/embedding.js";
 // Supabase — sync
 export { syncToSupabase, backfill, contentHash, parseMemoryFile, deriveSlug } from "./supabase/sync.js";
 export type { ParsedMemoryFile } from "./supabase/sync.js";
+
+// RecallBackend
+export { LocalRecallBackend, getRecallBackend, resetRecallBackend } from "./tools-logic/recall-backend.js";
+export type { RecallBackend } from "./tools-logic/recall-backend.js";
