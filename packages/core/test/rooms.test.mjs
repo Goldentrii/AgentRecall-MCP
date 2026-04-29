@@ -36,7 +36,7 @@ describe("Palace rooms — module integration", () => {
     rooms.ensurePalaceInitialized("test-proj");
     rooms.ensurePalaceInitialized("test-proj");
     const list = rooms.listRooms("test-proj");
-    assert.equal(list.length, 5); // still 5, not 10
+    assert.equal(list.length, 6); // still 6, not 12
   });
 
   it("ensurePalaceInitialized creates identity.md", () => {

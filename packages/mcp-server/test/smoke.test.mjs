@@ -10,11 +10,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ENTRY = path.join(__dirname, "..", "dist", "index.js");
 
 describe("MCP server smoke tests", () => {
-  it("--list-tools outputs 7 tools (5 primary + digest + project_board)", async () => {
+  it("--list-tools outputs all tools", async () => {
     const { stdout } = await execFileAsync("node", [ENTRY, "--list-tools"]);
     const tools = JSON.parse(stdout);
-    assert.equal(tools.length, 7);
     const names = tools.map((t) => t.name);
+    // Core tools
     assert.ok(names.includes("session_start"));
     assert.ok(names.includes("remember"));
     assert.ok(names.includes("recall"));
@@ -22,6 +22,10 @@ describe("MCP server smoke tests", () => {
     assert.ok(names.includes("check"));
     assert.ok(names.includes("digest"));
     assert.ok(names.includes("project_board"));
+    assert.ok(names.includes("project_status"));
+    assert.ok(names.includes("bootstrap_scan"));
+    assert.ok(names.includes("bootstrap_import"));
+    assert.equal(tools.length, 10);
   });
 
   it("--version prints a semver string", async () => {

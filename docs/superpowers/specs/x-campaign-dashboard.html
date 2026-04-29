@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentRecall X Campaign</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf6f1; --surface: #ffffff; --surface-alt: #f5efe8;
+    --border: #e8dfd4; --border-light: #f0e9e0;
+    --text: #3d3229; --text-secondary: #8a7d6f; --text-muted: #b5a99a;
+    --accent: #c47a4a; --accent-light: rgba(196,122,74,0.1);
+    --red: #c45a4a; --orange: #c4944a; --green: #6a9e6a;
+    --blue: #5a7eb5; --purple: #8a6ab5; --cyan: #5a9eaa;
+    --shadow: 0 1px 3px rgba(61,50,41,0.06);
+    --shadow-md: 0 4px 12px rgba(61,50,41,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; -webkit-font-smoothing: antialiased; }
+
+  .header { padding: 2rem 2.5rem 1.5rem; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 1.5rem; font-weight: 800; }
+  .header p { color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; }
+  .header-right { text-align: right; }
+  .header-right .progress-text { font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; }
+  .header-right .progress-bar { width: 200px; height: 6px; background: var(--border); border-radius: 3px; margin-top: 0.4rem; overflow: hidden; }
+  .header-right .progress-fill { height: 100%; background: var(--green); border-radius: 3px; transition: width 0.3s; }
+
+  .nav-tabs { display: flex; gap: 0; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2.5rem; overflow-x: auto; }
+  .nav-tab { padding: 0.7rem 1.1rem; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); cursor: pointer; border-bottom: 2.5px solid transparent; white-space: nowrap; transition: all 0.2s; }
+  .nav-tab:hover { color: var(--text-secondary); }
+  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .content { padding: 2rem 2.5rem; max-width: 1200px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  h2 { font-size: 1.25rem; font-weight: 800; margin-bottom: 0.2rem; }
+  .section-sub { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.5rem; font-weight: 500; }
+
+  /* ===== CHECKLIST CALENDAR ===== */
+  .checklist-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; margin-bottom: 2rem; }
+  .cl-header { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; color: var(--text-muted); text-align: center; padding: 0.4rem; }
+  .cl-cell {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 0.6rem; min-height: 90px; cursor: pointer; transition: all 0.2s; position: relative;
+  }
+  .cl-cell:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+  .cl-cell.done { background: rgba(106,158,106,0.08); border-color: var(--green); }
+  .cl-cell.done .cl-check { background: var(--green); color: white; }
+  .cl-cell.weekend { background: var(--surface-alt); opacity: 0.7; }
+  .cl-day { font-size: 0.7rem; font-weight: 800; color: var(--text-muted); }
+  .cl-type { font-size: 0.68rem; font-weight: 700; margin-top: 0.2rem; }
+  .cl-title { font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.15rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cl-check {
+    position: absolute; top: 0.4rem; right: 0.4rem; width: 20px; height: 20px;
+    border-radius: 50%; border: 2px solid var(--border); display: flex;
+    align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 800;
+    transition: all 0.15s; color: transparent;
+  }
+  .cl-cell.done .cl-check::after { content: '✓'; color: white; }
+  .cl-week-label {
+    grid-column: 1 / -1; font-size: 0.75rem; font-weight: 800;
+    padding: 0.5rem 0 0.25rem; color: var(--text); margin-top: 0.5rem;
+    border-top: 1px solid var(--border-light);
+  }
+  .cl-week-label:first-of-type { border-top: none; margin-top: 0; }
+
+  /* ===== DECISION TIMELINE ===== */
+  .decision-timeline { position: relative; padding-left: 2rem; }
+  .decision-timeline::before { content:''; position:absolute; left:0.5rem; top:0.5rem; bottom:0.5rem; width:2px; background:var(--border); }
+  .decision-item { position: relative; margin-bottom: 1rem; }
+  .decision-item::before { content:''; position:absolute; left:-1.65rem; top:0.6rem; width:10px; height:10px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); }
+  .d-label { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); font-weight:700; }
+  .d-text { font-weight:700; font-size:0.92rem; margin:0.1rem 0; }
+  .d-options { font-size:0.8rem; color:var(--text-secondary); }
+  .chosen { color:var(--green); font-weight:700; }
+
+  /* ===== POST CARDS ===== */
+  .post-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; margin-bottom:1.5rem; overflow:hidden; box-shadow:var(--shadow); }
+  .post-header { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1.25rem; border-bottom:1px solid var(--border-light); background:var(--surface-alt); }
+  .post-header-left { display:flex; align-items:center; gap:0.75rem; }
+  .post-day { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.06em; font-weight:800; padding:0.2rem 0.6rem; border-radius:6px; }
+  .post-type { font-size:0.85rem; font-weight:700; }
+  .post-actions { display:flex; gap:0.4rem; }
+  .btn-sm {
+    font-family:'Nunito',sans-serif; font-size:0.7rem; font-weight:700;
+    padding:0.3rem 0.7rem; border-radius:6px; border:1px solid var(--border);
+    cursor:pointer; transition:all 0.15s; background:var(--surface); color:var(--text-secondary);
+  }
+  .btn-sm:hover { background:var(--accent); color:white; border-color:var(--accent); }
+  .btn-sm.btn-prompt { background:var(--accent-light); border-color:rgba(196,122,74,0.2); color:var(--accent); }
+  .btn-sm.btn-prompt:hover { background:var(--accent); color:white; }
+  .post-body { display:grid; grid-template-columns:1fr 1fr; }
+  .post-lang { padding:1.1rem; }
+  .post-lang:first-child { border-right:1px solid var(--border-light); }
+  .post-lang-label { font-size:0.62rem; text-transform:uppercase; letter-spacing:0.08em; font-weight:800; color:var(--text-muted); margin-bottom:0.5rem; }
+  .tweet-text { font-size:0.88rem; line-height:1.75; }
+  .tweet-text strong { font-weight:700; }
+  .post-note { padding:0.65rem 1.25rem; background:var(--surface-alt); border-top:1px solid var(--border-light); font-size:0.75rem; color:var(--text-secondary); }
+  .post-note strong { color:var(--text); }
+  .conflict-tag { display:inline-block; font-size:0.6rem; font-weight:800; padding:0.1rem 0.4rem; border-radius:4px; background:rgba(196,90,74,0.1); color:var(--red); margin-left:0.5rem; vertical-align:middle; }
+
+  /* ===== PROMPT MODAL ===== */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(61,50,41,0.4); z-index:100; backdrop-filter:blur(4px); }
+  .modal-overlay.show { display:flex; align-items:center; justify-content:center; }
+  .modal { background:var(--surface); border-radius:16px; max-width:700px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 20px 60px rgba(61,50,41,0.2); }
+  .modal-header { padding:1.25rem 1.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .modal-header h3 { font-size:1rem; font-weight:800; }
+  .modal-close { background:none; border:none; font-size:1.2rem; cursor:pointer; color:var(--text-muted); padding:0.25rem; }
+  .modal-body { padding:1.5rem; }
+  .modal-body pre {
+    background:var(--surface-alt); border:1px solid var(--border); border-radius:10px;
+    padding:1.25rem; font-size:0.78rem; line-height:1.6; white-space:pre-wrap;
+    font-family:'Nunito',sans-serif; color:var(--text-secondary);
+  }
+  .modal-copy {
+    margin-top:1rem; width:100%; padding:0.6rem; font-family:'Nunito',sans-serif;
+    font-size:0.85rem; font-weight:700; background:var(--accent); color:white;
+    border:none; border-radius:8px; cursor:pointer; transition:all 0.15s;
+  }
+  .modal-copy:hover { opacity:0.9; }
+
+  .note { background:var(--accent-light); border:1px solid rgba(196,122,74,0.15); border-radius:10px; padding:0.8rem 1rem; font-size:0.82rem; margin-bottom:1.25rem; color:var(--text-secondary); font-weight:500; }
+
+  /* Calendar table */
+  .cal-table { width:100%; border-collapse:separate; border-spacing:0; font-size:0.8rem; border-radius:12px; overflow:hidden; box-shadow:var(--shadow); }
+  .cal-table thead th { text-align:left; padding:0.65rem 0.7rem; background:var(--surface-alt); font-weight:700; color:var(--text-secondary); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); }
+  .cal-table tbody td { padding:0.6rem 0.7rem; border-bottom:1px solid var(--border-light); color:var(--text-secondary); }
+  .cal-table tbody tr { background:var(--surface); }
+  .cal-table tbody tr:last-child td { border-bottom:none; }
+  .cal-week-td { font-weight:800; font-size:0.82rem; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>AgentRecall X Campaign</h1>
+    <p>6 weeks &middot; 42 posts &middot; EN + ZH &middot; hybrid strategy</p>
+  </div>
+  <div class="header-right">
+    <div class="progress-text"><span id="doneCount">0</span> / 30 posts completed</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+</div>
+
+<div class="nav-tabs">
+  <div class="nav-tab active" onclick="showPanel('checklist')">Checklist</div>
+  <div class="nav-tab" onclick="showPanel('decisions')">Decisions</div>
+  <div class="nav-tab" onclick="showPanel('calendar')">Calendar</div>
+  <div class="nav-tab" onclick="showPanel('week1')">W1: Problem</div>
+  <div class="nav-tab" onclick="showPanel('week2')">W2: Architecture</div>
+  <div class="nav-tab" onclick="showPanel('week3')">W3: Secret Sauce</div>
+  <div class="nav-tab" onclick="showPanel('week4')">W4: Math</div>
+  <div class="nav-tab" onclick="showPanel('week5')">W5: Usage</div>
+  <div class="nav-tab" onclick="showPanel('week6')">W6: Vision</div>
+</div>
+
+<div class="content">
+
+  <!-- ===== CHECKLIST ===== -->
+  <div class="panel active" id="checklist">
+    <h2>Post Checklist</h2>
+    <p class="section-sub">Click a cell to mark it done. Progress is saved locally.</p>
+
+    <div class="checklist-grid">
+      <div class="cl-header">Mon</div><div class="cl-header">Tue</div><div class="cl-header">Wed</div><div class="cl-header">Thu</div><div class="cl-header">Fri</div><div class="cl-header">Sat</div><div class="cl-header">Sun</div>
+
+      <div class="cl-week-label" style="color:var(--red);">Week 1 — The Problem</div>
+      <div class="cl-cell" data-id="w1-mon" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Mon</div><div class="cl-type" style="color:var(--red);">Hot Take</div><div class="cl-title">$200 agent can't remember</div></div>
+      <div class="cl-cell" data-id="w1-tue" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Tue</div><div class="cl-type" style="color:var(--blue);">Thread</div><div class="cl-title">Why agents forget (6 tweets)</div></div>
+      <div class="cl-cell" data-id="w1-wed" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Wed</div><div class="cl-type" style="color:var(--green);">Visual</div><div class="cl-title">Amnesia Loop diagram</div></div>
+      <div class="cl-cell" data-id="w1-thu" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Thu</div><div class="cl-type" style="color:var(--purple);">Demo</div><div class="cl-title">Correction forgotten video</div></div>
+      <div class="cl-cell" data-id="w1-fri" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Fri</div><div class="cl-type" style="color:var(--orange);">Folder</div><div class="cl-title">~/.claude/ exposed</div></div>
+      <div class="cl-cell weekend" data-id="w1-sat" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Sat</div><div class="cl-type" style="color:var(--text-muted);">Engage</div><div class="cl-title">Reply to AI threads</div></div>
+      <div class="cl-cell weekend" data-id="w1-sun" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Sun</div><div class="cl-type" style="color:var(--text-muted);">Engage</div><div class="cl-title">QRT agent discussions</div></div>
+
+      <div class="cl-week-label" style="color:var(--orange);">Week 2 — Architecture</div>
+      <div class="cl-cell" data-id="w2-mon" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Mon</div><div class="cl-type" style="color:var(--red);">Hot Take</div><div class="cl-title">Context window is a crutch</div></div>
+      <div class="cl-cell" data-id="w2-tue" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Tue</div><div class="cl-type" style="color:var(--blue);">Thread</div><div class="cl-title">5-layer memory pyramid</div></div>
+      <div class="cl-cell" data-id="w2-wed" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Wed</div><div class="cl-type" style="color:var(--green);">Visual</div><div class="cl-title">Palace folder tree</div></div>
+      <div class="cl-cell" data-id="w2-thu" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Thu</div><div class="cl-type" style="color:var(--purple);">Demo</div><div class="cl-title">session_start live</div></div>
+      <div class="cl-cell" data-id="w2-fri" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Fri</div><div class="cl-type" style="color:var(--orange);">Folder</div><div class="cl-title">~/.agent-recall/ walkthrough</div></div>
+      <div class="cl-cell weekend" data-id="w2-sat" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Sat</div><div class="cl-type" style="color:var(--text-muted);">Engage</div><div class="cl-title">Reply + engage</div></div>
+      <div class="cl-cell weekend" data-id="w2-sun" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Sun</div><div class="cl-type" style="color:var(--text-muted);">Engage</div><div class="cl-title">QRT + connect</div></div>
+
+      <div class="cl-week-label" style="color:var(--green);">Week 3 — Secret Sauce</div>
+      <div class="cl-cell" data-id="w3-mon" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Mon</div><div class="cl-type" style="color:var(--red);">Hot Take</div><div class="cl-title">RAG is solving the wrong problem</div></div>
+      <div class="cl-cell" data-id="w3-tue" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Tue</div><div class="cl-type" style="color:var(--blue);">Thread</div><div class="cl-title">How corrections compound</div></div>
+      <div class="cl-cell" data-id="w3-wed" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Wed</div><div class="cl-type" style="color:var(--green);">Visual</div><div class="cl-title">200-line awareness cap</div></div>
+      <div class="cl-cell" data-id="w3-thu" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Thu</div><div class="cl-type" style="color:var(--purple);">Demo</div><div class="cl-title">watch_for warning live</div></div>
+      <div class="cl-cell" data-id="w3-fri" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Fri</div><div class="cl-type" style="color:var(--orange);">Folder</div><div class="cl-title">palace/rooms/alignment/</div></div>
+      <div class="cl-cell weekend" data-id="w3-sat" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Sat</div><div class="cl-type" style="color:var(--text-muted);">Engage</div><div class="cl-title">Reply + engage</div></div>
+      <div class="cl-cell weekend" data-id="w3-sun" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Sun</div><div class="cl-type" style="color:var(--text-muted);">Engage</div><div class="cl-title">QRT + connect</div></div>
+
+      <div class="cl-week-label" style="color:var(--blue);">Week 4 — The Math</div>
+      <div class="cl-cell" data-id="w4-mon" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Mon</div><div class="cl-type" style="color:var(--red);">Hot Take</div><div class="cl-title">Embeddings are expensive theater</div></div>
+      <div class="cl-cell" data-id="w4-tue" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Tue</div><div class="cl-type" style="color:var(--blue);">Thread</div><div class="cl-title">RRF + Ebbinghaus + Beta</div></div>
+      <div class="cl-cell" data-id="w4-wed" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Wed</div><div class="cl-type" style="color:var(--green);">Visual</div><div class="cl-title">Decay curves chart</div></div>
+      <div class="cl-cell" data-id="w4-thu" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Thu</div><div class="cl-type" style="color:var(--purple);">Demo</div><div class="cl-title">Salience scoring live</div></div>
+      <div class="cl-cell" data-id="w4-fri" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Fri</div><div class="cl-type" style="color:var(--orange);">Folder</div><div class="cl-title">scoring.ts walkthrough</div></div>
+      <div class="cl-cell weekend" data-id="w4-sat" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Sat</div><div class="cl-type" style="color:var(--text-muted);">Engage</div><div class="cl-title">Reply + engage</div></div>
+      <div class="cl-cell weekend" data-id="w4-sun" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Sun</div><div class="cl-type" style="color:var(--text-muted);">Engage</div><div class="cl-title">QRT + connect</div></div>
+
+      <div class="cl-week-label" style="color:var(--purple);">Week 5 — Real Usage</div>
+      <div class="cl-cell" data-id="w5-mon" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Mon</div><div class="cl-type" style="color:var(--red);">Hot Take</div><div class="cl-title">Your agent is a goldfish</div></div>
+      <div class="cl-cell" data-id="w5-tue" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Tue</div><div class="cl-type" style="color:var(--blue);">Thread</div><div class="cl-title">Cross-project intelligence</div></div>
+      <div class="cl-cell" data-id="w5-wed" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Wed</div><div class="cl-type" style="color:var(--green);">Visual</div><div class="cl-title">Token savings (honest)</div></div>
+      <div class="cl-cell" data-id="w5-thu" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Thu</div><div class="cl-type" style="color:var(--purple);">Demo</div><div class="cl-title">Bootstrap 0 to 18 projects</div></div>
+      <div class="cl-cell" data-id="w5-fri" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Fri</div><div class="cl-type" style="color:var(--orange);">Folder</div><div class="cl-title">insights-index.json</div></div>
+      <div class="cl-cell weekend" data-id="w5-sat" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Sat</div><div class="cl-type" style="color:var(--text-muted);">Engage</div><div class="cl-title">Reply + engage</div></div>
+      <div class="cl-cell weekend" data-id="w5-sun" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Sun</div><div class="cl-type" style="color:var(--text-muted);">Engage</div><div class="cl-title">QRT + connect</div></div>
+
+      <div class="cl-week-label" style="color:var(--cyan);">Week 6 — The Vision</div>
+      <div class="cl-cell" data-id="w6-mon" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Mon</div><div class="cl-type" style="color:var(--red);">Hot Take</div><div class="cl-title">Agents will replace junior devs (wrong)</div></div>
+      <div class="cl-cell" data-id="w6-tue" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Tue</div><div class="cl-type" style="color:var(--blue);">Thread</div><div class="cl-title">Intelligent Distance Protocol</div></div>
+      <div class="cl-cell" data-id="w6-wed" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Wed</div><div class="cl-type" style="color:var(--green);">Visual</div><div class="cl-title">Session 1 vs Session 50</div></div>
+      <div class="cl-cell" data-id="w6-thu" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Thu</div><div class="cl-type" style="color:var(--purple);">Demo</div><div class="cl-title">Full lifecycle recording</div></div>
+      <div class="cl-cell" data-id="w6-fri" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Fri</div><div class="cl-type" style="color:var(--orange);">Folder</div><div class="cl-title">ORCHESTRATOR-PROTOCOL.md</div></div>
+      <div class="cl-cell weekend" data-id="w6-sat" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Sat</div><div class="cl-type" style="color:var(--text-muted);">Engage</div><div class="cl-title">Reply + engage</div></div>
+      <div class="cl-cell weekend" data-id="w6-sun" onclick="toggleCheck(this)"><div class="cl-check"></div><div class="cl-day">Sun</div><div class="cl-type" style="color:var(--text-muted);">Engage</div><div class="cl-title">QRT + connect</div></div>
+    </div>
+  </div>
+
+  <!-- ===== DECISIONS ===== -->
+  <div class="panel" id="decisions">
+    <h2>Decision History</h2>
+    <p class="section-sub">Every brainstorming decision, in order.</p>
+    <div class="decision-timeline">
+      <div class="decision-item"><div class="d-label">1 &mdash; Audience</div><div class="d-text">Dual: developers + AI enthusiasts</div><div class="d-options">A) Devs &mdash; B) Enthusiasts &mdash; <span class="chosen">C) Both</span></div></div>
+      <div class="decision-item"><div class="d-label">2 &mdash; Goal</div><div class="d-text">Followers/impressions is #1</div><div class="d-options">A) Stars &mdash; B) Downloads &mdash; <span class="chosen">C) Followers</span></div></div>
+      <div class="decision-item"><div class="d-label">3 &mdash; Baseline</div><div class="d-text">25 followers, daily poster, bilingual, zero AR content</div></div>
+      <div class="decision-item"><div class="d-label">4 &mdash; Assets</div><div class="d-text">Screen recordings + GIFs + agent-generated HTML cards</div></div>
+      <div class="decision-item"><div class="d-label">5 &mdash; Cadence</div><div class="d-text">1/day for 6 weeks, front-load Week 1</div></div>
+      <div class="decision-item"><div class="d-label">6 &mdash; Structure</div><div class="d-text">Hybrid: hot takes + threads + visuals + demos + folder spotlights</div><div class="d-options"><span class="chosen">C) Hybrid (recommended)</span></div></div>
+      <div class="decision-item"><div class="d-label">7 &mdash; Week 1</div><div class="d-text">Approved: zero product, pure problem framing</div></div>
+      <div class="decision-item"><div class="d-label">8 &mdash; Dashboard</div><div class="d-text">Side-by-side EN/ZH, beige+Nunito, per-post prompts, checklist</div></div>
+      <div class="decision-item"><div class="d-label">9 &mdash; Tone</div><div class="d-text">More conflictive hot takes &mdash; force agreement or argument</div></div>
+    </div>
+  </div>
+
+  <!-- ===== CALENDAR ===== -->
+  <div class="panel" id="calendar">
+    <h2>6-Week Calendar</h2>
+    <p class="section-sub">Click a week tab for full bilingual content + generation prompts.</p>
+    <table class="cal-table">
+      <thead><tr><th>Wk</th><th>Theme</th><th>Mon &middot; Hot Take</th><th>Tue &middot; Thread</th><th>Wed &middot; Visual</th><th>Thu &middot; Demo</th><th>Fri &middot; Folder</th></tr></thead>
+      <tbody>
+        <tr><td class="cal-week-td" style="color:var(--red);">1</td><td style="font-weight:700;">Problem</td><td>$200 agent can't remember</td><td>Why agents forget</td><td>Amnesia Loop</td><td>Correction forgotten</td><td>~/.claude/</td></tr>
+        <tr><td class="cal-week-td" style="color:var(--orange);">2</td><td style="font-weight:700;">Architecture</td><td>Context window is a crutch</td><td>5-layer pyramid</td><td>Palace tree</td><td>session_start live</td><td>~/.agent-recall/</td></tr>
+        <tr><td class="cal-week-td" style="color:var(--green);">3</td><td style="font-weight:700;">Secret Sauce</td><td>RAG is the wrong problem</td><td>Corrections compound</td><td>200-line cap</td><td>watch_for live</td><td>alignment/</td></tr>
+        <tr><td class="cal-week-td" style="color:var(--blue);">4</td><td style="font-weight:700;">Math</td><td>Embeddings are theater</td><td>RRF+Ebbinghaus+Beta</td><td>Decay curves</td><td>Salience live</td><td>scoring.ts</td></tr>
+        <tr><td class="cal-week-td" style="color:var(--purple);">5</td><td style="font-weight:700;">Usage</td><td>Your agent is a goldfish</td><td>Cross-project intel</td><td>Token savings</td><td>Bootstrap demo</td><td>insights-index</td></tr>
+        <tr><td class="cal-week-td" style="color:var(--cyan);">6</td><td style="font-weight:700;">Vision</td><td>Agents won't replace devs</td><td>Intelligent Distance</td><td>S1 vs S50</td><td>Full lifecycle</td><td>ORCHESTRATOR.md</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== WEEK 1 ===== -->
+  <div class="panel" id="week1">
+    <h2>Week 1 &mdash; The Problem: Your Agent Has Amnesia</h2>
+    <p class="section-sub">Zero product mention. Pure problem framing. Make people feel the pain.</p>
+
+    <!-- MON W1 -->
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left">
+          <span class="post-day" style="background:rgba(196,90,74,0.12); color:var(--red);">Mon</span>
+          <span class="post-type">Hot Take <span class="conflict-tag">Conflictive</span></span>
+        </div>
+        <div class="post-actions">
+          <button class="btn-sm btn-prompt" onclick="openPrompt('w1','mon','hot-take','The Problem','Your AI agent costs $200/month and can\'t remember yesterday. Your $5 notebook can. The memory problem isn\'t technical — nobody treats it as engineering.')">Generate</button>
+        </div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang">
+          <div class="post-lang-label">EN &middot; English</div>
+          <div class="tweet-text">
+            Unpopular opinion: Your AI agent is dumber than a $5 notebook.<br><br>
+            A notebook remembers everything you wrote. Your $200/month agent forgets it all the moment you close the tab.<br><br>
+            We gave AI the entire internet but forgot to give it a memory. That's not an AI problem. That's an engineering failure.
+          </div>
+        </div>
+        <div class="post-lang">
+          <div class="post-lang-label">ZH &middot; Chinese</div>
+          <div class="tweet-text">
+            不受欢迎的观点：你的 AI agent 还不如一本 5 块钱的笔记本。<br><br>
+            笔记本能记住你写的一切。你每月花 200 美元的 agent，关掉标签页就全忘了。<br><br>
+            我们给了 AI 整个互联网，却忘了给它一个记忆。这不是 AI 的问题，这是工程的失败。
+          </div>
+        </div>
+      </div>
+      <div class="post-note"><strong>Conflict angle:</strong> "Unpopular opinion" + calling AI "dumber than a notebook" = people WILL reply to defend or agree. The $200 vs $5 comparison stings.</div>
+    </div>
+
+    <!-- TUE W1 -->
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left">
+          <span class="post-day" style="background:rgba(90,126,181,0.12); color:var(--blue);">Tue</span>
+          <span class="post-type">Thread (6 tweets)</span>
+        </div>
+        <div class="post-actions">
+          <button class="btn-sm btn-prompt" onclick="openPrompt('w1','tue','thread','The Problem','6-tweet thread about why AI agents forget. 3 types: session boundary, correction amnesia, cross-project blindness. End with engagement question.')">Generate</button>
+        </div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang">
+          <div class="post-lang-label">EN &middot; English</div>
+          <div class="tweet-text">
+            <strong>1/</strong> I spent 6 months studying why AI agents forget. Here's what nobody talks about.<br><br>
+            <strong>2/</strong> There are 3 types of AI forgetting, and only one gets attention:<br>
+            &bull; Session boundary &mdash; context dies when window closes (everyone knows this)<br>
+            &bull; Correction amnesia &mdash; you fix a mistake, it makes it again next session (nobody talks about this)<br>
+            &bull; Cross-project blindness &mdash; lessons from Project A never reach Project B (nobody even thinks about this)<br><br>
+            <strong>3/</strong> "Just use RAG." I knew someone would say that. RAG retrieves facts. But the most valuable thing your agent forgets isn't facts &mdash; it's your corrections. "Don't mock the DB" is worth 100x more than "DB runs on port 5432."<br><br>
+            <strong>4/</strong> A senior dev's notebook isn't full of syntax. It's full of "never do X because last time Y happened." Why are we building agents that can write code but can't learn from their mistakes?<br><br>
+            <strong>5/</strong> Here's the damning metric: Session 1 and Session 50 with your AI agent look identical. It doesn't get better at working with YOU. Zero compounding. Zero learning. Just... reset.<br><br>
+            <strong>6/</strong> I've been building something to fix this. Shipping soon.<br><br>Honest question: what's the most infuriating thing your AI agent keeps forgetting? I want to know if my list matches yours.
+          </div>
+        </div>
+        <div class="post-lang">
+          <div class="post-lang-label">ZH &middot; Chinese</div>
+          <div class="tweet-text">
+            <strong>1/</strong> 我花了 6 个月研究 AI agent 为什么会「失忆」。以下是没人讨论的部分。<br><br>
+            <strong>2/</strong> AI 有三种遗忘，但只有一种被关注：<br>
+            &bull; 会话边界 &mdash; 关窗口就丢上下文（人人都知道）<br>
+            &bull; 纠正失忆 &mdash; 你改了一次，下次它照犯（没人讨论）<br>
+            &bull; 跨项目盲区 &mdash; A 项目的教训到不了 B 项目（没人想过）<br><br>
+            <strong>3/</strong> "用 RAG 啊。" RAG 检索事实，但 agent 丢掉的最值钱的东西不是事实——是你的纠正。"不要 mock 数据库"比"数据库在 5432 端口"值钱 100 倍。<br><br>
+            <strong>4/</strong> 资深工程师的笔记本不是语法手册，而是"绝对不要做 X，因为上次 Y 炸了"。为什么我们在造能写代码却不能从错误中学习的 agent？<br><br>
+            <strong>5/</strong> 致命数据：你和 AI agent 的第 1 次会话跟第 50 次长得一模一样。零复利。零学习。只是……重置。<br><br>
+            <strong>6/</strong> 我一直在做一个东西来解决这个问题。快了。<br><br>真心提问：你的 AI agent 最让你抓狂的「失忆」是什么？我想看看你的清单跟我的一不一样。
+          </div>
+        </div>
+      </div>
+      <div class="post-note"><strong>Conflict angle:</strong> "Nobody talks about this" challenges the AI discourse. Calling out RAG preemptively will trigger the RAG fans. "Damning metric" forces reaction.</div>
+    </div>
+
+    <!-- WED W1 -->
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left">
+          <span class="post-day" style="background:rgba(106,158,106,0.12); color:var(--green);">Wed</span>
+          <span class="post-type">Visual &mdash; Diagram</span>
+        </div>
+        <div class="post-actions">
+          <button class="btn-sm btn-prompt" onclick="openPrompt('w1','wed','visual','The Problem','The Agent Amnesia Loop — circular flow diagram: New session → Agent asks what are we working on → Human re-explains → Work → Session ends → Everything lost → repeat. Dark card, 1200x675, no watermark (Week 1).')">Generate</button>
+        </div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang">
+          <div class="post-lang-label">EN &middot; English</div>
+          <div class="tweet-text">
+            <strong>Image:</strong> "The Agent Amnesia Loop"<br><br>
+            [ New session ] &rarr; [ "What are we working on?" ] &rarr; [ Human re-explains ] &rarr; [ Work ] &rarr; [ Session ends ] &rarr; [ Lost ] &rarr; repeat<br><br>
+            <strong>Caption:</strong> The most expensive loop in AI isn't the training run. It's you re-explaining yourself every single session.
+          </div>
+        </div>
+        <div class="post-lang">
+          <div class="post-lang-label">ZH &middot; Chinese</div>
+          <div class="tweet-text">
+            <strong>配图：</strong>「Agent 失忆循环」<br><br>
+            [ 新会话 ] &rarr; [ "我们在做什么？" ] &rarr; [ 人类重新解释 ] &rarr; [ 干活 ] &rarr; [ 会话结束 ] &rarr; [ 全部丢失 ] &rarr; 循环<br><br>
+            <strong>文案：</strong> AI 里最贵的循环不是训练，而是每次开会话你都要把自己重新解释一遍。
+          </div>
+        </div>
+      </div>
+      <div class="post-note"><strong>Visual note:</strong> Use Prompt 2 (Visual Generator) to create the HTML card. Screenshot as PNG. Simple loop diagram, shareable format.</div>
+    </div>
+
+    <!-- THU W1 -->
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left">
+          <span class="post-day" style="background:rgba(138,106,181,0.12); color:var(--purple);">Thu</span>
+          <span class="post-type">Demo &mdash; Screen Recording</span>
+        </div>
+        <div class="post-actions">
+          <button class="btn-sm btn-prompt" onclick="openPrompt('w1','thu','recording','The Problem','30-second screen recording showing: correct Claude Code agent (no mocks in tests), close session, open new session, ask for tests — agent uses mocks again. Overlay: Session 1 corrected, Session 2 forgotten.')">Generate</button>
+        </div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang">
+          <div class="post-lang-label">EN &middot; English</div>
+          <div class="tweet-text">
+            <strong>Recording:</strong><br>
+            1. Open Claude Code, correct: "no, don't use mocks in tests"<br>
+            2. Close session, open new session<br>
+            3. Ask agent to write tests &mdash; it uses mocks again<br>
+            4. Overlay: "Session 1: corrected. Session 2: forgotten."<br><br>
+            <strong>Caption:</strong> Watch me correct my AI agent. Then watch it make the exact same mistake 30 seconds later in a new session. This is the memory problem nobody's solving.
+          </div>
+        </div>
+        <div class="post-lang">
+          <div class="post-lang-label">ZH &middot; Chinese</div>
+          <div class="tweet-text">
+            <strong>录屏：</strong><br>
+            1. 打开 Claude Code，纠正："不要在测试里用 mock"<br>
+            2. 关闭会话，重新打开<br>
+            3. 让 agent 写测试——它又用 mock 了<br>
+            4. 字幕："第 1 次：已纠正。第 2 次：又忘了。"<br><br>
+            <strong>文案：</strong> 看我纠正 AI agent，然后看它 30 秒后在新会话里犯同样的错。这就是没人在解决的记忆问题。
+          </div>
+        </div>
+      </div>
+      <div class="post-note"><strong>Conflict:</strong> "Nobody's solving" challenges every AI memory startup. Showing real failure is more engaging than describing it.</div>
+    </div>
+
+    <!-- FRI W1 -->
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left">
+          <span class="post-day" style="background:rgba(196,148,74,0.12); color:var(--orange);">Fri</span>
+          <span class="post-type">Folder Spotlight</span>
+        </div>
+        <div class="post-actions">
+          <button class="btn-sm btn-prompt" onclick="openPrompt('w1','fri','folder-spotlight','The Problem','Create a visual HTML card showing the ~/.claude/ directory tree. Show flat markdown files, MEMORY.md, projects folder. Annotate what is missing: no scoring, no decay, no cross-project, no compounding. Dark card, 1200x675.')">Generate</button>
+        </div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang">
+          <div class="post-lang-label">EN &middot; English</div>
+          <div class="tweet-text">
+            <strong>Spotlight:</strong> ~/.claude/<br><br>
+            [Screenshot of directory tree]<br><br>
+            <strong>Caption:</strong> This is everything Claude remembers about me after 6 months. Flat markdown files. No structure. No scoring. No compounding.<br><br>
+            Claude is the best coding AI in the world, and its memory system is a folder of text files. That's not a roast &mdash; it's an opportunity.
+          </div>
+        </div>
+        <div class="post-lang">
+          <div class="post-lang-label">ZH &middot; Chinese</div>
+          <div class="tweet-text">
+            <strong>文件聚焦：</strong> ~/.claude/<br><br>
+            [目录树截图]<br><br>
+            <strong>文案：</strong> 这是 Claude 在我用了 6 个月后记住的全部。平铺的 markdown 文件。没结构。没评分。没复利。<br><br>
+            Claude 是世界上最好的编程 AI，而它的记忆系统是一个文本文件夹。这不是吐槽——这是机会。
+          </div>
+        </div>
+      </div>
+      <div class="post-note"><strong>Conflict:</strong> "Best AI, worst memory" — Claude fans will engage. Framing as "opportunity" softens it from pure criticism. Insider knowledge feel.</div>
+    </div>
+  </div>
+
+  <!-- ===== WEEK 2 ===== -->
+  <div class="panel" id="week2">
+    <h2>Week 2 &mdash; Architecture: Memory Palace</h2>
+    <p class="section-sub">First product reveal. Challenge the "bigger context window" narrative. Show what you built.</p>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(196,90,74,0.12); color:var(--red);">Mon</span><span class="post-type">Hot Take <span class="conflict-tag">Conflictive</span></span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w2','mon','hot-take','Architecture','Challenge the bigger context window narrative. A bigger bowl doesnt help a goldfish remember.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text">A bigger context window won't save your agent.<br><br>It's like giving a goldfish a bigger bowl. It still forgets in 3 seconds.<br><br>The problem isn't capacity. It's that nothing persists between sessions. You need architecture, not more tokens.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text">更大的上下文窗口救不了你的 agent。<br><br>这就像给金鱼换个更大的鱼缸，它照样 3 秒就忘。<br><br>问题不是容量，而是会话之间什么都留不下来。你需要的是架构，不是更多 token。</div></div>
+      </div>
+      <div class="post-note"><strong>Conflict:</strong> Directly challenges the "just wait for 1M context" crowd. Goldfish metaphor is sticky + shareable. Context window fans WILL reply.</div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(90,126,181,0.12); color:var(--blue);">Tue</span><span class="post-type">Thread (7 tweets)</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w2','tue','thread','Architecture','Thread revealing the 5-layer memory pyramid: journal, episodic, palace, awareness, insights. First time naming AgentRecall. Explain why each layer exists.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text">
+          <strong>1/</strong> Last week I showed you why AI agents forget. This week: what I built to fix it. It's called a Memory Palace, and it has 5 layers.<br><br>
+          <strong>2/</strong> Layer 1: Working Memory (journal). Every session captures what happened. Raw, timestamped, cheap. Decays in 2 days. Like your scratch pad &mdash; useful now, garbage tomorrow.<br><br>
+          <strong>3/</strong> Layer 2: Episodic Memory. End-of-session, the journal gets distilled into meaning. "We fixed the auth bug" not "we edited 14 files." This is what you'd tell a colleague over coffee.<br><br>
+          <strong>4/</strong> Layer 3: Memory Palace. Persistent rooms organized by topic &mdash; architecture, goals, blockers, alignment. Each room has salience scoring. Hot memories float up. Stale ones decay. Like an engineer's notebook that reorganizes itself.<br><br>
+          <strong>5/</strong> Layer 4: Awareness. A 200-line document that COMPRESSES over time. New insights merge with existing ones or replace the weakest. After 100 sessions, it's still 200 lines &mdash; but each line carries the weight of dozens of observations.<br><br>
+          <strong>6/</strong> Layer 5: Cross-project Insights. Lessons from Project A automatically surface when you start Project B. Your rate-limiting fix from the proxy server? It shows up when you're building an API gateway.<br><br>
+          <strong>7/</strong> I shipped this as an open-source MCP server. It's called AgentRecall. Works with Claude Code, Cursor, VS Code, Codex &mdash; any MCP-compatible tool.<br><br>github.com/Goldentrii/AgentRecall<br><br>What layer surprises you most?
+        </div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text">
+          <strong>1/</strong> 上周我展示了 AI agent 为什么会失忆。这周：我造了什么来解决它。叫做 Memory Palace，有 5 层。<br><br>
+          <strong>2/</strong> 第 1 层：工作记忆（日志）。每次会话记录发生了什么。原始的、带时间戳、便宜。2 天衰减。像草稿纸——现在有用，明天就是垃圾。<br><br>
+          <strong>3/</strong> 第 2 层：情景记忆。会话结束时，日志提炼成含义。"我们修了 auth bug"，不是"我们编辑了 14 个文件"。这是你跟同事喝咖啡时会说的话。<br><br>
+          <strong>4/</strong> 第 3 层：记忆宫殿。按主题组织的持久化房间——架构、目标、阻塞、对齐。每个房间有显著性评分。热记忆浮上来，过期的衰减。像一本会自动整理的工程师笔记本。<br><br>
+          <strong>5/</strong> 第 4 层：感知。一个 200 行的文档，随时间压缩。新洞察跟现有的合并，或替换最弱的。100 次会话后还是 200 行——但每一行承载了几十次观察的重量。<br><br>
+          <strong>6/</strong> 第 5 层：跨项目洞察。A 项目的教训在你启动 B 项目时自动浮现。你在代理服务器里的限流修复？在你造 API 网关时它会出现。<br><br>
+          <strong>7/</strong> 我把它做成了开源 MCP server，叫 AgentRecall。支持 Claude Code、Cursor、VS Code、Codex——所有 MCP 兼容工具。<br><br>github.com/Goldentrii/AgentRecall<br><br>哪一层最让你意外？
+        </div></div>
+      </div>
+      <div class="post-note"><strong>Key moment:</strong> First time naming the product. Repo link in final tweet. Engagement question drives replies.</div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(106,158,106,0.12); color:var(--green);">Wed</span><span class="post-type">Visual &mdash; Pyramid Diagram</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w2','wed','visual','Architecture','5-layer memory pyramid diagram. Bottom to top: L1 Working Memory (journal, S=2 days), L2 Episodic (distilled sessions), L3 Palace (rooms with salience), L4 Awareness (200-line compressed), L5 Insights (cross-project). Show token cost per layer. AgentRecall watermark.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text"><strong>Image:</strong> 5-layer memory pyramid. Bottom=widest (journal, cheap, fast decay) to top=narrowest (insights, expensive, near-permanent). Token cost + decay rate per layer.<br><br><strong>Caption:</strong> Not all memories are equal. A journal entry decays in 2 days. A correction persists for 9,999. This is the architecture of AgentRecall.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text"><strong>配图：</strong>5 层记忆金字塔。底部=最宽（日志，便宜，快衰减）到顶部=最窄（洞察，昂贵，近永久）。每层 token 成本 + 衰减率。<br><br><strong>文案：</strong> 不是所有记忆都平等。日志 2 天衰减，纠正 9999 天持久。这就是 AgentRecall 的架构。</div></div>
+      </div>
+      <div class="post-note"><strong>Visual:</strong> Pyramid is one of the most shareable diagram formats on X. The decay numbers are concrete and surprising.</div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(138,106,181,0.12); color:var(--purple);">Thu</span><span class="post-type">Demo &mdash; Screen Recording</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w2','thu','recording','Architecture','Record session_start loading project context: identity, top 5 insights, watch_for warnings, stale room flags. Then run a recall query showing ranked results. Before/after: empty session vs context-loaded session.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text"><strong>Recording:</strong><br>1. Open Claude Code, run /arstart<br>2. Watch: identity loads, 5 insights surface, watch_for warnings appear, stale rooms flagged<br>3. Run a recall query &mdash; ranked results from palace + journal + insights<br>4. Overlay: "Session 1: blank slate. Session 10: the agent already knows you."<br><br><strong>Caption:</strong> This is what it looks like when your agent remembers. 385 tokens to load your entire project context. No re-explaining.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text"><strong>录屏：</strong><br>1. 打开 Claude Code，运行 /arstart<br>2. 看：身份加载、5 条洞察浮现、watch_for 警告出现、过期房间标记<br>3. 运行 recall 查询——宫殿+日志+洞察的排名结果<br>4. 字幕："第 1 次：空白。第 10 次：agent 已经认识你了。"<br><br><strong>文案：</strong> 这就是 agent 记住你时的样子。385 个 token 加载你的全部项目上下文。不用重新解释。</div></div>
+      </div>
+      <div class="post-note"><strong>Strategy:</strong> Callback to W1 Thursday (the problem). Same format, but now showing the solution. Before/after contrast is powerful.</div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(196,148,74,0.12); color:var(--orange);">Fri</span><span class="post-type">Folder Spotlight</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w2','fri','folder-spotlight','Architecture','Show ~/.agent-recall/ directory tree: projects/ with 3-4 project slugs, each with journal/, palace/ (rooms/, identity.md, palace-index.json, graph.json), knowledge/, corrections/. Annotate key files. AgentRecall watermark.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text"><strong>Spotlight:</strong> ~/.agent-recall/<br><br>[Directory tree showing: projects/novada-mcp/, projects/AgentRecall/, each with journal/, palace/rooms/, identity.md, graph.json]<br><br><strong>Caption:</strong> Last week: ~/.claude/ &mdash; flat files, no structure. This week: ~/.agent-recall/ &mdash; rooms, salience scores, decay curves, cross-project graphs. Same machine, different architecture. That's the gap.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text"><strong>文件聚焦：</strong> ~/.agent-recall/<br><br>[目录树：projects/novada-mcp/, projects/AgentRecall/，各含 journal/, palace/rooms/, identity.md, graph.json]<br><br><strong>文案：</strong> 上周：~/.claude/——平铺文件，无结构。这周：~/.agent-recall/——房间、显著性评分、衰减曲线、跨项目图谱。同一台机器，不同的架构。差距就在这里。</div></div>
+      </div>
+      <div class="post-note"><strong>Strategy:</strong> Direct callback to W1 Friday. Same format, side-by-side comparison. The contrast sells itself.</div>
+    </div>
+  </div>
+
+  <!-- ===== WEEK 3 ===== -->
+  <div class="panel" id="week3">
+    <h2>Week 3 &mdash; Secret Sauce: Corrections > Facts</h2>
+    <p class="section-sub">The differentiator. Challenge the RAG orthodoxy. Corrections are the highest-value memory.</p>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(196,90,74,0.12); color:var(--red);">Mon</span><span class="post-type">Hot Take <span class="conflict-tag">Conflictive</span></span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w3','mon','hot-take','Secret Sauce','Challenge RAG orthodoxy. Everyone is building retrieval for facts but the real value is in corrections.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text">Everyone's building RAG pipelines for their agents. Almost nobody is storing corrections.<br><br>You're retrieving the wrong things.<br><br>"Don't mock the database" will save you more time than any vector search over your docs ever will.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text">所有人都在给 agent 搭 RAG 管线。几乎没人在存纠正记录。<br><br>你检索的东西搞错了。<br><br>"不要 mock 数据库" 比你对文档做的任何向量搜索都更能省时间。</div></div>
+      </div>
+      <div class="post-note"><strong>Conflict:</strong> RAG is sacred on AI Twitter. Saying "you're retrieving the wrong things" is a direct challenge. RAG builders will reply to defend.</div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(90,126,181,0.12); color:var(--blue);">Tue</span><span class="post-type">Thread (6 tweets)</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w3','tue','thread','Secret Sauce','Thread on why corrections compound. Correction-first architecture. watch_for warnings. The 200-line awareness cap as forced compression. Compounding curve: session 1 vs 50.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text">
+          <strong>1/</strong> The most counterintuitive thing I've learned building agent memory: corrections are worth 100x more than facts. Here's why.<br><br>
+          <strong>2/</strong> When you correct your agent ("don't use mocks", "always check null first"), you're transferring JUDGMENT, not information. Facts have alternatives. Judgment is earned through failure.<br><br>
+          <strong>3/</strong> So AgentRecall stores corrections as the highest-priority memory class. They never decay. They surface as warnings BEFORE the agent makes the same mistake. We call them "watch_for" patterns.<br><br>
+          <strong>4/</strong> After 3 corrections on the same topic, your agent starts sessions with: "You've corrected me on X three times &mdash; I should ask before assuming." It's not retrieval. It's behavioral change.<br><br>
+          <strong>5/</strong> And here's the compression trick: awareness is capped at 200 lines. Not 200 pages. 200 lines. New insights merge with similar ones or replace the weakest. After 100 sessions, each line carries the weight of 50 observations. The constraint IS the feature.<br><br>
+          <strong>6/</strong> Compare: RAG stores everything and retrieves by similarity. AgentRecall stores corrections and retrieves by importance. One gets noisier over time. The other gets sharper. Which architecture would you trust with your agent's behavior?
+        </div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text">
+          <strong>1/</strong> 做 agent 记忆最反直觉的发现：纠正比事实值钱 100 倍。为什么？<br><br>
+          <strong>2/</strong> 你纠正 agent（"不要用 mock"、"先检查 null"），传递的是判断力，不是信息。事实有替代品，判断力是从失败中挣来的。<br><br>
+          <strong>3/</strong> 所以 AgentRecall 把纠正存为最高优先级记忆。永不衰减。在 agent 犯同样错误之前以警告形式浮现。我们叫它 "watch_for" 模式。<br><br>
+          <strong>4/</strong> 同一主题被纠正 3 次后，agent 开始会话时会说："你已经纠正我 X 三次了——我应该先问再假设。" 这不是检索，是行为改变。<br><br>
+          <strong>5/</strong> 压缩技巧：感知层限制在 200 行。不是 200 页。200 行。新洞察跟现有的合并或替换最弱的。100 次会话后每行承载 50 次观察的重量。限制本身就是功能。<br><br>
+          <strong>6/</strong> 对比：RAG 存一切按相似度检索。AgentRecall 存纠正按重要性检索。一个越用越吵，一个越用越锐利。你的 agent 行为你信任哪个架构？
+        </div></div>
+      </div>
+      <div class="post-note"><strong>Conflict:</strong> Ends with a direct "which would you trust?" &mdash; forces people to pick a side. RAG vs corrections is a genuine debate.</div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(106,158,106,0.12); color:var(--green);">Wed</span><span class="post-type">Visual &mdash; Compression Diagram</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w3','wed','visual','Secret Sauce','Side-by-side comparison: LEFT = typical memory (grows linearly, 10 sessions = 10 pages, noise accumulates). RIGHT = AgentRecall awareness (capped at 200 lines, signal strengthens via merge/replace). Show diverging curves. AgentRecall watermark.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text"><strong>Image:</strong> Two curves. Left: "Typical Memory" &mdash; linear growth, noise accumulates. Right: "AgentRecall Awareness" &mdash; flat at 200 lines, signal strengthens. Divergence after session 20.<br><br><strong>Caption:</strong> More storage = more noise. Fixed capacity = forced compression = compounding signal. This is why 200 lines beats 200 pages.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text"><strong>配图：</strong>两条曲线。左："普通记忆"——线性增长，噪音累积。右："AgentRecall 感知"——固定 200 行，信号增强。会话 20 后分叉。<br><br><strong>文案：</strong> 存储越多 = 噪音越多。固定容量 = 强制压缩 = 信号复利。这就是 200 行赢过 200 页的原因。</div></div>
+      </div>
+      <div class="post-note"><strong>Visual:</strong> The crossing curves make the insight visceral. "200 lines beats 200 pages" is a sticky one-liner.</div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(138,106,181,0.12); color:var(--purple);">Thu</span><span class="post-type">Demo &mdash; watch_for Warning</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w3','thu','recording','Secret Sauce','Record: start session, agent loads watch_for warning about a past correction (e.g. database mocking). Agent asks before assuming. Compare to W1 Thursday where correction was forgotten. Split screen or sequential.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text"><strong>Recording:</strong><br>1. Open Claude Code with AgentRecall<br>2. session_start loads &mdash; watch_for warning appears: "Corrected 3x on DB mocking"<br>3. Ask agent to write tests<br>4. Agent says: "Based on past corrections, should I avoid mocks here?"<br>5. Overlay: "Week 1: forgotten. Week 3: learned."<br><br><strong>Caption:</strong> Remember Week 1's demo where my correction was forgotten? Same scenario. Different outcome. This is what compounding memory looks like.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text"><strong>录屏：</strong><br>1. 打开带 AgentRecall 的 Claude Code<br>2. session_start 加载——watch_for 警告："DB mocking 被纠正 3 次"<br>3. 让 agent 写测试<br>4. Agent："根据过去的纠正，这里要不要避免 mock？"<br>5. 字幕："第 1 周：忘了。第 3 周：学会了。"<br><br><strong>文案：</strong> 还记得第 1 周的录屏吗？纠正被遗忘了。同样场景，不同结果。这就是记忆复利。</div></div>
+      </div>
+      <div class="post-note"><strong>Strategy:</strong> Powerful callback to W1 Thursday. Same exact scenario, opposite outcome. This is the most shareable demo in the entire campaign.</div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(196,148,74,0.12); color:var(--orange);">Fri</span><span class="post-type">Folder Spotlight</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w3','fri','folder-spotlight','Secret Sauce','Show palace/rooms/alignment/ directory. Files inside: correction entries with timestamps, severity, context. Show alignment-log.json structure. Annotate: these are the highest-priority memories. AgentRecall watermark.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text"><strong>Spotlight:</strong> palace/rooms/alignment/<br><br>[Show correction files with timestamp, severity, context]<br><br><strong>Caption:</strong> This folder is the most important folder in AgentRecall. It stores every correction you've ever made. These memories never decay. They surface as warnings. They change behavior. This is what "learning from mistakes" actually looks like in code.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text"><strong>文件聚焦：</strong> palace/rooms/alignment/<br><br>[展示带时间戳、严重程度、上下文的纠正文件]<br><br><strong>文案：</strong> 这是 AgentRecall 里最重要的文件夹。存着你做过的每一次纠正。这些记忆永不衰减。以警告形式浮现。改变行为。这才是"从错误中学习"在代码里的样子。</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== WEEK 4 ===== -->
+  <div class="panel" id="week4">
+    <h2>Week 4 &mdash; The Math: Three Formulas</h2>
+    <p class="section-sub">Developer catnip. RRF, Ebbinghaus, Bayesian Beta. Challenge the embeddings orthodoxy.</p>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(196,90,74,0.12); color:var(--red);">Mon</span><span class="post-type">Hot Take <span class="conflict-tag">Conflictive</span></span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w4','mon','hot-take','The Math','Challenge embeddings. A 19-rule stemmer beats a $500/month embedding API for agent memory. Zero external dependencies.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text">You don't need embeddings for agent memory.<br><br>A 19-rule stemmer and a 100-pair synonym table outperform a $500/month embedding API for behavioral recall.<br><br>Zero external dependencies. Zero API calls. Zero latency. Fight me.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text">Agent 记忆不需要 embeddings。<br><br>19 条词干规则 + 100 对同义词表，在行为召回上比 $500/月的 embedding API 表现更好。<br><br>零外部依赖。零 API 调用。零延迟。来辩。</div></div>
+      </div>
+      <div class="post-note"><strong>Conflict:</strong> "Fight me" is a direct invitation. Embedding fans will jump in. The specific numbers (19 rules, 100 pairs, $500) make it concrete and debatable.</div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(90,126,181,0.12); color:var(--blue);">Tue</span><span class="post-type">Thread (7 tweets)</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w4','tue','thread','The Math','Deep dive into 3 formulas: RRF (merge rankings from palace+journal+insights without one dominating), Ebbinghaus (journal S=2, palace S=9999, different memory types decay differently), Bayesian Beta (useful=x1.33, useless=x0.67, feedback loop).')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text">
+          <strong>1/</strong> 3 formulas make AgentRecall's memory actually work. None of them are embeddings. Here's the math that matters.<br><br>
+          <strong>2/</strong> Formula 1: Reciprocal Rank Fusion (RRF). Problem: palace, journal, and insights each rank memories differently. Naive merge = one source dominates. RRF merges positions, not scores. Each source gets a fair vote. No source can shout louder than others.<br><br>
+          <strong>3/</strong> Formula 2: Ebbinghaus forgetting curve. Not all memories should live forever. Journal entries (scratch notes) decay with half-life of 2 days. Palace memories (architectural decisions) decay with half-life of 9,999 days. Same system, different respect for different knowledge.<br><br>
+          <strong>4/</strong> Formula 3: Bayesian Beta feedback. When you use a recall result, it gets a usefulness score. Useful = ranking boosted by 1.33x. Useless = dampened by 0.67x. No feedback = unchanged. Over 20 queries, the system learns what YOU find valuable, not what's "semantically similar."<br><br>
+          <strong>5/</strong> Why not embeddings? Embeddings find what's similar. These formulas find what's important. Similar ≠ important. Your most important memories (corrections) share zero semantic similarity with your query &mdash; they're about WHAT NOT TO DO.<br><br>
+          <strong>6/</strong> The hot-window bonus: Last 6 hours = 3x boost. Last 24h = 2x. Last 72h = 1.3x. Because what happened this morning matters more than what happened last month, even if last month's memory has higher salience.<br><br>
+          <strong>7/</strong> All of this runs locally. No API calls. No embedding service. No vector database. Just math that respects how memory actually works. If you want to see the code: github.com/Goldentrii/AgentRecall
+        </div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text">
+          <strong>1/</strong> 3 个公式让 AgentRecall 的记忆真正有效。没有一个是 embeddings。这是真正重要的数学。<br><br>
+          <strong>2/</strong> 公式 1：倒数排名融合（RRF）。问题：宫殿、日志、洞察各有不同排名。简单合并=某个来源主导。RRF 合并的是位置而非分数。每个来源公平投票，没有谁能喊得更响。<br><br>
+          <strong>3/</strong> 公式 2：艾宾浩斯遗忘曲线。不是所有记忆都该永生。日志条目（草稿）半衰期 2 天。宫殿记忆（架构决策）半衰期 9999 天。同一个系统，对不同知识不同尊重。<br><br>
+          <strong>4/</strong> 公式 3：贝叶斯 Beta 反馈。当你用了一条召回结果，它得到有用性评分。有用=排名提升 1.33 倍。没用=抑制 0.67 倍。无反馈=不变。20 次查询后，系统学会的是你觉得什么有价值，不是什么"语义相似"。<br><br>
+          <strong>5/</strong> 为什么不用 embeddings？Embeddings 找的是相似的。这些公式找的是重要的。相似≠重要。你最重要的记忆（纠正）和你的查询零语义相似——它们是关于"不要做什么"。<br><br>
+          <strong>6/</strong> 热窗口加成：最近 6 小时=3 倍提升。24 小时=2 倍。72 小时=1.3 倍。因为今天早上的事比上个月的事重要，即使上个月的记忆显著性更高。<br><br>
+          <strong>7/</strong> 全部本地运行。无 API 调用。无 embedding 服务。无向量数据库。只是尊重记忆工作方式的数学。代码：github.com/Goldentrii/AgentRecall
+        </div></div>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(106,158,106,0.12); color:var(--green);">Wed</span><span class="post-type">Visual &mdash; Decay Curves</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w4','wed','visual','The Math','Chart showing 3 Ebbinghaus decay curves: journal (S=2 days, drops fast), knowledge (S=180 days, gradual), palace (S=9999 days, nearly flat). X-axis = days, Y-axis = memory strength. Hot-window boost zone highlighted in first 72h. AgentRecall watermark.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text"><strong>Image:</strong> 3 decay curves &mdash; journal (fast drop), knowledge (gradual), palace (nearly flat). Hot-window boost zone highlighted.<br><br><strong>Caption:</strong> Your scratch notes should decay in 2 days. Your architectural decisions should last 27 years. AgentRecall treats different memories with different respect. Most systems don't.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text"><strong>配图：</strong>3 条衰减曲线——日志（快速下降）、知识（渐进）、宫殿（几乎平坦）。热窗口加成区高亮。<br><br><strong>文案：</strong> 草稿该 2 天衰减。架构决策该持续 27 年。AgentRecall 对不同记忆不同尊重。大多数系统做不到。</div></div>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(138,106,181,0.12); color:var(--purple);">Thu</span><span class="post-type">Demo &mdash; Salience Scoring</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w4','thu','recording','The Math','Record: show palace-index.json with salience scores. Run recall query, show how results are ranked by salience not recency. Then give feedback (useful/not useful), run same query, show ranking changed. Before/after.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text"><strong>Recording:</strong><br>1. Show palace-index.json with salience scores (0.0-1.0)<br>2. Run recall query &mdash; results ordered by computed salience<br>3. Mark result as "useful" &mdash; watch score update<br>4. Run same query &mdash; ranking shifts<br>5. Overlay: "Your memory system learns what YOU find valuable."<br><br><strong>Caption:</strong> Watch the ranking change in real-time as I tell it what's useful. This isn't retrieval. It's a feedback loop.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text"><strong>录屏：</strong><br>1. 展示 palace-index.json 及显著性评分（0.0-1.0）<br>2. 运行 recall 查询——结果按计算出的显著性排序<br>3. 标记结果"有用"——看评分更新<br>4. 再次查询——排名变化<br>5. 字幕："你的记忆系统学会了你觉得什么有价值。"<br><br><strong>文案：</strong> 看排名如何随着我的反馈实时变化。这不是检索，是反馈循环。</div></div>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(196,148,74,0.12); color:var(--orange);">Fri</span><span class="post-type">Folder Spotlight</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w4','fri','folder-spotlight','The Math','Show the scoring module source code: salience formula (recency 30% + access 25% + connections 20% + urgency 15% + importance 10%), RRF merge, Ebbinghaus decay function. Annotate the key numbers. AgentRecall watermark.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text"><strong>Spotlight:</strong> The scoring engine<br><br>[Code showing salience = recency(30%) + access(25%) + connections(20%) + urgency(15%) + importance(10%)]<br><br><strong>Caption:</strong> 5 factors, carefully weighted. Recency matters most because what happened today beats what happened last month. But connections matter too &mdash; an isolated memory is less trustworthy than one linked to three others.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text"><strong>文件聚焦：</strong>评分引擎<br><br>[代码：salience = 近期(30%) + 访问(25%) + 连接(20%) + 紧急(15%) + 重要(10%)]<br><br><strong>文案：</strong> 5 个因子，精心加权。近期最重要因为今天发生的事赢过上个月。但连接也重要——孤立的记忆不如跟三条其他记忆相连的可信。</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== WEEK 5 ===== -->
+  <div class="panel" id="week5">
+    <h2>Week 5 &mdash; Real Usage: Cross-Project Intelligence</h2>
+    <p class="section-sub">Social proof with your own projects. Honest token savings. Bootstrap demo.</p>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(196,90,74,0.12); color:var(--red);">Mon</span><span class="post-type">Hot Take <span class="conflict-tag">Conflictive</span></span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w5','mon','hot-take','Real Usage','Agent has PhD intelligence and goldfish memory. Can write a compiler but cant remember you hate semicolons.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text">Your AI agent has PhD-level intelligence and the memory of a goldfish.<br><br>It can write a compiler from scratch but can't remember that you hate semicolons.<br><br>We spent billions on reasoning. We spent nothing on remembering. The priorities are backwards.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text">你的 AI agent 有博士级智力和金鱼级记忆。<br><br>它能从零写一个编译器，却记不住你讨厌分号。<br><br>我们花了几十亿在推理上，在记忆上花了零。优先级搞反了。</div></div>
+      </div>
+      <div class="post-note"><strong>Conflict:</strong> "Priorities are backwards" challenges the entire AI industry direction. PhD/goldfish contrast is viral-format.</div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(90,126,181,0.12); color:var(--blue);">Tue</span><span class="post-type">Thread (6 tweets)</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w5','tue','thread','Real Usage','Thread on cross-project intelligence. Real example: rate-limiting insight from proxy server surfaced when building API gateway. How insights-index.json works. Token savings benchmarks (honest: -57% complex, break-even at 3-4 sessions, overhead for simple tasks).')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text">
+          <strong>1/</strong> The thing that surprised me most about AgentRecall: lessons from one project automatically show up in another. Here's a real example from my own usage.<br><br>
+          <strong>2/</strong> I was building a proxy server (novada-mcp). Fixed a rate-limiting bug. AgentRecall stored the lesson. Months later, started an API gateway project. At session_start: "Cross-project insight: rate-limiting pattern from novada-mcp may apply here."<br><br>
+          <strong>3/</strong> I didn't search for it. I didn't remember it. The system surfaced it because the keywords and context overlapped. An insight-index maps lessons to topics across ALL your projects. It's like having a senior engineer who worked on all your repos.<br><br>
+          <strong>4/</strong> Honest token savings numbers (I'm not going to hype this): Simple tasks with 0 corrections = pure overhead (+99%). It's a net loss. Don't use memory for throwaway scripts.<br><br>
+          <strong>5/</strong> But for real projects: 5 sessions, 1 correction = -30% tokens. 20 sessions, 5 corrections = -57%. Digest cache for repeated analysis = -83%. Break-even point: 3-4 sessions. After that, it compounds.<br><br>
+          <strong>6/</strong> The caveat: these are benchmarked models, not production telemetry. I'm being upfront about that. The real proof is qualitative: my agent on session 30 behaves measurably differently than session 1. It knows my preferences, my blind spots, my shortcuts.
+        </div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text">
+          <strong>1/</strong> AgentRecall 最让我惊讶的：一个项目的教训自动出现在另一个项目里。用我自己的真实案例说。<br><br>
+          <strong>2/</strong> 我在做代理服务器（novada-mcp），修了个限流 bug。AgentRecall 存了这个教训。几个月后开始 API 网关项目。session_start："跨项目洞察：novada-mcp 的限流模式可能适用。"<br><br>
+          <strong>3/</strong> 我没搜索，也没想起来。系统因为关键词和上下文重叠自动浮现了它。洞察索引把教训映射到所有项目的主题上。像有个在你所有仓库都工作过的资深工程师。<br><br>
+          <strong>4/</strong> 诚实的 token 节省数据（我不会夸大）：0 纠正的简单任务=纯开销（+99%）。净亏损。一次性脚本不要用记忆。<br><br>
+          <strong>5/</strong> 但真实项目：5 次会话 1 次纠正=-30%。20 次会话 5 次纠正=-57%。重复分析缓存=-83%。盈亏平衡：3-4 次会话。之后开始复利。<br><br>
+          <strong>6/</strong> 注意：这是基准模型数据，不是生产遥测。我提前说清楚。真正的证据是定性的：我的 agent 在第 30 次会话时行为跟第 1 次明显不同。它了解我的偏好、盲点和习惯。
+        </div></div>
+      </div>
+      <div class="post-note"><strong>Strategy:</strong> Radical honesty about numbers builds credibility. "Simple tasks = net loss" is anti-marketing and earns trust. The cross-project story is the hook.</div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(106,158,106,0.12); color:var(--green);">Wed</span><span class="post-type">Visual &mdash; Token Savings Chart</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w5','wed','visual','Real Usage','Bar chart: token savings by scenario. Simple (0 corrections): +99% overhead (red). Medium (5 sessions, 1 correction): -30% (yellow). Complex (20 sessions, 5 corrections): -57% (green). Digest cache: -83% (bright green). Break-even line at 3-4 sessions. Honest, not hype. AgentRecall watermark.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text"><strong>Image:</strong> Bar chart. Simple=+99% overhead (red). Medium=-30% (amber). Complex=-57% (green). Cache=-83% (bright green). Break-even line at 3-4 sessions.<br><br><strong>Caption:</strong> Honest numbers. Simple tasks? AgentRecall is pure overhead. Complex projects with corrections? -57% token savings. I won't pretend it's magic for everything. But for real work, it compounds.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text"><strong>配图：</strong>柱状图。简单=+99% 开销（红）。中等=-30%（黄）。复杂=-57%（绿）。缓存=-83%（亮绿）。3-4 次会话盈亏线。<br><br><strong>文案：</strong> 诚实的数据。简单任务？AgentRecall 是纯开销。有纠正的复杂项目？-57% token 节省。我不会假装它万能。但对真正的工作，它复利。</div></div>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(138,106,181,0.12); color:var(--purple);">Thu</span><span class="post-type">Demo &mdash; Bootstrap</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w5','thu','recording','Real Usage','Record: run /arbootstrap on a machine with 18+ existing projects. Watch it scan git repos, Claude memory, CLAUDE.md files. Import all. Then /arstatus shows full board. Before: empty. After: 18 projects with context.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text"><strong>Recording:</strong><br>1. Run /arstatus &mdash; empty board<br>2. Run /arbootstrap &mdash; scans ~/Projects/, ~/.claude/<br>3. Watch: discovers 18 projects, imports context<br>4. Run /arstatus again &mdash; full board with status, blockers, next actions<br>5. Overlay: "0 projects &rarr; 18 projects. One command."<br><br><strong>Caption:</strong> Cold-start to fully loaded in one command. /arbootstrap scans your git repos, Claude memory, and CLAUDE.md files. No manual setup.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text"><strong>录屏：</strong><br>1. /arstatus——空面板<br>2. /arbootstrap——扫描 ~/Projects/, ~/.claude/<br>3. 看：发现 18 个项目，导入上下文<br>4. 再次 /arstatus——完整面板带状态、阻塞、下一步<br>5. 字幕："0 项目 → 18 项目。一条命令。"<br><br><strong>文案：</strong> 从冷启动到完全加载只需一条命令。/arbootstrap 扫描你的 git 仓库、Claude 记忆和 CLAUDE.md 文件。无需手动设置。</div></div>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(196,148,74,0.12); color:var(--orange);">Fri</span><span class="post-type">Folder Spotlight</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w5','fri','folder-spotlight','Real Usage','Show insights-index.json structure: keyword map linking insights across projects, salience scores, cross-reference count. Highlight how one insight connects novada-mcp to another project. AgentRecall watermark.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text"><strong>Spotlight:</strong> insights-index.json<br><br>[JSON structure showing keyword map, cross-project references, salience scores]<br><br><strong>Caption:</strong> This file is the bridge between your projects. Every lesson, indexed by keyword, linked across repos. When you start a new project, the insights that matter find YOU. Not the other way around.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text"><strong>文件聚焦：</strong> insights-index.json<br><br>[JSON 结构：关键词映射、跨项目引用、显著性评分]<br><br><strong>文案：</strong> 这个文件是你项目之间的桥梁。每条教训按关键词索引，跨仓库链接。当你开新项目时，重要的洞察主动找到你，而不是你去找它。</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== WEEK 6 ===== -->
+  <div class="panel" id="week6">
+    <h2>Week 6 &mdash; The Vision: Intelligent Distance Protocol</h2>
+    <p class="section-sub">The big picture. Challenge "agents replace devs." Close with follow-me CTA.</p>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(196,90,74,0.12); color:var(--red);">Mon</span><span class="post-type">Hot Take <span class="conflict-tag">Conflictive</span></span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w6','mon','hot-take','The Vision','Challenge agents replace devs narrative. The bottleneck is memory not intelligence. Agents will replace bad memory not junior developers.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text">AI agents won't replace junior developers.<br><br>They'll replace bad memory.<br><br>The bottleneck was never intelligence. It was continuity. An agent that remembers your last 50 sessions is more valuable than one that's 10% smarter at coding.<br><br>We're optimizing the wrong dimension.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text">AI agent 不会取代初级开发者。<br><br>它们会取代「差记忆」。<br><br>瓶颈从来不是智力，而是连续性。一个记得你过去 50 次会话的 agent 比一个编码能力强 10% 的 agent 更有价值。<br><br>我们在优化错误的维度。</div></div>
+      </div>
+      <div class="post-note"><strong>Conflict:</strong> The "agents replace devs" debate is the hottest topic on AI Twitter. Taking a contrarian position ("no, it's about memory not intelligence") forces both sides to engage.</div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(90,126,181,0.12); color:var(--blue);">Tue</span><span class="post-type">Thread (7 tweets)</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w6','tue','thread','The Vision','Thread on Intelligent Distance Protocol. The gap between human thinking and AI action is structural, not fixable. But navigable. AgentRecall navigates it better each session. Session 1 vs 50 comparison. End with the vision: a protocol for human-AI collaboration.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text">
+          <strong>1/</strong> The gap between how humans think and how AI agents act is structural. You can't close it. But you can navigate it. Here's the idea behind everything I've built.<br><br>
+          <strong>2/</strong> I call it "Intelligent Distance." When you give your agent a task, you communicate WHAT. The agent invents its own WHY and HOW. And it usually gets them wrong. This isn't a bug. It's the nature of the gap.<br><br>
+          <strong>3/</strong> The traditional fix: write better prompts, add more context, use bigger models. But the gap is structural. You can't prompt-engineer your way across a structural divide.<br><br>
+          <strong>4/</strong> The real fix: let the gap be navigated through experience. Every correction your agent receives is a data point about HOW YOU THINK. After 50 corrections, the agent doesn't just know your codebase &mdash; it knows your judgment.<br><br>
+          <strong>5/</strong> Session 1: "Build a login page." Agent builds something generic. You correct 5 things. Session 50: "Build a settings page." Agent already knows you prefer server components, hate inline styles, always want error boundaries. Zero corrections needed.<br><br>
+          <strong>6/</strong> This is the endgame for agent memory: not storage, not retrieval, but BEHAVIORAL CONVERGENCE. Your agent should behave measurably differently on session 50 than session 1. If it doesn't, your memory system is just an expensive database.<br><br>
+          <strong>7/</strong> AgentRecall is my attempt at building this. 240+ stars, 10 MCP tools, works everywhere. But more than the tool &mdash; I think this is where the industry needs to go. Memory as a protocol, not a product.<br><br>Follow along if you want to see where this goes. github.com/Goldentrii/AgentRecall
+        </div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text">
+          <strong>1/</strong> 人类思维和 AI agent 行为之间的差距是结构性的。你关不掉它。但你可以越过它。这是我造一切东西背后的想法。<br><br>
+          <strong>2/</strong> 我叫它「智能距离」。你给 agent 一个任务，传达的是 WHAT。Agent 自己发明 WHY 和 HOW。而且通常都搞错了。这不是 bug，是差距的本质。<br><br>
+          <strong>3/</strong> 传统方案：写更好的 prompt、加更多上下文、用更大模型。但差距是结构性的。你没法靠 prompt 工程跨过结构性鸿沟。<br><br>
+          <strong>4/</strong> 真正的方案：让差距通过经验被导航。你的每次纠正都是关于你如何思考的数据点。50 次纠正后，agent 不只了解你的代码库——它了解你的判断力。<br><br>
+          <strong>5/</strong> 第 1 次会话："做一个登录页面。" Agent 做了个通用的。你纠正 5 处。第 50 次："做一个设置页面。" Agent 已经知道你偏好服务端组件、讨厌内联样式、永远要错误边界。零纠正。<br><br>
+          <strong>6/</strong> Agent 记忆的终局不是存储、不是检索，而是行为趋同。你的 agent 在第 50 次会话的行为应该跟第 1 次明显不同。如果没有，你的记忆系统只是一个昂贵的数据库。<br><br>
+          <strong>7/</strong> AgentRecall 是我的尝试。240+ 星，10 个 MCP 工具，全平台支持。但比工具更重要的是——我认为这是行业需要去的方向。记忆作为协议，而不是产品。<br><br>想看后续的话跟着我。github.com/Goldentrii/AgentRecall
+        </div></div>
+      </div>
+      <div class="post-note"><strong>Strategy:</strong> The capstone thread. Ties everything together. "Memory as a protocol, not a product" is the tagline. Ends with clear CTA: follow + repo.</div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(106,158,106,0.12); color:var(--green);">Wed</span><span class="post-type">Visual &mdash; Before/After</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w6','wed','visual','The Vision','Side-by-side: LEFT = Session 1 (blank context, generic output, 5 corrections needed). RIGHT = Session 50 (full context loaded, personalized output, zero corrections). Show specific examples of what the agent remembers. AgentRecall watermark.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text"><strong>Image:</strong> Split card. Left: "Session 1" &mdash; blank context, generic code, 5 corrections. Right: "Session 50" &mdash; loaded context, personalized code, 0 corrections. Specific examples listed.<br><br><strong>Caption:</strong> Same agent. Same task. Different session number. The only difference is memory. This is what behavioral convergence looks like.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text"><strong>配图：</strong>对比卡。左："第 1 次会话"——空白上下文、通用代码、5 次纠正。右："第 50 次"——完整上下文、个性化代码、0 次纠正。列出具体例子。<br><br><strong>文案：</strong> 同一个 agent。同一个任务。不同会话次数。唯一区别是记忆。这就是行为趋同。</div></div>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(138,106,181,0.12); color:var(--purple);">Thu</span><span class="post-type">Demo &mdash; Full Lifecycle</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w6','thu','recording','The Vision','Record the full AgentRecall lifecycle in 60 seconds: /arstart (context loads) → work happens → remember() → recall() → check() with decision trail → /arsave (journal + palace + awareness update). Speed up middle section. Overlay key moments.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text"><strong>Recording:</strong><br>1. /arstart &mdash; context loads (3 sec)<br>2. Work happens &mdash; agent uses recalled context (10 sec, sped up)<br>3. remember() &mdash; new learning stored (5 sec)<br>4. check() &mdash; decision trail recorded (5 sec)<br>5. /arsave &mdash; journal + palace + awareness (5 sec)<br>6. Overlay: "One session. Five layers updated. Everything compounds."<br><br><strong>Caption:</strong> 60 seconds. The full memory lifecycle. Start &rarr; recall &rarr; learn &rarr; decide &rarr; save. Every session makes the next one better.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text"><strong>录屏：</strong><br>1. /arstart——上下文加载（3秒）<br>2. 工作——agent 使用召回的上下文（10秒加速）<br>3. remember()——新学习存储（5秒）<br>4. check()——决策记录（5秒）<br>5. /arsave——日志+宫殿+感知更新（5秒）<br>6. 字幕："一次会话。五层更新。一切复利。"<br><br><strong>文案：</strong> 60 秒，完整记忆生命周期。启动→召回→学习→决策→保存。每次会话让下一次更好。</div></div>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-header">
+        <div class="post-header-left"><span class="post-day" style="background:rgba(196,148,74,0.12); color:var(--orange);">Fri</span><span class="post-type">Folder Spotlight</span></div>
+        <div class="post-actions"><button class="btn-sm btn-prompt" onclick="openPrompt('w6','fri','folder-spotlight','The Vision','Show ORCHESTRATOR-PROTOCOL.md — the multi-agent orchestration spec. Highlight: compound lesson rule (3 lessons per review cycle), circular agent loop, orchestrator+executor pattern. This is the future: agents that learn from each other. AgentRecall watermark.')">Generate</button></div>
+      </div>
+      <div class="post-body">
+        <div class="post-lang"><div class="post-lang-label">EN &middot; English</div><div class="tweet-text"><strong>Spotlight:</strong> ORCHESTRATOR-PROTOCOL.md<br><br>[Show key sections: compound lesson rule, circular agent loop, orchestrator+executor]<br><br><strong>Caption:</strong> The final folder spotlight. This is the spec for multi-agent orchestration with shared memory. Agents reviewing each other. Lessons compounding across agents, not just sessions. This is where we're going next.</div></div>
+        <div class="post-lang"><div class="post-lang-label">ZH &middot; Chinese</div><div class="tweet-text"><strong>文件聚焦：</strong> ORCHESTRATOR-PROTOCOL.md<br><br>[展示：复合教训规则、循环 agent 环、编排器+执行器模式]<br><br><strong>文案：</strong> 最后一次文件聚焦。这是多 agent 编排+共享记忆的规范。Agent 互相审查。教训跨 agent 复利，不只是跨会话。这是我们下一步要去的地方。</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== PROMPT MODAL ===== -->
+<div class="modal-overlay" id="promptModal" onclick="if(event.target===this)closePrompt()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="promptTitle">Generate Prompt</h3>
+      <button class="modal-close" onclick="closePrompt()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <pre id="promptContent"></pre>
+      <button class="modal-copy" onclick="copyModalPrompt()">Copy Prompt to Clipboard</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== CHECKLIST PERSISTENCE =====
+const STORAGE_KEY = 'ar-campaign-checklist';
+function loadChecklist() {
+  const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  document.querySelectorAll('.cl-cell[data-id]').forEach(cell => {
+    if (data[cell.dataset.id]) cell.classList.add('done');
+  });
+  updateProgress();
+}
+function toggleCheck(cell) {
+  cell.classList.toggle('done');
+  const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  data[cell.dataset.id] = cell.classList.contains('done');
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  updateProgress();
+}
+function updateProgress() {
+  const total = document.querySelectorAll('.cl-cell[data-id]').length;
+  const done = document.querySelectorAll('.cl-cell.done').length;
+  document.getElementById('doneCount').textContent = done;
+  document.getElementById('progressFill').style.width = (done/total*100)+'%';
+}
+loadChecklist();
+
+// ===== TABS =====
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    if (t.getAttribute('onclick') && t.getAttribute('onclick').includes("'"+id+"'")) t.classList.add('active');
+  });
+}
+
+// ===== PROMPT MODAL =====
+const PROMPTS = {
+  'hot-take': `You are a tech Twitter ghostwriter for an AI engineer building AgentRecall — a persistent memory system for AI agents (npm: agent-recall-mcp, 240+ GitHub stars).
+
+ACCOUNT: 25 followers, cold-start. Voice: builder, not marketer. Tone: direct, contrarian, slightly provocative — force people to agree or argue.
+
+TASK: Write a HOT TAKE tweet for Week WEEK_NUM theme: "THEME_NAME"
+
+BRIEF: BRIEF_TEXT
+
+RULES:
+- Max 280 characters per tweet (this is critical — count carefully)
+- Must be CONFLICTIVE — people should feel compelled to reply "YES exactly" or "no, you're wrong because..."
+- Patterns that drive conflict: "Unpopular opinion:", "Hot take:", "Everyone says X. They're wrong.", "X is not Y — it's Z."
+- Week 1 = ZERO product mention
+- Never use: "game-changer", "revolutionary", "10x", fire emoji
+- Generate BOTH English and Chinese versions
+- ZH must feel native, not translated — adapt the provocation culturally`,
+
+  'thread': `You are a tech Twitter ghostwriter for an AI engineer building AgentRecall — a persistent memory system for AI agents (npm: agent-recall-mcp, 240+ GitHub stars).
+
+ACCOUNT: 25 followers, cold-start. Voice: builder sharing hard-won insights. Technical credibility + accessible framing.
+
+TASK: Write a THREAD (5-8 tweets) for Week WEEK_NUM theme: "THEME_NAME"
+
+BRIEF: BRIEF_TEXT
+
+RULES:
+- Tweet 1 = hook with curiosity gap ("Here's what I found" / "Nobody talks about this")
+- Each tweet must stand alone (people see them individually in feeds)
+- Include at least one contrarian claim that challenges common AI discourse
+- Last tweet = genuine engagement question (not rhetorical)
+- Week 1 = ZERO product mention
+- Generate BOTH EN and ZH versions side by side
+- ZH should feel native, not translated`,
+
+  'visual': `You are a visual content designer creating shareable tech diagrams for X/Twitter.
+
+STYLE: Dark background (#0f1117), light text (#e4e4e7). Accents: blue #3b82f6, green #22c55e, purple #a855f7, orange #f59e0b. Font: system sans-serif. Card: 1200x675px. No decorative elements.
+
+TASK: Create an HTML card for Week WEEK_NUM theme "THEME_NAME":
+
+BRIEF: BRIEF_TEXT
+
+OUTPUT: Complete HTML file with inline styles. Self-contained, professional quality.
+Include BOTH EN and ZH labels (EN primary, ZH as subtitle).
+Week 1 = NO watermark. Weeks 2-6 = subtle "AgentRecall" bottom-right.
+
+Also generate a tweet CAPTION in both EN and ZH.`,
+
+  'recording': `You are a demo video planner for AgentRecall (persistent memory for AI agents).
+
+CONTEXT: 30-60 sec screen recordings of terminal/Claude Code. Posted as video/GIF on X. Audience: developers using AI coding assistants.
+
+TASK: Create a recording script for Week WEEK_NUM theme "THEME_NAME":
+
+BRIEF: BRIEF_TEXT
+
+OUTPUT:
+## Setup (before recording)
+## Recording Script (timestamp table)
+## Text Overlays (EN + ZH, timestamp, position)
+## Caption EN
+## Caption ZH
+
+RULES: First 3 sec must hook. Text overlays only (no voiceover). Under 45 sec. End with clear before/after moment.`,
+
+  'folder-spotlight': `You are a visual content designer creating folder/code spotlight cards for X/Twitter.
+
+TASK: Create a FOLDER SPOTLIGHT visual for Week WEEK_NUM theme "THEME_NAME":
+
+BRIEF: BRIEF_TEXT
+
+OUTPUT: An HTML card (1200x675px, dark background #0f1117) showing:
+1. Directory tree visualization with file icons
+2. Annotations pointing out key files/folders
+3. "What's missing" or "What's here" callouts
+4. Clean, terminal-aesthetic feel
+
+Also generate tweet CAPTION in both EN and ZH.
+
+Week 1 = NO watermark. Weeks 2-6 = subtle "AgentRecall" bottom-right.`
+};
+
+function openPrompt(week, day, type, theme, brief) {
+  let prompt = PROMPTS[type] || PROMPTS['hot-take'];
+  prompt = prompt.replace(/WEEK_NUM/g, week.replace('w',''));
+  prompt = prompt.replace(/THEME_NAME/g, theme);
+  prompt = prompt.replace(/BRIEF_TEXT/g, brief);
+  document.getElementById('promptTitle').textContent = `Generate: W${week.replace('w','')} ${day.charAt(0).toUpperCase()+day.slice(1)} (${type})`;
+  document.getElementById('promptContent').textContent = prompt;
+  document.getElementById('promptModal').classList.add('show');
+}
+function closePrompt() { document.getElementById('promptModal').classList.remove('show'); }
+function copyModalPrompt() {
+  const text = document.getElementById('promptContent').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.modal-copy');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy Prompt to Clipboard', 2000);
+  });
+}
+</script>
+</body>
+</html>

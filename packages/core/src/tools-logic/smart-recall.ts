@@ -212,9 +212,11 @@ function processFeedback(feedback: RecallFeedback[], query: string): FeedbackEnt
   const log = readFeedbackLog();
   const date = new Date().toISOString().slice(0, 10);
   for (const f of feedback) {
-    const isDuplicate = log.some(
-      (existing) => existing.query === query && existing.id === f.id && existing.date === date
-    );
+    // Only deduplicate when a stable ID is present. Without an ID there's no
+    // reliable key, so always log the entry (allows accumulation across calls).
+    const isDuplicate = f.id
+      ? log.some((existing) => existing.query === query && existing.id === f.id && existing.date === date)
+      : false;
     if (!isDuplicate) {
       log.push({ query, id: f.id, title: f.title ?? "", useful: f.useful, date });
     }

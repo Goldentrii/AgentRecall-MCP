@@ -20,7 +20,7 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "agent-recall-core": "3.3.22"
+    "agent-recall-core": "3.3.28"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

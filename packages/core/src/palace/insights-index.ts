@@ -98,6 +98,28 @@ export function addIndexedInsight(insight: Omit<IndexedInsight, "id" | "confirme
   };
 
   index.insights.push(newInsight);
+
+  // Prune: if over 200 entries, remove least-confirmed old entries
+  if (index.insights.length > 200) {
+    const now = Date.now();
+    const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+    // Remove single-confirmation entries older than 90 days
+    index.insights = index.insights.filter((i) => {
+      if (i.confirmed_count > 1) return true;
+      const age = now - new Date(i.last_confirmed).getTime();
+      return age < ninetyDaysMs;
+    });
+    // If still over 200 after age pruning, keep top 200 by score
+    if (index.insights.length > 200) {
+      index.insights.sort((a, b) => {
+        const scoreA = a.confirmed_count * (a.severity === "critical" ? 3 : a.severity === "important" ? 2 : 1);
+        const scoreB = b.confirmed_count * (b.severity === "critical" ? 3 : b.severity === "important" ? 2 : 1);
+        return scoreB - scoreA;
+      });
+      index.insights = index.insights.slice(0, 200);
+    }
+  }
+
   writeInsightsIndex(index);
   return newInsight;
 }

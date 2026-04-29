@@ -157,19 +157,21 @@ describe("Awareness archive", () => {
   });
 
   it("demoted insights go to archive, not deleted", () => {
-    // Fill 15 insights
+    // Fill 20 insights (cap is 20) — all titles must be 3+ words to pass quality gate
     const topics = [
-      "PostgreSQL indexing", "Kubernetes scaling", "WebSocket pooling",
-      "Redis caching", "Docker networking", "GraphQL resolvers",
-      "OAuth token flow", "CI pipeline speed", "Monitoring alerts",
-      "API versioning", "Rust lifetimes", "Erlang supervision",
-      "eBPF tracing", "Cassandra compaction", "Nginx upstreams",
+      "PostgreSQL indexing strategies", "Kubernetes pod autoscaling", "WebSocket connection pooling",
+      "Redis cluster failover", "Docker layer caching", "GraphQL resolver batching",
+      "OAuth token flow", "CI pipeline speed", "Monitoring alert routing",
+      "API versioning strategy", "Rust lifetime elision", "Erlang supervision trees",
+      "eBPF kernel tracing", "Cassandra compaction tuning", "Nginx upstream health",
+      "Envoy circuit breaking", "ClickHouse columnar storage", "Flink watermark semantics",
+      "NATS JetStream delivery", "Wasm component types",
     ];
     for (const topic of topics) {
       core.addInsight({ title: topic, evidence: `Evidence for ${topic}`, appliesWhen: [topic.split(" ")[0].toLowerCase()], source: "test" });
     }
 
-    // Add 16th — should demote the lowest
+    // Add 21st — should demote the lowest
     core.addInsight({ title: "Terraform state locking", evidence: "Lost state once", appliesWhen: ["terraform"], source: "test" });
 
     const archive = core.readAwarenessArchive();

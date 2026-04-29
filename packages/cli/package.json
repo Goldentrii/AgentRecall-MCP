@@ -22,7 +22,7 @@
     "agent-memory"
   ],
   "dependencies": {
-    "agent-recall-core": "3.3.24"
+    "agent-recall-core": "3.3.28"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

@@ -113,6 +113,8 @@ export async function palaceSearch(input: PalaceSearchInput): Promise<PalaceSear
       for (let i = 0; i < lines.length; i++) {
         const lineLower = lines[i].toLowerCase();
         if (queryWords.length === 0) continue;
+        // Skip pure markdown headings (## Memories, # Room, etc.) — structural, not content
+        if (/^#{1,6}\s/.test(lines[i])) continue;
 
         // Stem each line word for matching
         const lineWords = lineLower.split(/\s+/).filter(w => w.length > 2).map(w => stem(w));

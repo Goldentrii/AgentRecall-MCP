@@ -10,6 +10,8 @@ import { ensureDir } from "../storage/fs-utils.js";
 import { palaceDir } from "../storage/paths.js";
 import { readJsonSafe, writeJsonAtomic } from "../storage/fs-utils.js";
 import { roomReadmeContent } from "./obsidian.js";
+import { computeSalience } from "./salience.js";
+import { getConnectionCount } from "./graph.js";
 
 function roomMetaPath(projectPalaceDir: string, roomSlug: string): string {
   return path.join(projectPalaceDir, "rooms", roomSlug, "_room.json");
@@ -100,7 +102,13 @@ export function ensurePalaceInitialized(project: string): void {
   if (fs.existsSync(indexPath)) {
     try {
       JSON.parse(fs.readFileSync(indexPath, "utf-8"));
-      return; // valid JSON — already initialized
+      // Migrate: create any new default rooms missing from this project
+      for (const room of DEFAULT_PALACE_ROOMS) {
+        if (!roomExists(project, room.slug)) {
+          createRoom(project, room.slug, room.name, room.description, [...room.tags]);
+        }
+      }
+      return;
     } catch {
       // Corrupt index — remove and regenerate
       fs.unlinkSync(indexPath);
@@ -144,13 +152,22 @@ export function ensurePalaceInitialized(project: string): void {
   writeJsonAtomic(path.join(pd, "graph.json"), { edges: [] });
 }
 
-/** Record an access (bump access_count and last_accessed). */
+/** Record an access (bump access_count, last_accessed, and recompute salience). */
 export function recordAccess(project: string, roomSlug: string): void {
   const meta = getRoomMeta(project, roomSlug);
   if (!meta) return;
+  const pd = palaceDir(project);
+  const connCount = getConnectionCount(pd, roomSlug);
+  const newSalience = computeSalience({
+    importance: "medium",
+    lastUpdated: meta.updated,
+    accessCount: meta.access_count + 1,
+    connectionCount: connCount,
+  });
   updateRoomMeta(project, roomSlug, {
     access_count: meta.access_count + 1,
     last_accessed: new Date().toISOString(),
+    salience: newSalience,
   });
 }
 

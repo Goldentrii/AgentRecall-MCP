@@ -8,7 +8,7 @@ export function register(server: McpServer): void {
     description:
       "Add insights to the awareness system. Call at end of session. " +
       "New insights are merged with existing ones (strengthening confirmed patterns) " +
-      "or added (demoting least-relevant if over 10). " +
+      "or added (demoting least-relevant if over 20). " +
       "Also updates the cross-project insights index.",
     inputSchema: {
       insights: z.array(z.object({
