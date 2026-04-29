@@ -30,10 +30,12 @@
     "knowledge-graph",
     "obsidian"
   ],
-  "dependencies": {},
+  "dependencies": {
+    "@supabase/supabase-js": "^2.105.1"
+  },
   "devDependencies": {
-    "typescript": "^5.7.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
   },
   "engines": {
     "node": ">=18.0.0"
