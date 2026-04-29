@@ -1004,6 +1004,52 @@ Beyond token measurement, the benchmarks verified:
 
 ---
 
+## Semantic Recall (Optional)
+
+By default, `recall()` uses keyword search with RRF fusion — no configuration required. If you hit the keyword ceiling (synonyms, paraphrased queries, multi-language), the optional Supabase backend upgrades recall to cosine similarity on real embeddings.
+
+**Why you'd want it:** Keyword search matches tokens. Semantic search matches meaning. `recall("session expiry")` now also surfaces entries about "token refresh" and "auth timeout" without hand-crafting synonyms.
+
+### Setup (3 steps)
+
+```bash
+# Step 1 — run the interactive setup wizard
+ar setup supabase
+
+# Step 2 — apply the pgvector migration to your Supabase project
+ar setup supabase --migrate
+
+# Step 3 — done. Run /arstart — backfill happens automatically on next session.
+```
+
+The setup wizard prompts for your Supabase project URL and service role key, then writes them to `~/.agent-recall/config.json`. Never committed to git.
+
+### How it works
+
+```
+remember() / session_end()
+  → writes to local ~/.agent-recall/ as always   ← source of truth, unchanged
+  → async: syncs to Supabase memories table
+      → OpenAI text-embedding-3-small (1536 dims)
+        or Voyage voyage-3-lite (512 dims, zero-padded to 1536)
+      → pgvector stores the embedding
+
+recall(query)
+  → Supabase configured?
+      YES → cosine similarity search via pgvector, reranked with local RRF
+      NO  → local keyword search (existing behavior, unchanged)
+```
+
+Local files remain the source of truth. Supabase is a derived read index — delete it anytime and rebuild with `ar setup supabase --backfill`.
+
+### Graceful degradation
+
+If Supabase is unreachable (network error, quota exceeded, not configured), `recall()` falls back to local keyword search silently. No errors surface to the agent. Zero behavior change if the feature is never configured.
+
+**Required env / config:** `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and either `OPENAI_API_KEY` or `VOYAGE_API_KEY`. All optional — AgentRecall works fully without them.
+
+---
+
 ## Contributing
 
 Built by [tongwu](https://github.com/Goldentrii) at [Novada](https://www.novada.com).

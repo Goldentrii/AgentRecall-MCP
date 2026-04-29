@@ -8,6 +8,10 @@ description: >-
   watch_for warnings, palace rooms with salience scoring, cross-project insight
   matching, same-day journal merging, ambient recall hooks. Local markdown only.
   Zero cloud, zero telemetry, Obsidian-compatible.
+  Optional Supabase backend: when configured via `ar setup supabase`, recall()
+  uses pgvector cosine similarity on OpenAI/Voyage embeddings instead of keyword
+  search — same API, semantic understanding. Gracefully degrades to local search
+  if not configured.
 origin: community
 version: 3.3.28
 author: Goldentrii
