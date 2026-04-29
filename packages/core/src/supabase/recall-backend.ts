@@ -10,10 +10,11 @@ import type { SupabaseConfig } from "./config.js";
 /** RRF constant (same as local backend). */
 const RRF_K = 60;
 
+// RRF max ≈ num_lists / (k+1) = 3/61 ≈ 0.049. Calibrate thresholds accordingly.
 function scoreLabel(score: number): string {
-  if (score >= 0.10) return "high";
-  if (score >= 0.05) return "medium";
-  if (score >= 0.03) return "low";
+  if (score >= 0.040) return "high";    // top of 2+ lists
+  if (score >= 0.025) return "medium";  // top of ~1.5 lists
+  if (score >= 0.015) return "low";     // top of 1 list
   return "weak";
 }
 
