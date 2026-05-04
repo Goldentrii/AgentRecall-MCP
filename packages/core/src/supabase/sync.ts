@@ -83,7 +83,10 @@ export function logSyncError(message: string): void {
   const content = fs.readFileSync(logPath, "utf-8");
   const lines = content.split("\n").filter(Boolean);
   if (lines.length > 500) {
-    fs.writeFileSync(logPath, lines.slice(-500).join("\n") + "\n", "utf-8");
+    const trimmed = lines.slice(-500).join("\n") + "\n";
+    const tmpPath = logPath + ".tmp";
+    fs.writeFileSync(tmpPath, trimmed, "utf-8");
+    fs.renameSync(tmpPath, logPath);
   }
 }
 
