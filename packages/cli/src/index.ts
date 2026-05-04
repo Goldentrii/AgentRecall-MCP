@@ -1458,6 +1458,12 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
             break;
           }
 
+          const configPath = path.join(homeDir, ".agent-recall", "config.json");
+          if (!fs.existsSync(configPath)) {
+            output("Supabase not configured — run 'ar setup supabase' first.");
+            break;
+          }
+
           const slugs = fs.readdirSync(projectsDir).filter((s) =>
             fs.statSync(path.join(projectsDir, s)).isDirectory()
           );
@@ -1473,7 +1479,11 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
             if (fs.existsSync(journalDir)) {
               for (const f of fs.readdirSync(journalDir).filter((f) => f.endsWith(".md"))) {
                 const fp = path.join(journalDir, f);
-                files.push({ path: fp, content: fs.readFileSync(fp, "utf-8"), store: "journal" });
+                try {
+                  files.push({ path: fp, content: fs.readFileSync(fp, "utf-8"), store: "journal" });
+                } catch {
+                  totalFailed++;
+                }
               }
             }
 
@@ -1482,11 +1492,30 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
             if (fs.existsSync(roomsDir)) {
               for (const room of fs.readdirSync(roomsDir)) {
                 const roomPath = path.join(roomsDir, room);
-                if (!fs.statSync(roomPath).isDirectory()) continue;
+                try {
+                  if (!fs.statSync(roomPath).isDirectory()) continue;
+                } catch {
+                  totalFailed++;
+                  continue;
+                }
                 for (const f of fs.readdirSync(roomPath).filter((f) => f.endsWith(".md"))) {
                   const fp = path.join(roomPath, f);
-                  files.push({ path: fp, content: fs.readFileSync(fp, "utf-8"), store: "palace", room });
+                  try {
+                    files.push({ path: fp, content: fs.readFileSync(fp, "utf-8"), store: "palace", room });
+                  } catch {
+                    totalFailed++;
+                  }
                 }
+              }
+            }
+
+            // Global awareness file
+            const awarenessPath = path.join(homeDir, ".agent-recall", "awareness.md");
+            if (fs.existsSync(awarenessPath)) {
+              try {
+                files.push({ path: awarenessPath, content: fs.readFileSync(awarenessPath, "utf-8"), store: "awareness" });
+              } catch {
+                totalFailed++;
               }
             }
 
