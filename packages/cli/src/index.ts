@@ -351,7 +351,11 @@ async function main(): Promise<void> {
         output(result);
       } else if (sub === "rollup") {
         const thresholdStr = getFlag("--threshold", rest);
-        const threshold = thresholdStr ? parseInt(thresholdStr, 10) : 3;
+        const threshold = thresholdStr !== undefined ? parseInt(thresholdStr, 10) : 3;
+        if (isNaN(threshold) || threshold < 1) {
+          process.stderr.write(`Error: --threshold must be a positive integer (got: ${thresholdStr})\n`);
+          process.exit(1);
+        }
         try {
           const { promoted, skipped } = core.promoteConfirmedInsights(threshold);
           if (promoted.length === 0) {
@@ -1529,16 +1533,6 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
               }
             }
 
-            // Global awareness file
-            const awarenessPath = path.join(homeDir, ".agent-recall", "awareness.md");
-            if (fs.existsSync(awarenessPath)) {
-              try {
-                files.push({ path: awarenessPath, content: fs.readFileSync(awarenessPath, "utf-8"), store: "awareness" });
-              } catch {
-                totalFailed++;
-              }
-            }
-
             if (files.length === 0) continue;
 
             output(`Backfilling ${slug} (${files.length} files)...`);
@@ -1547,6 +1541,23 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
             totalSkipped += result.skipped;
             totalFailed += result.failed;
             output(`  synced: ${result.synced}, skipped: ${result.skipped}, failed: ${result.failed}`);
+          }
+
+          // Global awareness file — synced once after all slugs, keyed as "global"
+          const awarenessPath = path.join(homeDir, ".agent-recall", "awareness.md");
+          if (fs.existsSync(awarenessPath)) {
+            try {
+              const awarenessFiles: Array<{ path: string; content: string; store: "journal" | "palace" | "awareness" | "digest"; room?: string }> = [];
+              awarenessFiles.push({ path: awarenessPath, content: fs.readFileSync(awarenessPath, "utf-8"), store: "awareness" });
+              output(`Backfilling global awareness (1 file)...`);
+              const result = await backfill("global", awarenessFiles);
+              totalSynced += result.synced;
+              totalSkipped += result.skipped;
+              totalFailed += result.failed;
+              output(`  synced: ${result.synced}, skipped: ${result.skipped}, failed: ${result.failed}`);
+            } catch {
+              totalFailed++;
+            }
           }
 
           output(`\nBackfill complete — synced: ${totalSynced}, skipped: ${totalSkipped}, failed: ${totalFailed}`);
