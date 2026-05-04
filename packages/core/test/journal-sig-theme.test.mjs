@@ -38,3 +38,27 @@ test("autoClassifyTheme: agent-fix", () => {
 test("autoClassifyTheme: default none", () => {
   assert.equal(autoClassifyTheme("Routine session today."), "none");
 });
+
+test("autoClassifySig: critical", () => {
+  assert.equal(autoClassifySig("A critical bug was found causing data loss."), "critical");
+});
+
+test("autoClassifySig: audit", () => {
+  assert.equal(autoClassifySig("Loop 1 complete. Scored 7/10 on quality."), "audit");
+});
+
+test("autoClassifySig: decision", () => {
+  assert.equal(autoClassifySig("Decisions: chose pgvector over keyword search."), "decision");
+});
+
+test("autoClassifySig: research", () => {
+  assert.equal(autoClassifySig("Research phase: gathered information on competitors."), "research");
+});
+
+test("autoClassifyTheme: cross-project (3+ project names)", () => {
+  // Uses agentrecall, novada-web, aam — avoids "mcp" which triggers mcp-unavailable first
+  assert.equal(
+    autoClassifyTheme("agentrecall and novada-web and aam all affected by this change."),
+    "cross-project"
+  );
+});

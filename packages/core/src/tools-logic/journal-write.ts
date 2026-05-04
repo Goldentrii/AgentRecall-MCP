@@ -75,7 +75,7 @@ export async function journalWrite(input: JournalWriteInput): Promise<JournalWri
   const dir = journalDir(slug);
   ensureDir(dir);
 
-  // Intelligent naming (v3.3.20+): {date}--{saveType}--{lines}L--{slug}.md
+  // Intelligent naming (v3.4.1+): {date}--{saveType}--{sig}--{theme}--{slug}.md
   // Falls back to legacy {date}.md when no saveType provided.
   const basePath = path.join(dir, `${date}.md`);
   const smartOpts = input.saveType

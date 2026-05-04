@@ -1,14 +1,15 @@
 /**
  * Session identity + intelligent file naming.
  *
- * Naming format (v3.3.20+):
- *   {date}--{save-type}--{lines}L--{topic-slug}.md
+ * Naming format (v3.4.1+):
+ *   {date}--{save-type}--{sig}--{theme}--{topic-slug}.md
  *
- * Example: 2026-04-20--arsave--45L--genome-review-v23.md
+ * Example: 2026-05-04--arsave--shipped--version-bump--v341-release.md
  *
  * - save-type: arsave / arsaveall / hook-end / hook-correction / capture
- * - lines: content line count (factual cost signal for agents)
- * - topic-slug: semantic keywords from generateSlug()
+ * - sig: significance tag (SignificanceTag) — why this session matters
+ * - theme: recurring theme tag (ThemeTag) — cross-session pattern
+ * - topic-slug: semantic keywords from generateSlug(), max 35 chars
  *
  * Falls back to legacy naming (YYYY-MM-DD.md) when no opts provided.
  */
