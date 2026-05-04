@@ -12,6 +12,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { getRoot } from "../types.js";
 import { ensureDir } from "../storage/fs-utils.js";
+import { syncToSupabase } from "../supabase/sync.js";
 
 export interface IndexedInsight {
   id: string;
@@ -53,6 +54,7 @@ export function writeInsightsIndex(index: InsightsIndex): void {
   ensureDir(path.dirname(p));
   index.updated = new Date().toISOString();
   fs.writeFileSync(p, JSON.stringify(index, null, 2), "utf-8");
+  syncToSupabase(p, JSON.stringify(index, null, 2), "_global", "awareness");
 }
 
 /**
