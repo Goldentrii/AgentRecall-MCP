@@ -47,7 +47,7 @@ export async function awarenessUpdate(input: AwarenessUpdateInput): Promise<Awar
       evidence: insight.evidence,
       appliesWhen: insight.applies_when,
       source: insight.source,
-      source_project: insight.source_project ?? input.project ?? "global",
+      source_project: insight.source_project ?? input.project ?? "_global",
     });
     // Rejected by quality gate — record reason, skip indexing
     if ("accepted" in result) {

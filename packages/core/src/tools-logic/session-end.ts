@@ -174,6 +174,7 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
           evidence: i.evidence,
           applies_when: i.applies_when,
           source: i.source ?? `session_end ${new Date().toISOString().slice(0, 10)}`,
+          source_project: slug ?? "_global",
           severity: i.severity,
         })),
         project: slug,
