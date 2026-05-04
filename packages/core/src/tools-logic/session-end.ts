@@ -8,6 +8,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { journalWrite } from "./journal-write.js";
 import { awarenessUpdate } from "./awareness-update.js";
+import { promoteConfirmedInsights } from "./insight-promotion.js";
 import { consolidateJournalToPalace } from "../palace/consolidate.js";
 import { resolveProject } from "../storage/project.js";
 import { ensurePalaceInitialized, listRooms } from "../palace/rooms.js";
@@ -174,6 +175,7 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
           evidence: i.evidence,
           applies_when: i.applies_when,
           source: i.source ?? `session_end ${new Date().toISOString().slice(0, 10)}`,
+          source_project: slug ?? "_global",
           severity: i.severity,
         })),
         project: slug,
@@ -313,6 +315,9 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
   const card = cardLines.join("\n");
 
   const qualityWarnings = checkInsightQuality(input.insights ?? []);
+
+  // Auto-promote confirmed cross-session insights into awareness
+  promoteConfirmedInsights(3);
 
   return {
     success: journalWritten || awarenessUpdated,

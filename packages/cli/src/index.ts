@@ -54,14 +54,22 @@ JOURNAL:
 
 PALACE:
   ar palace read [<room>] [--topic <name>]
-  ar palace write <room> <content> [--importance high|medium|low]
+  ar palace write <room> <content> [--topic <name>] [--importance high|medium|low]
   ar palace walk [--depth identity|active|relevant|full]
+    depth: identity(~50t) active(~200t) relevant(~500t) full(~2000t)
   ar palace search <query>
   ar palace lint [--fix]
+
+WRITE PATH GUIDE:
+  ar write <content>             → journal (ephemeral; use for session notes)
+  ar palace write <room> <text>  → palace (permanent; use for decisions, blockers, goals)
+  ar capture <Q> <A>             → Q&A log (use for lessons and quick lookups)
+  ar awareness update --insight "title" --evidence "ev"  → cross-session insights
 
 AWARENESS:
   ar awareness read
   ar awareness update --insight "title" --evidence "ev" --applies-when kw1,kw2
+  ar awareness rollup [--threshold N]
 
 INSIGHT:
   ar insight <context> [--limit N]
@@ -85,6 +93,7 @@ DIAGNOSTICS:
 
 BOOTSTRAP:
   ar bootstrap               Scan machine for projects and show summary card
+  ar bootstrap --source <dir1,dir2>  Also scan these custom directories
   ar bootstrap --dry-run     Preview what would be imported
   ar bootstrap --import      Import all new projects into AgentRecall
   ar bootstrap --import --project <slug>  Import a single project
@@ -184,6 +193,10 @@ async function main(): Promise<void> {
         include_palace: hasFlag("--include-palace", rest),
       });
       output(result);
+      // Print advisory note to stderr (keeps stdout clean for piping)
+      if (result._note) {
+        process.stderr.write(`\n[ar] ${result._note}\n`);
+      }
       break;
     }
     case "state": {
@@ -245,9 +258,23 @@ async function main(): Promise<void> {
           break;
         }
         case "write": {
-          const positional = palaceRest.filter((a) => !a.startsWith("--"));
+          const knownPalaceFlags = new Set(["--topic", "--importance", "--connections", "--project", "--root"]);
+          const positional: string[] = [];
+          for (let i = 0; i < palaceRest.length; i++) {
+            const arg = palaceRest[i];
+            if (knownPalaceFlags.has(arg)) { i++; continue; } // skip flag + its value
+            if (/^--[a-z]/.test(arg)) continue;                  // skip unknown/future flags (but not --- YAML separators)
+            positional.push(arg);
+          }
           const room = positional[0] || "";
           const content = positional.slice(1).join(" ");
+          const DEFAULT_ROOM_SLUGS = new Set(["goals", "architecture", "decisions", "blockers", "alignment", "knowledge"]);
+          if (room && !DEFAULT_ROOM_SLUGS.has(room)) {
+            process.stderr.write(
+              `[ar] Note: '${room}' is not a default room. Creating new room. ` +
+              `Default rooms: ${Array.from(DEFAULT_ROOM_SLUGS).join(", ")}\n`
+            );
+          }
           const result = await core.palaceWrite({
             room,
             content,
@@ -322,6 +349,29 @@ async function main(): Promise<void> {
           trajectory: getFlag("--trajectory", rest),
         });
         output(result);
+      } else if (sub === "rollup") {
+        const thresholdStr = getFlag("--threshold", rest);
+        const threshold = thresholdStr !== undefined ? parseInt(thresholdStr, 10) : 3;
+        if (isNaN(threshold) || threshold < 1) {
+          process.stderr.write(`Error: --threshold must be a positive integer (got: ${thresholdStr})\n`);
+          process.exit(1);
+        }
+        try {
+          const { promoted, skipped } = core.promoteConfirmedInsights(threshold);
+          if (promoted.length === 0) {
+            process.stdout.write(`No new insights to promote (threshold: ${threshold}).\n`);
+          } else {
+            process.stdout.write(`Promoted ${promoted.length} insight(s) to awareness:\n`);
+            for (const title of promoted) {
+              process.stdout.write(`  \u2022 ${title}\n`);
+            }
+            process.stdout.write(`Skipped ${skipped.length} (already in awareness or below threshold).\n`);
+          }
+        } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : String(e);
+          process.stderr.write(`Error: ${message}\n`);
+          process.exit(1);
+        }
       } else {
         process.stderr.write(`Unknown awareness subcommand: ${sub}\n`);
         process.exit(1);
@@ -1245,8 +1295,15 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
         const roomPath = path.join(pd, "rooms", r.slug);
         let entryCount = 0;
         if (fs.existsSync(roomPath)) {
-          const files = fs.readdirSync(roomPath).filter(f => f.endsWith(".md") && f !== "README.md");
-          entryCount = files.length;
+          const topicFiles = fs.readdirSync(roomPath).filter(f => f.endsWith(".md") && f !== "README.md");
+          entryCount = topicFiles.length;
+          // Count entries inside README.md
+          const readmePath = path.join(roomPath, "README.md");
+          if (fs.existsSync(readmePath)) {
+            const readmeContent = fs.readFileSync(readmePath, "utf-8");
+            const entryMatches = readmeContent.match(/^### /gm);
+            entryCount += entryMatches ? entryMatches.length : 0;
+          }
         }
         output(`  ${r.name} (${entryCount} entries, salience ${r.salience.toFixed(2)})`);
         if (r.description) output(`    ${r.description}`);
@@ -1262,7 +1319,8 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
       const doImport = hasFlag("--import", rest);
       const targetProject = getFlag("--project", rest);
 
-      const scan = await core.bootstrapScan();
+      const sourceDirs = getFlag("--source", rest)?.split(",");
+      const scan = await core.bootstrapScan(sourceDirs ? { source_dirs: sourceDirs } : undefined);
 
       const today = new Date().toISOString().slice(0, 10);
       const LINE = "─".repeat(62);
@@ -1414,6 +1472,98 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
 
     case "setup": {
       if (rest[0] === "supabase") {
+        if (rest.includes("--backfill")) {
+          const { backfill } = await import("agent-recall-core");
+          const homeDir = os.homedir();
+          const projectsDir = path.join(homeDir, ".agent-recall", "projects");
+
+          if (!fs.existsSync(projectsDir)) {
+            output("No projects found at ~/.agent-recall/projects/");
+            break;
+          }
+
+          const configPath = path.join(homeDir, ".agent-recall", "config.json");
+          if (!fs.existsSync(configPath)) {
+            output("Supabase not configured — run 'ar setup supabase' first.");
+            break;
+          }
+
+          const slugs = fs.readdirSync(projectsDir).filter((s) =>
+            fs.statSync(path.join(projectsDir, s)).isDirectory()
+          );
+
+          let totalSynced = 0, totalSkipped = 0, totalFailed = 0;
+
+          for (const slug of slugs) {
+            const slugDir = path.join(projectsDir, slug);
+            const files: Array<{ path: string; content: string; store: "journal" | "palace" | "awareness" | "digest"; room?: string }> = [];
+
+            // Journal files
+            const journalDir = path.join(slugDir, "journal");
+            if (fs.existsSync(journalDir)) {
+              for (const f of fs.readdirSync(journalDir).filter((f) => f.endsWith(".md"))) {
+                const fp = path.join(journalDir, f);
+                try {
+                  files.push({ path: fp, content: fs.readFileSync(fp, "utf-8"), store: "journal" });
+                } catch {
+                  totalFailed++;
+                }
+              }
+            }
+
+            // Palace room files
+            const roomsDir = path.join(slugDir, "palace", "rooms");
+            if (fs.existsSync(roomsDir)) {
+              for (const room of fs.readdirSync(roomsDir)) {
+                const roomPath = path.join(roomsDir, room);
+                try {
+                  if (!fs.statSync(roomPath).isDirectory()) continue;
+                } catch {
+                  totalFailed++;
+                  continue;
+                }
+                for (const f of fs.readdirSync(roomPath).filter((f) => f.endsWith(".md"))) {
+                  const fp = path.join(roomPath, f);
+                  try {
+                    files.push({ path: fp, content: fs.readFileSync(fp, "utf-8"), store: "palace", room });
+                  } catch {
+                    totalFailed++;
+                  }
+                }
+              }
+            }
+
+            if (files.length === 0) continue;
+
+            output(`Backfilling ${slug} (${files.length} files)...`);
+            const result = await backfill(slug, files);
+            totalSynced += result.synced;
+            totalSkipped += result.skipped;
+            totalFailed += result.failed;
+            output(`  synced: ${result.synced}, skipped: ${result.skipped}, failed: ${result.failed}`);
+          }
+
+          // Global awareness file — synced once after all slugs, keyed as "global"
+          const awarenessPath = path.join(homeDir, ".agent-recall", "awareness.md");
+          if (fs.existsSync(awarenessPath)) {
+            try {
+              const awarenessFiles: Array<{ path: string; content: string; store: "journal" | "palace" | "awareness" | "digest"; room?: string }> = [];
+              awarenessFiles.push({ path: awarenessPath, content: fs.readFileSync(awarenessPath, "utf-8"), store: "awareness" });
+              output(`Backfilling global awareness (1 file)...`);
+              const result = await backfill("global", awarenessFiles);
+              totalSynced += result.synced;
+              totalSkipped += result.skipped;
+              totalFailed += result.failed;
+              output(`  synced: ${result.synced}, skipped: ${result.skipped}, failed: ${result.failed}`);
+            } catch {
+              totalFailed++;
+            }
+          }
+
+          output(`\nBackfill complete — synced: ${totalSynced}, skipped: ${totalSkipped}, failed: ${totalFailed}`);
+          break;
+        }
+
         const readline = await import("node:readline");
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
         const ask = (q: string): Promise<string> => new Promise((resolve) => rl.question(q, resolve));
@@ -1440,7 +1590,7 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
         output("Run migration.sql in your Supabase SQL editor to create tables.");
         output("Backfill will start automatically on next session_start.\n");
       } else {
-        process.stderr.write(`Unknown setup subcommand: ${rest[0] ?? "(none)"}\nUsage: ar setup supabase\n`);
+        process.stderr.write(`Unknown setup subcommand: ${rest[0] ?? "(none)"}\nUsage: ar setup supabase [--backfill]\n`);
         process.exit(1);
       }
       break;

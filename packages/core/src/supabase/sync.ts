@@ -1,5 +1,7 @@
 // packages/core/src/supabase/sync.ts
 import * as crypto from "node:crypto";
+import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import { getSupabaseClient } from "./client.js";
 import { readSupabaseConfig } from "./config.js";
@@ -65,6 +67,27 @@ export function deriveSlug(filePath: string): string {
     return `palace--${room}--${fileName}`;
   }
   return `other--${fileName}`;
+}
+
+// ---------------------------------------------------------------------------
+// Error logging
+// ---------------------------------------------------------------------------
+
+export function logSyncError(message: string): void {
+  const logPath = path.join(os.homedir(), ".agent-recall", "sync-errors.log");
+  const timestamp = new Date().toISOString();
+  const line = `${timestamp} ${message}\n`;
+  fs.mkdirSync(path.dirname(logPath), { recursive: true });
+  fs.appendFileSync(logPath, line, "utf-8");
+  // Cap at 500 lines
+  const content = fs.readFileSync(logPath, "utf-8");
+  const lines = content.split("\n").filter(Boolean);
+  if (lines.length > 500) {
+    const trimmed = lines.slice(-500).join("\n") + "\n";
+    const tmpPath = logPath + ".tmp";
+    fs.writeFileSync(tmpPath, trimmed, "utf-8");
+    fs.renameSync(tmpPath, logPath);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -157,8 +180,8 @@ async function doSync(
       status: provider ? "embedded" : "synced",
       synced_at: new Date().toISOString(),
     });
-  } catch {
-    // Silent failure — local files are source of truth
+  } catch (err) {
+    logSyncError(`doSync failed for ${filePath}: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -187,7 +210,8 @@ export async function backfill(
 
       await doSync(file.path, file.content, project, file.store, file.room);
       synced++;
-    } catch {
+    } catch (err) {
+      logSyncError(`backfill failed for ${file.path}: ${err instanceof Error ? err.message : String(err)}`);
       failed++;
     }
   }

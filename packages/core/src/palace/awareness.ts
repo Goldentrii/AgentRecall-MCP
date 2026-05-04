@@ -73,6 +73,7 @@ export interface Insight {
   lastConfirmed: string;
   appliesWhen: string[];
   source: string;
+  source_project?: string;
   severity?: "critical" | "important" | "minor";
 }
 
@@ -201,7 +202,7 @@ export function initAwareness(identity: string): AwarenessState {
  * If new, add and demote lowest if over 20.
  */
 export function addInsight(
-  newInsight: Omit<Insight, "id" | "confirmations" | "lastConfirmed">
+  newInsight: Omit<Insight, "id" | "confirmations" | "lastConfirmed"> & { source_project?: string }
 ): { action: "merged" | "added" | "replaced"; insight: Insight } | { accepted: false; reason: string } {
   // ── Quality gate — reject obviously bad insights ──────────────────────────
   const title = newInsight.title?.trim() ?? "";
@@ -319,6 +320,7 @@ export function addInsight(
     lastConfirmed: now,
     appliesWhen: newInsight.appliesWhen,
     source: newInsight.source,
+    source_project: newInsight.source_project ?? "_global",
     severity: (newInsight as { severity?: "critical" | "important" | "minor" }).severity,
   };
 
@@ -407,7 +409,10 @@ export function renderAwareness(state: AwarenessState): void {
     lines.push(`### ${insight.title} (${insight.confirmations}x confirmed)`);
     lines.push(`- Evidence: ${insight.evidence.slice(0, 600)}`);
     lines.push(`- Applies when: ${insight.appliesWhen.join(", ")}`);
-    lines.push(`- Source: ${insight.source} | Last: ${insight.lastConfirmed.slice(0, 10)}`);
+    const sourceLabel = insight.source_project
+      ? `${insight.source} [${insight.source_project}]`
+      : insight.source;
+    lines.push(`- Source: ${sourceLabel} | Last: ${insight.lastConfirmed.slice(0, 10)}`);
     lines.push("");
   }
 

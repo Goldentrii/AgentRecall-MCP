@@ -47,7 +47,7 @@ export async function palaceLint(input: PalaceLintInput): Promise<PalaceLintResu
       issues.push({
         type: "orphan", severity: "warning", room: room.slug,
         description: `Room '${room.name}' has no connections to other rooms`,
-        suggestion: "Add connections via palace_write with [[wikilinks]] or connections param",
+        suggestion: "Add connections via: ar palace write <room> '<content with [[wikilinks]]>'",
       });
     }
 
@@ -86,7 +86,7 @@ export async function palaceLint(input: PalaceLintInput): Promise<PalaceLintResu
         issues.push({
           type: "empty", severity: "info", room: room.slug,
           description: `Room '${room.name}' has no topic files (only README)`,
-          suggestion: `Add content with palace_write(room='${room.slug}', topic='...')`,
+          suggestion: `Add content via: ar palace write ${room.slug} '<content>' [--importance high|medium|low]`,
         });
       }
     }
@@ -95,7 +95,7 @@ export async function palaceLint(input: PalaceLintInput): Promise<PalaceLintResu
       issues.push({
         type: "missing_readme", severity: "warning", room: room.slug,
         description: `Room '${room.name}' is missing README.md`,
-        suggestion: "Recreate with palace_write",
+        suggestion: "Recreate with: ar palace write <room> '<content>'",
       });
     }
   }
