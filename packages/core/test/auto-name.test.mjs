@@ -6,7 +6,8 @@ const { generateSlug, detectContentType, extractKeywords, generateTopicName } = 
 
 describe("Auto-naming — detectContentType", () => {
   it("detects bug-fix content", () => {
-    assert.equal(detectContentType("Fixed a bug where the login form crashed on submit"), "bug-fix");
+    // Requires ≥2 signals: "bug" + "error" both match bug-fix patterns
+    assert.equal(detectContentType("Fixed a bug: the login form threw an error on submit"), "bug-fix");
   });
 
   it("detects architecture content", () => {
@@ -86,7 +87,8 @@ describe("Auto-naming — extractKeywords", () => {
 
 describe("Auto-naming — generateSlug", () => {
   it("generates type-keyword slug for bug-fix content", () => {
-    const result = generateSlug("Fixed a critical bug where the payment processor crashed on refunds");
+    // Requires ≥2 signals: "bug" + "error" both match bug-fix patterns
+    const result = generateSlug("A critical bug caused an error in the payment processor");
     assert.equal(result.contentType, "bug-fix");
     assert.ok(result.slug.startsWith("bug-fix-"), `Slug should start with bug-fix-: ${result.slug}`);
     assert.ok(result.keywords.length > 0);

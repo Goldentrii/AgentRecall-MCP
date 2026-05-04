@@ -18,6 +18,8 @@ import { todayISO } from "../storage/fs-utils.js";
 import { getRoot } from "../types.js";
 import { extractKeywords } from "../helpers/auto-name.js";
 import type { SaveType } from "../storage/session.js";
+import { autoClassifySig, autoClassifyTheme } from "../helpers/journal-sig-theme.js";
+import type { SignificanceTag, ThemeTag } from "../helpers/journal-sig-theme.js";
 
 export interface SessionEndInput {
   summary: string;
@@ -31,6 +33,8 @@ export interface SessionEndInput {
   trajectory?: string;
   project?: string;
   saveType?: SaveType;
+  sig?: SignificanceTag;   // NEW — auto-classified if not provided
+  theme?: ThemeTag;        // NEW — auto-classified if not provided
 }
 
 export interface MergeSuggestion {
@@ -157,7 +161,10 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
       input.trajectory ? `## Next\n${input.trajectory}` : "",
     ].filter(Boolean).join("\n");
 
-    await journalWrite({ content: journalContent, project: slug, saveType: input.saveType ?? "arsave" });
+    const sig = input.sig ?? autoClassifySig(input.summary);
+    const theme = input.theme ?? autoClassifyTheme(input.summary);
+
+    await journalWrite({ content: journalContent, project: slug, saveType: input.saveType ?? "arsave", sig, theme });
     journalWritten = true;
   } catch (err) {
     journalWriteError = err instanceof Error ? err.message : String(err);

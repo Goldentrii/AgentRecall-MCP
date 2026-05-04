@@ -11,18 +11,9 @@ describe("Smart naming — journalFileName", () => {
       content: "AgentRecall Phase 2.5 intelligent file naming system implemented.",
     });
     assert.ok(name.startsWith("2026-04-20--arsave--"));
-    assert.ok(name.includes("L--"));
     assert.ok(name.endsWith(".md"));
-  });
-
-  it("includes correct line count", () => {
-    resetOwnedFiles();
-    const multiLine = "Line one\nLine two\nLine three\nLine four\nLine five";
-    const name = journalFileName("2026-04-20", false, {
-      saveType: "arsaveall",
-      content: multiLine,
-    });
-    assert.ok(name.includes("--5L--"), `Expected 5L in: ${name}`);
+    // Should NOT contain lines count pattern (old format)
+    assert.ok(!name.match(/--\d+L--/), `Name should not contain lines count: ${name}`);
   });
 
   it("uses hook-end saveType", () => {
@@ -41,7 +32,8 @@ describe("Smart naming — journalFileName", () => {
       content: "Q: What is Next.js?\nA: A React framework.",
     });
     assert.ok(name.includes("--capture--"));
-    assert.ok(name.includes("--2L--"));
+    // Should NOT contain lines count pattern
+    assert.ok(!name.match(/--\d+L--/), `Name should not contain lines count: ${name}`);
   });
 
   it("falls back to legacy naming without opts", () => {
@@ -58,7 +50,7 @@ describe("Smart naming — journalFileName", () => {
     assert.ok(!name.includes("--")); // legacy format, no double-dash
   });
 
-  it("slug is capped at 40 chars", () => {
+  it("slug is capped at 35 chars", () => {
     resetOwnedFiles();
     const longContent = "This is a very long content about architecture decisions for the new microservices platform redesign involving kubernetes deployment strategies and load balancing configurations";
     const name = journalFileName("2026-04-20", false, {
@@ -68,7 +60,7 @@ describe("Smart naming — journalFileName", () => {
     // Extract slug: split by -- and take last part minus .md
     const parts = name.replace(".md", "").split("--");
     const slug = parts[parts.length - 1];
-    assert.ok(slug.length <= 40, `Slug too long: ${slug} (${slug.length} chars)`);
+    assert.ok(slug.length <= 35, `Slug too long: ${slug} (${slug.length} chars)`);
   });
 
   it("parseable by split('--')", () => {
@@ -79,10 +71,36 @@ describe("Smart naming — journalFileName", () => {
     });
     const base = name.replace(".md", "");
     const parts = base.split("--");
-    assert.equal(parts.length, 4, `Expected 4 parts, got ${parts.length}: ${parts}`);
+    assert.equal(parts.length, 5, `Expected 5 parts, got ${parts.length}: ${parts}`);
     assert.equal(parts[0], "2026-04-20");
     assert.equal(parts[1], "arsave");
-    assert.ok(parts[2].endsWith("L"));
-    assert.ok(parts[3].length > 0);
+    // parts[2] = sig, parts[3] = theme, parts[4] = slug
+    assert.ok(parts[4].length > 0);
+  });
+
+  it("includes sig and theme tags when provided", () => {
+    resetOwnedFiles();
+    const name = journalFileName("2026-05-04", false, {
+      saveType: "arsave",
+      content: "Published v3.4.1 to npm.",
+      sig: "shipped",
+      theme: "version-bump",
+    });
+    const parts = name.replace(".md", "").split("--");
+    assert.equal(parts.length, 5);
+    assert.equal(parts[2], "shipped");
+    assert.equal(parts[3], "version-bump");
+  });
+
+  it("defaults to none/none when sig/theme not provided", () => {
+    resetOwnedFiles();
+    const name = journalFileName("2026-05-04", false, {
+      saveType: "arsave",
+      content: "Routine session.",
+    });
+    const parts = name.replace(".md", "").split("--");
+    assert.equal(parts.length, 5);
+    assert.equal(parts[2], "none");
+    assert.equal(parts[3], "none");
   });
 });

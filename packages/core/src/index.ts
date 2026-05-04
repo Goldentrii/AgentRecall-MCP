@@ -150,6 +150,14 @@ export { isoWeek, weekKey, groupByWeek, synthesizeWeek } from "./helpers/rollup.
 export { generateSlug, detectContentType, extractKeywords, generateTopicName } from "./helpers/auto-name.js";
 export type { SlugResult, SlugContext } from "./helpers/auto-name.js";
 
+// Helpers — journal sig/theme classification
+export type { SignificanceTag, ThemeTag } from "./helpers/journal-sig-theme.js";
+export { autoClassifySig, autoClassifyTheme } from "./helpers/journal-sig-theme.js";
+
+// Helpers — journal name parser
+export { parseJournalFileName } from "./helpers/journal-name-parser.js";
+export type { ParsedJournalName } from "./helpers/journal-name-parser.js";
+
 // Helpers — consistency
 export { consistencyCheck } from "./helpers/consistency.js";
 export type { ConsistencyWarning, ConsistencyResult } from "./helpers/consistency.js";

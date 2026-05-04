@@ -17,6 +17,7 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { generateSlug } from "../helpers/auto-name.js";
+import type { SignificanceTag, ThemeTag } from "../helpers/journal-sig-theme.js";
 
 /** 6-char hex ID, unique per process. Generated once on import. */
 const SESSION_ID = crypto.randomBytes(3).toString("hex");
@@ -35,14 +36,18 @@ export type SaveType = "arsave" | "arsaveall" | "hook-end" | "hook-correction" |
 export interface SmartNameOpts {
   saveType: SaveType;
   content: string;
+  sig?: SignificanceTag;
+  theme?: ThemeTag;
 }
 
+export type { SignificanceTag, ThemeTag } from "../helpers/journal-sig-theme.js";
+
 /**
- * Generate a semantic slug from content, capped at 40 chars.
+ * Generate a semantic slug from content, capped at 35 chars.
  */
 function topicSlug(content: string): string {
   const result = generateSlug(content);
-  return result.slug.slice(0, 40);
+  return result.slug.slice(0, 35);
 }
 
 /**
@@ -72,9 +77,10 @@ export function journalFileName(date: string, baseExists: boolean, opts?: SmartN
     }
 
     // No file for today — create a smart-named one
-    const lines = opts.content.split("\n").length;
     const slug = topicSlug(opts.content);
-    const name = `${date}--${opts.saveType}--${lines}L--${slug}.md`;
+    const sigTag = opts.sig ?? "none";
+    const themeTag = opts.theme ?? "none";
+    const name = `${date}--${opts.saveType}--${sigTag}--${themeTag}--${slug}.md`;
 
     if (dir) {
       ownedFiles.add(`smart:${name}`);
@@ -104,9 +110,10 @@ export function journalFileName(date: string, baseExists: boolean, opts?: SmartN
  */
 export function captureLogFileName(date: string, baseExists: boolean, opts?: SmartNameOpts, dir?: string): string {
   if (opts?.saveType && opts?.content) {
-    const lines = opts.content.split("\n").length;
     const slug = topicSlug(opts.content);
-    return `${date}--capture--${lines}L--${slug}.md`;
+    const sigTag = opts.sig ?? "none";
+    const themeTag = opts.theme ?? "none";
+    return `${date}--capture--${sigTag}--${themeTag}--${slug}.md`;
   }
 
   // Legacy naming

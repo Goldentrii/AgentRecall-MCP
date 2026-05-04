@@ -52,6 +52,7 @@ const TYPE_SIGNALS: Record<ContentType, RegExp[]> = {
 /**
  * Detect the content type from text by counting signal word matches.
  * Returns the type with the most matches; ties broken by declaration order.
+ * Requires ≥2 distinct patterns matched to avoid false positives.
  */
 export function detectContentType(content: string): ContentType {
   let bestType: ContentType = "general";
@@ -69,7 +70,8 @@ export function detectContentType(content: string): ContentType {
     }
   }
 
-  return bestType;
+  // Only use detected type if 2+ signals matched — prevents false positives
+  return bestCount >= 2 ? bestType : "general";
 }
 
 // ---------------------------------------------------------------------------
@@ -94,6 +96,9 @@ const STOPWORDS = new Set([
   "http", "https", "www", "com", "org", "json", "true", "false", "null",
   "undefined", "const", "let", "var", "function", "return", "import",
   "export", "from", "type", "interface", "class", "async", "await",
+  // Generic session/workflow words that add no semantic value
+  "phase", "loop", "brief", "audit", "next", "session", "general", "config",
+  "task", "done", "complete", "status", "update", "check", "run",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -232,7 +237,9 @@ export function generateSlug(content: string, context?: SlugContext): SlugResult
   }
 
   // Build slug
-  const parts = [contentType, ...keywords];
+  // Don't prefix slug with content type — sig/theme slots carry that signal now.
+  // Only include type prefix if it's genuinely distinctive (not "general") and ≥2 signals matched.
+  const parts = contentType !== "general" ? [contentType, ...keywords] : [...keywords];
   let slug = slugify(parts.join("-"));
 
   // Fallback if slug is empty or just the type
