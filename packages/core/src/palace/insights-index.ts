@@ -54,7 +54,7 @@ export function writeInsightsIndex(index: InsightsIndex): void {
   ensureDir(path.dirname(p));
   index.updated = new Date().toISOString();
   fs.writeFileSync(p, JSON.stringify(index, null, 2), "utf-8");
-  syncToSupabase(p, JSON.stringify(index, null, 2), "_global", "awareness");
+  syncToSupabase(p, JSON.stringify(index, null, 2), "global", "awareness");
 }
 
 /**
