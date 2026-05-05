@@ -36,7 +36,7 @@ export function createRoom(
     description,
     created: now,
     updated: now,
-    salience: 0.0,
+    salience: 0.5,
     access_count: 0,
     last_accessed: now,
     tags,

@@ -201,7 +201,7 @@ ALTER TABLE memories ADD COLUMN IF NOT EXISTS embedding vector(1536);
 -- Create ivfflat index (for approximate nearest neighbor)
 CREATE INDEX IF NOT EXISTS memories_embedding_idx 
 ON memories USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 100);
+WITH (lists = 10);
 
 -- RPC function for semantic search on memories
 CREATE OR REPLACE FUNCTION match_memories(

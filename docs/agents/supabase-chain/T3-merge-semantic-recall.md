@@ -79,6 +79,10 @@ In `packages/cli/package.json`:
 "version": "3.4.3"
 ```
 
+Also update `packages/core/src/types.ts`:
+  Change: export const VERSION = "3.4.2";
+  To:     export const VERSION = "3.4.3";
+
 7. **Commit**
 ```bash
 git add -A
