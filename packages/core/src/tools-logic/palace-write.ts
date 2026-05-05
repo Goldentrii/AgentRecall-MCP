@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { resolveProject } from "../storage/project.js";
 import { palaceDir } from "../storage/paths.js";
 import { ensureDir } from "../storage/fs-utils.js";
-import { ensurePalaceInitialized, createRoom, roomExists, updateRoomMeta } from "../palace/rooms.js";
+import { ensurePalaceInitialized, createRoom, roomExists, updateRoomMeta, recordAccess } from "../palace/rooms.js";
 import { fanOut } from "../palace/fan-out.js";
 import { updatePalaceIndex } from "../palace/index-manager.js";
 import { generateFrontmatter } from "../palace/obsidian.js";
@@ -34,9 +34,17 @@ export interface PalaceWriteResult {
   file_path?: string;
 }
 
+function stripFrontmatterFromContent(rawContent: string): string {
+  // Match: --- followed by key: value lines followed by ---
+  const match = rawContent.match(/^---\s*\n[\s\S]*?\n---\s*\n([\s\S]*)$/);
+  if (match) return match[1].trim();
+  return rawContent;
+}
+
 export async function palaceWrite(input: PalaceWriteInput): Promise<PalaceWriteResult> {
   const slug = await resolveProject(input.project);
   const importance: Importance = input.importance ?? "medium";
+  const content = stripFrontmatterFromContent(input.content);
   ensurePalaceInitialized(slug);
 
   if (!roomExists(slug, input.room)) {
@@ -51,7 +59,7 @@ export async function palaceWrite(input: PalaceWriteInput): Promise<PalaceWriteR
   let targetTopic = input.topic;
   let generatedName: string | undefined;
   if (!targetTopic && input.auto_name === true) {
-    const slugResult = generateSlug(input.content, { room: input.room });
+    const slugResult = generateSlug(content, { room: input.room });
     targetTopic = slugResult.slug;
     generatedName = slugResult.slug;
   }
@@ -64,7 +72,7 @@ export async function palaceWrite(input: PalaceWriteInput): Promise<PalaceWriteR
 
   if (targetTopic === "README") {
     let existing = fs.existsSync(targetFile) ? fs.readFileSync(targetFile, "utf-8") : "";
-    const entry = `\n### ${timestamp.slice(0, 10)} — ${importance}\n\n${input.content}\n`;
+    const entry = `\n### ${timestamp.slice(0, 10)} — ${importance}\n\n${content}\n`;
 
     if (existing.includes("## Memories")) {
       const idx = existing.indexOf("## Memories");
@@ -78,21 +86,22 @@ export async function palaceWrite(input: PalaceWriteInput): Promise<PalaceWriteR
   } else {
     if (fs.existsSync(targetFile)) {
       const existing = fs.readFileSync(targetFile, "utf-8");
-      const entry = `\n### ${timestamp.slice(0, 10)} — ${importance}\n\n${input.content}\n`;
+      const entry = `\n### ${timestamp.slice(0, 10)} — ${importance}\n\n${content}\n`;
       fs.writeFileSync(targetFile, existing + entry, "utf-8");
     } else {
       const fm = generateFrontmatter({ room: input.room, topic: targetTopic, created: timestamp, importance, tags: input.tags ?? [] });
-      fs.writeFileSync(targetFile, `${fm}# ${input.room} / ${targetTopic}\n\n${input.content}\n`, "utf-8");
+      fs.writeFileSync(targetFile, `${fm}# ${input.room} / ${targetTopic}\n\n${content}\n`, "utf-8");
     }
   }
 
   updateRoomMeta(slug, input.room, { updated: timestamp });
+  recordAccess(slug, input.room);
 
   // Async sync to Supabase (non-blocking)
   const writtenContent = fs.readFileSync(targetFile, "utf-8");
   syncToSupabase(targetFile, writtenContent, slug, "palace", input.room);
 
-  const fanOutResult = fanOut(slug, input.room, targetTopic, input.content, input.connections ?? [], importance);
+  const fanOutResult = fanOut(slug, input.room, targetTopic, content, input.connections ?? [], importance);
   updatePalaceIndex(slug);
 
   appendToLog(slug, "palace_write", { room: input.room, topic: targetTopic, importance, fan_out_rooms: fanOutResult.updatedRooms });

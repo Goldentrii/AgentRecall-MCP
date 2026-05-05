@@ -8,6 +8,7 @@ import { readState } from "./journal-state.js";
 import { palaceDir } from "../storage/paths.js";
 import { ensurePalaceInitialized, listRooms } from "../palace/rooms.js";
 import { readAwareness, readAwarenessState } from "../palace/awareness.js";
+import { readP0Corrections } from "../storage/corrections.js";
 import type { SessionState } from "../types.js";
 
 export interface JournalColdStartInput {
@@ -16,10 +17,18 @@ export interface JournalColdStartInput {
 
 export interface JournalColdStartResult {
   project: string;
+  trajectory: string | null;
+  p0_corrections: Array<{ rule: string; context: string }>;
   palace_context: {
     identity: string | null;
     awareness_summary: string | null;
-    top_rooms: Array<{ slug: string; name: string; salience: number; description: string }>;
+    top_rooms: Array<{
+      slug: string;
+      name: string;
+      salience: number;
+      description: string;
+      recent_entries: string[];
+    }>;
     insight_count: number;
   };
   cache: {
@@ -47,7 +56,9 @@ export async function journalColdStart(input: JournalColdStartInput): Promise<Jo
 
     const identityPath = path.join(pd, "identity.md");
     if (fs.existsSync(identityPath)) {
-      palaceContext.identity = fs.readFileSync(identityPath, "utf-8").slice(0, 500);
+      const raw = fs.readFileSync(identityPath, "utf-8").slice(0, 500);
+      // Don't surface unfilled template placeholders — agents see them as real content
+      palaceContext.identity = raw.includes("_(fill in:") ? null : raw;
     }
 
     const awarenessContent = readAwareness();
@@ -56,12 +67,24 @@ export async function journalColdStart(input: JournalColdStartInput): Promise<Jo
     }
 
     const rooms = listRooms(slug);
-    palaceContext.top_rooms = rooms.slice(0, 3).map(r => ({
-      slug: r.slug,
-      name: r.name,
-      salience: Math.round(r.salience * 100) / 100,
-      description: r.description,
-    }));
+    palaceContext.top_rooms = rooms.slice(0, 3).map(r => {
+      const roomReadmePath = path.join(pd, "rooms", r.slug, "README.md");
+      let recentEntries: string[] = [];
+      if (fs.existsSync(roomReadmePath)) {
+        const rmContent = fs.readFileSync(roomReadmePath, "utf-8");
+        // Split on entry headers "### date — importance"
+        const parts = rmContent.split(/(?=^### )/m).filter(s => s.trimStart().startsWith("###"));
+        // Take last 3, trim to 300 chars each to keep cold-start lean
+        recentEntries = parts.slice(-3).map(s => s.trim().slice(0, 300));
+      }
+      return {
+        slug: r.slug,
+        name: r.name,
+        salience: Math.round(r.salience * 100) / 100,
+        description: r.description,
+        recent_entries: recentEntries,
+      };
+    });
 
     const state = readAwarenessState();
     if (state) {
@@ -70,6 +93,21 @@ export async function journalColdStart(input: JournalColdStartInput): Promise<Jo
   } catch {
     // Palace not initialized
   }
+
+  // Extract trajectory from awareness state (set by session_end via awareness_update)
+  let trajectory: string | null = null;
+  try {
+    const awarenessState = readAwarenessState();
+    if (awarenessState?.trajectory && awarenessState.trajectory.trim().length > 0) {
+      trajectory = awarenessState.trajectory;
+    }
+  } catch {
+    // Trajectory read is best-effort
+  }
+
+  const p0Corrections = readP0Corrections(slug)
+    .slice(0, 5)
+    .map(c => ({ rule: c.rule, context: c.context }));
 
   const hot: JournalColdStartResult["cache"]["hot"]["entries"] = [];
   let warmCount = 0;
@@ -96,6 +134,8 @@ export async function journalColdStart(input: JournalColdStartInput): Promise<Jo
 
   return {
     project: slug,
+    trajectory,
+    p0_corrections: p0Corrections,
     palace_context: palaceContext,
     cache: {
       hot: { count: hot.length, entries: hot },

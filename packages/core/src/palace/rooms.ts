@@ -36,7 +36,7 @@ export function createRoom(
     description,
     created: now,
     updated: now,
-    salience: 0.5,
+    salience: 0.0,
     access_count: 0,
     last_accessed: now,
     tags,
@@ -136,7 +136,7 @@ export function ensurePalaceInitialized(project: string): void {
   // Create palace-index.json
   const rooms: Record<string, { salience: number; memory_count: number; last_updated: string }> = {};
   for (const room of DEFAULT_PALACE_ROOMS) {
-    rooms[room.slug] = { salience: 0.5, memory_count: 0, last_updated: new Date().toISOString() };
+    rooms[room.slug] = { salience: 0.0, memory_count: 0, last_updated: new Date().toISOString() };
   }
 
   writeJsonAtomic(indexPath, {

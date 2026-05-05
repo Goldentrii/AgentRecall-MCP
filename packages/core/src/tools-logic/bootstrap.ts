@@ -18,6 +18,8 @@ import { writeIdentity } from "../palace/identity.js";
 import { ensureDir, todayISO } from "../storage/fs-utils.js";
 import { palaceWrite } from "./palace-write.js";
 import { journalWrite } from "./journal-write.js";
+import { awarenessUpdate } from "./awareness-update.js";
+import { palaceDir } from "../storage/paths.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -246,6 +248,28 @@ function readReadmeDescription(dir: string): string | undefined {
   return undefined;
 }
 
+/** Strip YAML frontmatter from markdown content. */
+function stripFrontmatter(content: string): { body: string; meta: Record<string, string> } {
+  const match = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/);
+  if (!match) return { body: content, meta: {} };
+
+  const meta: Record<string, string> = {};
+  for (const line of match[1].split("\n")) {
+    const kv = line.match(/^(\w+):\s*(.+)$/);
+    if (kv) meta[kv[1].trim()] = kv[2].trim();
+  }
+  return { body: match[2].trim(), meta };
+}
+
+/** Map AutoMemory `type:` frontmatter field to palace room slug. */
+function getTargetRoom(meta: Record<string, string>): string {
+  switch (meta["type"]) {
+    case "feedback": return "alignment";
+    case "project": return "goals";
+    default: return "knowledge";
+  }
+}
+
 /** Walk a directory to find git repos up to max_depth. Stops recursing into found repos. */
 function findGitRepos(dir: string, maxDepth: number, depth = 0): string[] {
   if (depth > maxDepth) return [];
@@ -293,11 +317,12 @@ function existingArSlugs(): Set<string> {
 
 export async function bootstrapScan(options?: {
   scan_dirs?: string[];
+  source_dirs?: string[];
   max_depth?: number;
 }): Promise<BootstrapScanResult> {
   const t0 = Date.now();
   const maxDepth = options?.max_depth ?? 3;
-  const scanDirs = [...DEFAULT_SCAN_DIRS, ...(options?.scan_dirs ?? [])];
+  const scanDirs = [...DEFAULT_SCAN_DIRS, ...(options?.scan_dirs ?? []), ...(options?.source_dirs ?? [])];
   const arSlugs = existingArSlugs();
 
   // Map from slug → DiscoveredProject (for merging multi-source projects)
@@ -595,6 +620,48 @@ export async function bootstrapImport(
         if (!createdThisProject) {
           projectsCreated++;
           createdThisProject = true;
+
+          // Problem 3: Populate identity.md from README/package.json if still placeholder
+          try {
+            const identityPath = path.join(palaceDir(proj.slug), "identity.md");
+            if (fs.existsSync(identityPath)) {
+              const identityContent = fs.readFileSync(identityPath, "utf-8");
+              if (identityContent.includes("_(fill in:")) {
+                let description = "";
+                const projectSourceDir = proj.path;
+                const readmePath = path.join(projectSourceDir, "README.md");
+                if (fs.existsSync(readmePath)) {
+                  const readmeLines = fs.readFileSync(readmePath, "utf-8").split("\n");
+                  let pastHeading = false;
+                  for (const line of readmeLines) {
+                    if (line.startsWith("# ")) { pastHeading = true; continue; }
+                    if (pastHeading && line.trim() && !line.startsWith("#")) {
+                      description = line.replace(/^[>_*]+/, "").trim().slice(0, 100);
+                      break;
+                    }
+                  }
+                }
+                if (!description) {
+                  const pkgPath = path.join(projectSourceDir, "package.json");
+                  if (fs.existsSync(pkgPath)) {
+                    try {
+                      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as Record<string, unknown>;
+                      if (typeof pkg["description"] === "string") {
+                        description = pkg["description"].slice(0, 100);
+                      }
+                    } catch { /* skip */ }
+                  }
+                }
+                if (description) {
+                  const updated = identityContent.replace(
+                    />\s*_\(fill in:.*?\)_/,
+                    `> ${description}`,
+                  );
+                  fs.writeFileSync(identityPath, updated, "utf-8");
+                }
+              }
+            }
+          } catch { /* non-fatal: identity population is best-effort */ }
         }
 
         if (item.id === "identity") {
@@ -641,7 +708,7 @@ export async function bootstrapImport(
           });
           itemsImported++;
         } else if (item.id.startsWith("claude-memory:")) {
-          // Read memory file, write to knowledge room
+          // Read memory file, strip frontmatter, route by type
           if (!fs.existsSync(item.source_path) || isSecretFile(item.source_path)) {
             itemsSkipped++;
             continue;
@@ -651,14 +718,33 @@ export async function bootstrapImport(
             itemsSkipped++;
             continue;
           }
-          const content = fs.readFileSync(item.source_path, "utf-8");
-          const topic = item.id.replace("claude-memory:", "").replace(/\.md$/, "");
-          await palaceWrite({
-            room: "knowledge",
-            topic,
-            content,
-            project: proj.slug,
-          });
+          const rawContent = fs.readFileSync(item.source_path, "utf-8");
+          const { body, meta } = stripFrontmatter(rawContent);
+          const topic = (meta["name"] ?? item.id.replace("claude-memory:", "")).replace(/\.md$/, "");
+
+          if (meta["type"] === "user") {
+            // Route user-type files to awareness instead of palace
+            await awarenessUpdate({
+              insights: [
+                {
+                  title: topic,
+                  evidence: body,
+                  applies_when: ["always"],
+                  source: `bootstrap:${item.source_path}`,
+                  severity: "important",
+                },
+              ],
+              project: proj.slug,
+            });
+          } else {
+            const room = getTargetRoom(meta);
+            await palaceWrite({
+              room,
+              topic,
+              content: body,
+              project: proj.slug,
+            });
+          }
           itemsImported++;
         } else {
           itemsSkipped++;
@@ -705,14 +791,31 @@ export async function bootstrapImport(
           itemsSkipped++;
           continue;
         }
-        const content = fs.readFileSync(item.source_path, "utf-8");
-        const topic = item.id.replace("global:", "").replace(/\.md$/, "");
-        await palaceWrite({
-          room: "knowledge",
-          topic,
-          content,
-          project: globalSlug,
-        });
+        const rawContent = fs.readFileSync(item.source_path, "utf-8");
+        const { body, meta } = stripFrontmatter(rawContent);
+        const topic = (meta["name"] ?? item.id.replace("global:", "")).replace(/\.md$/, "");
+
+        if (meta["type"] === "user") {
+          await awarenessUpdate({
+            insights: [
+              {
+                title: topic,
+                evidence: body,
+                applies_when: ["always"],
+                source: `bootstrap:${item.source_path}`,
+                severity: "important",
+              },
+            ],
+          });
+        } else {
+          const room = getTargetRoom(meta);
+          await palaceWrite({
+            room,
+            topic,
+            content: body,
+            project: globalSlug,
+          });
+        }
         itemsImported++;
       } catch (err) {
         errors.push({

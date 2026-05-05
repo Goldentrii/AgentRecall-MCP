@@ -5,7 +5,12 @@ import { check } from "agent-recall-core";
 export function register(server: McpServer): void {
   server.registerTool("check", {
     title: "Check Understanding",
-    description: "Record what you think the human wants. Returns predictive warnings. Optionally track decision trails with prior/posterior/evidence for calibrated judgment over time.",
+    description:
+      "TWO USE CASES: (1) Goal verification — record what you think the human wants, get warnings from past corrections. " +
+      "Use before starting work: check({ goal: '...', confidence: 'high/medium/low' }). " +
+      "(2) Decision trail — track a decision with Bayesian prior/posterior/evidence for calibrated judgment. " +
+      "Use when making important technical or product decisions: add prior (0-1), evidence items, and posterior. " +
+      "Set outcome when decision resolves to close the trail.",
     inputSchema: {
       goal: z.string().describe("What you think the human wants."),
       confidence: z.enum(["high", "medium", "low"]),

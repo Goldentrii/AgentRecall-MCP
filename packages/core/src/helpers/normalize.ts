@@ -85,6 +85,8 @@ const SYNONYM_GROUPS: string[][] = [
   ["security", "vulnerability", "xss", "injection", "csrf", "auth"],
 
   // Tools & frameworks
+  ["framework", "library", "sdk", "toolkit", "trpc", "express", "fastify", "hono", "koa", "nestjs", "grpc"],
+  ["api-framework", "web-framework", "rest-api", "graphql-api", "rpc", "trpc"],
   ["nextjs", "next", "next-js", "app-router", "page-router"],
   ["vercel", "deployment", "serverless", "edge"],
   ["drizzle", "orm", "prisma", "typeorm"],

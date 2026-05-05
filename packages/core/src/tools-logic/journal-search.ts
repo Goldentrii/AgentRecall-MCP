@@ -14,6 +14,8 @@ export interface JournalSearchInput {
 
 export interface JournalSearchResult {
   results: Array<{ date: string; section: string; excerpt: string; line: number }>;
+  palace_searched: boolean;
+  _note?: string;
 }
 
 /** Split query into keywords (length > 2) for keyword-based matching. */
@@ -114,5 +116,11 @@ export async function journalSearch(input: JournalSearchInput): Promise<JournalS
   }
 
   results.sort((a, b) => b.date.localeCompare(a.date));
-  return { results };
+  return {
+    results,
+    palace_searched: !!input.include_palace,
+    ...(!input.include_palace && {
+      _note: "Palace rooms were not searched. Add --include-palace (CLI) or include_palace: true (MCP recall) to search palace content.",
+    }),
+  };
 }

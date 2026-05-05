@@ -5,10 +5,21 @@ import { smartRemember } from "agent-recall-core";
 export function register(server: McpServer): void {
   server.registerTool("remember", {
     title: "Remember",
-    description: "Save a memory. Auto-classifies and routes to the right store (journal, palace, knowledge, or awareness).",
+    description: "Save any memory — auto-classifies and routes. " +
+      "Use this for unstructured notes, lessons, and quick captures. " +
+      "For structured palace rooms use palace_write directly. " +
+      "For Q&A pairs use capture. " +
+      "Pass context hint to override auto-routing.",
     inputSchema: {
       content: z.string().describe("What to remember."),
-      context: z.string().optional().describe("Optional hint: 'bug fix', 'architecture', 'insight', 'session note'"),
+      context: z.string().optional().describe(
+        "Routing hint. Values: 'architecture' or 'decision' → palace/architecture room. " +
+        "'blocker' or 'blocked' → palace/blockers room. " +
+        "'goal' → palace/goals room. " +
+        "'lesson' or 'insight' → awareness. " +
+        "'qa' or 'capture' → Q&A log. " +
+        "Omit for auto-classification."
+      ),
       project: z.string().default("auto"),
     },
   }, async ({ content, context, project }) => {
