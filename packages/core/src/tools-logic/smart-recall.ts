@@ -55,6 +55,8 @@ import { recallInsight } from "./recall-insight.js";
 import { getRoot } from "../types.js";
 import { ensureDir } from "../storage/fs-utils.js";
 import { stem, expandQuery } from "../helpers/normalize.js";
+import { getConnectedRooms } from "../palace/graph.js";
+import { palaceDir } from "../storage/paths.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -449,6 +451,30 @@ export async function localRecallSearch(
 
   // ── 6. Final sort ─────────────────────────────────────────────────────────
   deduped.sort((a, b) => b.score - a.score);
+
+  // Graph walk — surface 1-hop linked memories not already in results
+  if (deduped.length > 0 && project) {
+    const pd = palaceDir(project);
+    const resultIds = new Set(deduped.map((r) => r.id));
+    const topRoom = deduped[0].room;
+    if (topRoom) {
+      const linked = getConnectedRooms(pd, topRoom);
+      for (const linkedRoom of linked.slice(0, 2)) {
+        if (!resultIds.has(linkedRoom)) {
+          deduped.push({
+            id: linkedRoom,
+            source: "palace" as const,
+            title: `↳ linked: ${linkedRoom}`,
+            excerpt: `Connected to ${topRoom} via memory graph`,
+            score: deduped[0].score * 0.6,
+            confidence: "low",
+            room: linkedRoom,
+          });
+          resultIds.add(linkedRoom);
+        }
+      }
+    }
+  }
 
   return deduped;
 }

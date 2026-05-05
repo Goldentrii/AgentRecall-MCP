@@ -246,6 +246,22 @@ export async function smartRemember(input: SmartRememberInput): Promise<SmartRem
   // Get tags from the routed result
   const tags = generateTags(input.content, slugResult.contentType !== "general" ? slugResult.contentType : undefined);
 
+  // Associative linking — best-effort, never awaited in critical path
+  if (
+    (route === "palace_write" || route === "awareness_update") &&
+    file_path &&
+    input.project
+  ) {
+    const savedSlug =
+      route === "palace_write" &&
+      typeof resultObj?.room === "string" &&
+      typeof resultObj?.topic === "string"
+        ? `${resultObj.room}/${resultObj.topic}`
+        : autoName;
+    const { linkToSimilar } = await import("../helpers/associative-link.js");
+    linkToSimilar(input.project, input.content, savedSlug).catch(() => {});
+  }
+
   return {
     success: true,
     routed_to: route,
