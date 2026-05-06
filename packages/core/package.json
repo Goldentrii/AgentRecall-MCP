@@ -1,6 +1,6 @@
 {
   "name": "agent-recall-core",
-  "version": "3.4.4",
+  "version": "3.4.5",
   "description": "Core memory palace engine for AgentRecall",
   "type": "module",
   "main": "dist/index.js",

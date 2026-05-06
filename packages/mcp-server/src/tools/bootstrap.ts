@@ -48,7 +48,7 @@ export function register(server: McpServer): void {
     title: "Bootstrap Import",
     description: "Import discovered projects into AgentRecall. Call bootstrap_scan first, then pass the scan results here. Creates palace entries, identity files, and initial journals for selected projects.",
     inputSchema: {
-      scan_result: z.union([z.string(), z.record(z.unknown())]).describe("BootstrapScanResult from bootstrap_scan — accepts either the parsed object or JSON string"),
+      scan_result: z.union([z.string(), z.record(z.string(), z.unknown())]).describe("BootstrapScanResult from bootstrap_scan — accepts either the parsed object or JSON string"),
       project_slugs: z.array(z.string()).optional().describe("Import only these projects (default: all new)"),
       item_types: z.array(z.string()).optional().describe("Import only these item types: identity, memory, architecture, trajectory"),
     },
