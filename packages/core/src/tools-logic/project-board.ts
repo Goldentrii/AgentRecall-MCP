@@ -6,6 +6,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getRoot } from "../types.js";
+import { isJournalFile } from "../helpers/journal-filter.js";
 
 export type ProjectStatus = "active" | "blocked" | "complete" | "stale";
 
@@ -95,16 +96,10 @@ export async function projectBoard(): Promise<ProjectBoardResult> {
     const journalDir = path.join(projectsDir, slug, "journal");
     if (!fs.existsSync(journalDir)) continue;
 
-    // Match any file starting with YYYY-MM-DD, ending in .md, excluding -log. and index.md
+    // Match any real journal file (isJournalFile excludes -log., --capture--, weekly rollups, index.md)
     const files = fs
       .readdirSync(journalDir)
-      .filter(
-        (f) =>
-          /^\d{4}-\d{2}-\d{2}/.test(f) &&
-          f.endsWith(".md") &&
-          !f.includes("-log.") &&
-          f !== "index.md"
-      )
+      .filter(isJournalFile)
       .sort()
       .reverse();
 

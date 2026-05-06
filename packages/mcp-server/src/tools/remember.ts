@@ -7,8 +7,8 @@ export function register(server: McpServer): void {
     title: "Remember",
     description: "Save any memory — auto-classifies and routes. " +
       "Use this for unstructured notes, lessons, and quick captures. " +
-      "For structured palace rooms use palace_write directly. " +
-      "For Q&A pairs use capture. " +
+      "Use `context: 'architecture'` or `context: 'decision'` for palace routing. " +
+      "Use `context: 'qa'` for Q&A capture. " +
       "Pass context hint to override auto-routing.",
     inputSchema: {
       content: z.string().describe("What to remember."),

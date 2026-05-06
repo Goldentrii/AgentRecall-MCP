@@ -12,6 +12,7 @@ import { readJsonSafe, writeJsonAtomic } from "../storage/fs-utils.js";
 import { roomReadmeContent } from "./obsidian.js";
 import { computeSalience } from "./salience.js";
 import { getConnectionCount } from "./graph.js";
+import { withLock } from "../storage/filelock.js";
 
 function roomMetaPath(projectPalaceDir: string, roomSlug: string): string {
   return path.join(projectPalaceDir, "rooms", roomSlug, "_room.json");
@@ -60,14 +61,16 @@ export function getRoomMeta(project: string, roomSlug: string): RoomMeta | null 
 }
 
 export function updateRoomMeta(project: string, roomSlug: string, updates: Partial<RoomMeta>): RoomMeta | null {
-  const pd = palaceDir(project);
-  const metaPath = roomMetaPath(pd, roomSlug);
-  const existing = readJsonSafe<RoomMeta>(metaPath);
-  if (!existing) return null;
+  return withLock(`room-${project}-${roomSlug}`, () => {
+    const pd = palaceDir(project);
+    const metaPath = roomMetaPath(pd, roomSlug);
+    const existing = readJsonSafe<RoomMeta>(metaPath);
+    if (!existing) return null;
 
-  const updated = { ...existing, ...updates, updated: new Date().toISOString() };
-  writeJsonAtomic(metaPath, updated);
-  return updated;
+    const updated = { ...existing, ...updates, updated: new Date().toISOString() };
+    writeJsonAtomic(metaPath, updated);
+    return updated;
+  });
 }
 
 export function listRooms(project: string): RoomMeta[] {

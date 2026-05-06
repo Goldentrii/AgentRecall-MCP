@@ -75,42 +75,50 @@ export async function projectStatus(input: ProjectStatusInput): Promise<ProjectS
   const goalsContent = readRoomMarkdown(goalsPath);
   const next_steps = extractBullets(goalsContent);
 
-  // 4. Most recent journal — find latest file across all journal dirs
+  // 4. Most recent journal — find latest daily files across all journal dirs
+  // Exclude: capture logs (-log.md, --capture--), weekly rollups (W\d+), index.md
   const dirs = journalDirs(slug);
-  let latestFile: string | null = null;
   let latestDate: string | null = null;
+  const candidateFiles: string[] = [];  // all daily journal files, newest date first
 
   for (const dir of dirs) {
     if (!fs.existsSync(dir)) continue;
     const files = fs.readdirSync(dir)
-      .filter((f) => f.endsWith(".md") && f !== "index.md")
+      .filter((f) =>
+        f.endsWith(".md") &&
+        f !== "index.md" &&
+        !f.includes("-log.") &&
+        !f.includes("--capture--") &&
+        !/^\d{4}-W\d+/.test(f)          // exclude weekly rollups (2026-W16.md)
+      )
       .sort()
       .reverse();
     for (const file of files) {
       const dateMatch = file.match(/^(\d{4}-\d{2}-\d{2})/);
       if (!dateMatch) continue;
       const d = dateMatch[1];
-      if (!latestDate || d > latestDate) {
-        latestDate = d;
-        latestFile = path.join(dir, file);
-      }
+      if (!latestDate || d > latestDate) latestDate = d;
+      candidateFiles.push(path.join(dir, file));
     }
   }
+  // Sort candidates newest first (by date prefix then reverse alpha for same-day)
+  candidateFiles.sort((a, b) => path.basename(b).localeCompare(path.basename(a)));
 
-  // 5. Extract trajectory from latest journal (stored under ## Next)
+  // 5. Extract trajectory — scan candidates until ## Next is found (fallback across files)
   let last_trajectory: string | null = null;
-  if (latestFile && fs.existsSync(latestFile)) {
+  for (const file of candidateFiles) {
+    if (!fs.existsSync(file)) continue;
     try {
-      const content = fs.readFileSync(latestFile, "utf-8");
+      const content = fs.readFileSync(file, "utf-8");
       const nextSection = extractSection(content, "next");
       if (nextSection) {
-        // Strip the header line "## Next", take remaining non-empty lines
         const lines = nextSection
           .split("\n")
           .slice(1)
           .map((l) => l.trim())
           .filter(Boolean);
         last_trajectory = lines.join(" ") || null;
+        if (last_trajectory) break;  // stop at first file that has a non-empty ## Next
       }
     } catch {
       // non-blocking

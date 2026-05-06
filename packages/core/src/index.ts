@@ -124,7 +124,7 @@ export type { ConsolidationResult } from "./palace/consolidate.js";
 export { journalDir, journalDirs, palaceDir, roomDir } from "./storage/paths.js";
 export { ensureDir, todayISO, readJsonSafe, writeJsonAtomic } from "./storage/fs-utils.js";
 export { detectProject, resolveProject, listAllProjects } from "./storage/project.js";
-export { getSessionId, journalFileName, captureLogFileName, resetOwnedFiles } from "./storage/session.js";
+export { getSessionId, journalFileName, captureLogFileName, resetOwnedFiles, resetSessionState } from "./storage/session.js";
 export type { SaveType, SmartNameOpts } from "./storage/session.js";
 export { acquireLock, withLock } from "./storage/filelock.js";
 
@@ -167,6 +167,9 @@ export { generateTags } from "./helpers/tag-generator.js";
 
 // Helpers — normalize (stemming + synonyms)
 export { stem, getSynonyms, expandQuery } from "./helpers/normalize.js";
+
+// Helpers — journal filter
+export { isJournalFile } from "./helpers/journal-filter.js";
 
 // Helpers — alignment patterns
 export { readAlignmentLog, extractWatchPatterns } from "./helpers/alignment-patterns.js";

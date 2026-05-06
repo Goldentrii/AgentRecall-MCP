@@ -48,14 +48,18 @@ export function register(server: McpServer): void {
     title: "Bootstrap Import",
     description: "Import discovered projects into AgentRecall. Call bootstrap_scan first, then pass the scan results here. Creates palace entries, identity files, and initial journals for selected projects.",
     inputSchema: {
-      scan_result: z.string().describe("JSON string of the BootstrapScanResult from bootstrap_scan (copy the second content block)"),
+      scan_result: z.union([z.string(), z.record(z.unknown())]).describe("BootstrapScanResult from bootstrap_scan — accepts either the parsed object or JSON string"),
       project_slugs: z.array(z.string()).optional().describe("Import only these projects (default: all new)"),
       item_types: z.array(z.string()).optional().describe("Import only these item types: identity, memory, architecture, trajectory"),
     },
   }, async ({ scan_result, project_slugs, item_types }) => {
     let scan: BootstrapScanResult;
     try {
-      scan = JSON.parse(scan_result);
+      if (typeof scan_result === "string") {
+        scan = JSON.parse(scan_result) as BootstrapScanResult;
+      } else {
+        scan = scan_result as unknown as BootstrapScanResult;
+      }
     } catch {
       return { content: [{ type: "text" as const, text: "Error: scan_result must be valid JSON from bootstrap_scan" }] };
     }

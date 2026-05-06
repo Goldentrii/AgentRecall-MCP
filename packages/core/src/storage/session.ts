@@ -67,7 +67,14 @@ export function journalFileName(date: string, baseExists: boolean, opts?: SmartN
     // If ANY file for today already exists (smart or legacy), append to it.
     if (dir) {
       const existingToday = fs.readdirSync(dir)
-        .filter(f => f.startsWith(date) && f.endsWith(".md") && f !== "index.md" && !f.endsWith(".merged.md"))
+        .filter(f =>
+          f.startsWith(date) &&
+          f.endsWith(".md") &&
+          f !== "index.md" &&
+          !f.endsWith(".merged.md") &&
+          !f.includes("-log.") &&      // exclude legacy capture logs ({date}-log.md, {date}-{id}-log.md)
+          !f.includes("--capture--")   // exclude smart-named capture logs
+        )
         .sort()  // deterministic: pick the first one
         [0];
 
@@ -131,7 +138,12 @@ export function captureLogFileName(date: string, baseExists: boolean, opts?: Sma
   return `${date}-${SESSION_ID}-log.md`;
 }
 
-/** Reset owned files (for testing only). */
+/** Reset owned files tracking (call at session boundaries). */
 export function resetOwnedFiles(): void {
   ownedFiles.clear();
+}
+
+/** Reset all session state (owned files). Call at the start of each session. */
+export function resetSessionState(): void {
+  resetOwnedFiles();
 }

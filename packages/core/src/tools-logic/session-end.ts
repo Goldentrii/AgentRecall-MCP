@@ -57,7 +57,9 @@ export interface SessionEndResult {
   journal_write_error?: string;
   insights_processed: number;
   awareness_updated: boolean;
+  awareness_error?: string;
   palace_consolidated: boolean;
+  palace_error?: string;
   card: string;
   merge_suggestions?: MergeSuggestion[];
   quality_warnings?: InsightQualityWarning[];
@@ -130,7 +132,9 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
   let journalWriteError: string | undefined;
   let insightsProcessed = 0;
   let awarenessUpdated = false;
+  let awarenessError: string | undefined;
   let palaceConsolidated = false;
+  let palaceError: string | undefined;
 
   // 1. Write journal summary
   // Use ## Brief for first save of the day; ## Update HH:MM for subsequent saves
@@ -190,8 +194,8 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
       });
       insightsProcessed = result.insights_processed?.length ?? input.insights.length;
       awarenessUpdated = true;
-    } catch {
-      // Awareness update is best-effort
+    } catch (err) {
+      awarenessError = err instanceof Error ? err.message : String(err);
     }
   }
 
@@ -200,8 +204,8 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
     ensurePalaceInitialized(slug);
     consolidateJournalToPalace(slug);
     palaceConsolidated = true;
-  } catch {
-    // Consolidation is best-effort
+  } catch (err) {
+    palaceError = err instanceof Error ? err.message : String(err);
   }
 
   // 4. Detect similar recent entries — suggest merge if high overlap
@@ -291,6 +295,8 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
     `                └─ ${date}.md                    ${journalWritten ? "[written]" : journalWriteError ? `[FAILED: ${journalWriteError}]` : "[skipped]"}`,
     "",
     `  Awareness     ${insightsProcessed} insight${insightsProcessed !== 1 ? "s" : ""} added  (${totalInsights} total)`,
+    ...(awarenessError ? [`  [WARN: awareness update failed: ${awarenessError}]`] : []),
+    ...(palaceError ? [`  [WARN: palace consolidation failed: ${palaceError}]`] : []),
     "",
   ];
 
@@ -332,7 +338,9 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
     ...(journalWriteError ? { journal_write_error: journalWriteError } : {}),
     insights_processed: insightsProcessed,
     awareness_updated: awarenessUpdated,
+    ...(awarenessError ? { awareness_error: awarenessError } : {}),
     palace_consolidated: palaceConsolidated,
+    ...(palaceError ? { palace_error: palaceError } : {}),
     card,
     merge_suggestions: mergeSuggestions.length > 0 ? mergeSuggestions : undefined,
     quality_warnings: qualityWarnings.length > 0 ? qualityWarnings : undefined,

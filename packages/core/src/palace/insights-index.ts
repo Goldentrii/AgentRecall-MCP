@@ -13,6 +13,7 @@ import * as path from "node:path";
 import { getRoot } from "../types.js";
 import { ensureDir } from "../storage/fs-utils.js";
 import { syncToSupabase } from "../supabase/sync.js";
+import { withLock } from "../storage/filelock.js";
 
 export interface IndexedInsight {
   id: string;
@@ -62,6 +63,7 @@ export function writeInsightsIndex(index: InsightsIndex): void {
  * Add or update an insight in the index.
  */
 export function addIndexedInsight(insight: Omit<IndexedInsight, "id" | "confirmed_count" | "last_confirmed">): IndexedInsight {
+  return withLock("insights-index", () => {
   const index = readInsightsIndex();
   const now = new Date().toISOString();
 
@@ -125,6 +127,7 @@ export function addIndexedInsight(insight: Omit<IndexedInsight, "id" | "confirme
 
   writeInsightsIndex(index);
   return newInsight;
+  }); // end withLock
 }
 
 /**

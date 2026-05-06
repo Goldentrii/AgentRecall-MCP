@@ -12,6 +12,15 @@ import type { ProjectInfo } from "../types.js";
 const execFileAsync = promisify(execFile);
 
 /**
+ * Common directory names that are not valid project slugs.
+ * These appear as cwd basename when the agent is not inside a project.
+ */
+const BLOCKED_SLUGS = new Set([
+  "Downloads", "Projects", "default", "Documents", "Desktop",
+  "tmp", "node_modules", "dist", "src", ".aam", "phase-1",
+]);
+
+/**
  * Auto-detect project slug from environment, git, or cwd.
  * No caching — each call re-detects from the current environment.
  * Use AGENT_RECALL_PROJECT env var for a stable override across calls.
@@ -58,6 +67,12 @@ export async function detectProject(): Promise<string> {
   const homeBasename = homeDir ? path.basename(homeDir) : "";
 
   if (candidate && candidate !== homeBasename) {
+    if (BLOCKED_SLUGS.has(candidate) || candidate.length < 2) {
+      throw new Error(
+        `Cannot auto-detect project: cwd basename "${candidate}" is a common system directory. ` +
+        `Set AGENT_RECALL_PROJECT env var or pass project explicitly to specify a project.`
+      );
+    }
     return candidate;
   }
 

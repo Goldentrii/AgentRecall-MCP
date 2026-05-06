@@ -101,6 +101,7 @@ export interface SmartRecallResult {
   results: SmartRecallResultItem[];
   total_searched: number;
   sources_queried: string[];
+  guidance?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -508,10 +509,14 @@ export async function smartRecall(input: SmartRecallInput): Promise<SmartRecallR
   // Re-sort after feedback adjustment
   results.sort((a, b) => b.score - a.score);
 
+  const finalResults = results.slice(0, limit);
   return {
     query: input.query,
-    results: results.slice(0, limit),
+    results: finalResults,
     total_searched: results.length,
     sources_queried: [...new Set(results.map((r) => r.source))],
+    ...(finalResults.length === 0
+      ? { guidance: "No results found. Try `session_start` to initialize this project, or `bootstrap_scan` to import existing context." }
+      : {}),
   };
 }

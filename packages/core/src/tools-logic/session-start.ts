@@ -6,6 +6,7 @@
  */
 
 import { resolveProject } from "../storage/project.js";
+import { resetOwnedFiles } from "../storage/session.js";
 import { ensurePalaceInitialized, listRooms, isRoomStale } from "../palace/rooms.js";
 import { readIdentity } from "../palace/identity.js";
 import { readAwarenessState } from "../palace/awareness.js";
@@ -16,6 +17,7 @@ import { todayISO } from "../storage/fs-utils.js";
 import { readAlignmentLog, extractWatchPatterns, computeDecisionCalibration, type WatchForPattern } from "../helpers/alignment-patterns.js";
 import { readP0Corrections, type CorrectionRecord } from "../storage/corrections.js";
 import { extractKeywords } from "../helpers/auto-name.js";
+import { isJournalFile } from "../helpers/journal-filter.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getRoot } from "../types.js";
@@ -53,6 +55,9 @@ export interface SessionStartResult {
 }
 
 export async function sessionStart(input: SessionStartInput): Promise<SessionStartResult> {
+  // Reset owned-files state from any previous session in the same process
+  resetOwnedFiles();
+
   const slug = await resolveProject(input.project);
   ensurePalaceInitialized(slug);
 
@@ -124,7 +129,7 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
 
   for (const dir of dirs) {
     if (!fs.existsSync(dir)) continue;
-    const files = fs.readdirSync(dir).filter((f) => f.endsWith(".md")).sort().reverse();
+    const files = fs.readdirSync(dir).filter(isJournalFile).sort().reverse();
     for (const file of files) {
       const dateMatch = file.match(/^(\d{4}-\d{2}-\d{2})/);
       if (!dateMatch) continue;
@@ -172,7 +177,7 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
 
     for (const dir of dirs) {
       if (!fs.existsSync(dir)) continue;
-      const files = fs.readdirSync(dir).filter((f) => f.endsWith(".md")).sort().reverse();
+      const files = fs.readdirSync(dir).filter(isJournalFile).sort().reverse();
       for (const file of files) {
         const dateMatch = file.match(/^(\d{4}-\d{2}-\d{2})/);
         if (!dateMatch) continue;

@@ -12,6 +12,9 @@ import { journalCapture } from "./journal-capture.js";
 import { palaceWrite } from "./palace-write.js";
 import { knowledgeWrite } from "./knowledge-write.js";
 import { awarenessUpdate } from "./awareness-update.js";
+import { getRoot } from "../types.js";
+import { captureLogFileName } from "../storage/session.js";
+import { todayISO } from "../storage/fs-utils.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -222,20 +225,23 @@ export async function smartRemember(input: SmartRememberInput): Promise<SmartRem
     else if (typeof resultObj.file === "string") file_path = resultObj.file;
     // awareness_update → show awareness.md path
     else if (route === "awareness_update") {
-      const root = process.env.HOME ? `${process.env.HOME}/.agent-recall` : "~/.agent-recall";
+      const root = getRoot();
       file_path = `${root}/awareness.md`;
     }
-    // journal_capture → show journal directory
+    // journal_capture → show actual capture log filename
     else if (route === "journal_capture") {
-      const root = process.env.HOME ? `${process.env.HOME}/.agent-recall` : "~/.agent-recall";
+      const root = getRoot();
       const slug = input.project ?? "auto";
-      file_path = `${root}/projects/${slug}/journal/${new Date().toISOString().slice(0, 10)}-log.md`;
+      const date = todayISO();
+      const journalDirPath = `${root}/projects/${slug}/journal`;
+      const captureFile = captureLogFileName(date, false);
+      file_path = `${journalDirPath}/${captureFile}`;
     }
   }
 
-  // Replace home dir for readability
-  const root = process.env.HOME ?? "";
-  const displayPath = file_path?.replace(root, "~") ?? undefined;
+  // Replace agent-recall root dir for readability
+  const displayRoot = getRoot();
+  const displayPath = file_path?.replace(displayRoot, "~/.agent-recall") ?? undefined;
 
   // Generate retrieval hint from keywords + classification
   const hintWords = slugResult.keywords.slice(0, 3);
