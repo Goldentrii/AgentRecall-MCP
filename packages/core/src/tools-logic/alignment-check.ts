@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { resolveProject } from "../storage/project.js";
-import { journalDir, palaceDir } from "../storage/paths.js";
+import { journalDir, palaceDir, sanitizeSlug } from "../storage/paths.js";
 import { ensureDir, todayISO } from "../storage/fs-utils.js";
 import { ensurePalaceInitialized, roomExists } from "../palace/rooms.js";
 import { updatePalaceIndex } from "../palace/index-manager.js";
@@ -25,13 +25,21 @@ export interface AlignmentCheckResult {
   file: string;
 }
 
+const VALID_CATEGORIES = new Set(["goal", "scope", "priority", "technical", "aesthetic"]);
+
 export async function alignmentCheck(input: AlignmentCheckInput): Promise<AlignmentCheckResult> {
   const slug = await resolveProject(input.project);
   const date = todayISO();
   const dir = journalDir(slug);
   ensureDir(dir);
 
-  const category = input.category ?? "goal";
+  // Validate category at core entry — it flows directly into path.join for the palace file
+  const rawCategory = input.category ?? "goal";
+  if (!VALID_CATEGORIES.has(rawCategory)) {
+    return { success: false, date, confidence: input.confidence, delta: "rejected", file: "" };
+  }
+  const category = rawCategory;
+  const safeCategory = sanitizeSlug(category);
   const time = new Date().toISOString().slice(11, 19);
   const assumeStr = input.assumptions?.length ? input.assumptions.map(a => `  - ${a}`).join("\n") : "  (none)";
 
@@ -53,7 +61,7 @@ export async function alignmentCheck(input: AlignmentCheckInput): Promise<Alignm
     ensurePalaceInitialized(slug);
     if (roomExists(slug, "alignment")) {
       const pd = palaceDir(slug);
-      const alignFile = path.join(pd, "rooms", "alignment", `${category}.md`);
+      const alignFile = path.join(pd, "rooms", "alignment", `${safeCategory}.md`);
       ensureDir(path.dirname(alignFile));
 
       if (input.human_correction) {

@@ -113,6 +113,11 @@ const SECRET_PATTERNS = [
   /tokens/i,
   /\.pem$/i,
   /\.key$/i,
+  /^id_rsa$/i,
+  /^id_ed25519$/i,
+  /^id_ecdsa$/i,
+  /^authorized_keys$/i,
+  /\.pub$/i,
 ];
 
 const MAX_FILE_SIZE = 5 * 1024; // 5KB
@@ -322,7 +327,9 @@ export async function bootstrapScan(options?: {
 }): Promise<BootstrapScanResult> {
   const t0 = Date.now();
   const maxDepth = options?.max_depth ?? 3;
-  const scanDirs = [...DEFAULT_SCAN_DIRS, ...(options?.scan_dirs ?? []), ...(options?.source_dirs ?? [])];
+  const home = os.homedir();
+  const rawScanDirs = [...DEFAULT_SCAN_DIRS, ...(options?.scan_dirs ?? []), ...(options?.source_dirs ?? [])];
+  const scanDirs = rawScanDirs.filter((d) => d.startsWith(home));
   const arSlugs = existingArSlugs();
 
   // Map from slug → DiscoveredProject (for merging multi-source projects)
@@ -582,6 +589,7 @@ export async function bootstrapImport(
   selection?: ImportSelection,
 ): Promise<ImportResult> {
   const t0 = Date.now();
+  const home = os.homedir();
   const includeGlobal = selection?.include_global ?? true;
   const skipItems = new Set(selection?.skip_items ?? []);
   const allowedTypes = selection?.item_types ? new Set(selection.item_types) : null;
@@ -698,6 +706,10 @@ export async function bootstrapImport(
             itemsSkipped++;
             continue;
           }
+          if (!item.source_path.startsWith(home)) {
+            itemsSkipped++;
+            continue;
+          }
           const raw = fs.readFileSync(item.source_path, "utf-8");
           const claudemdContent = raw.slice(0, 3000);
           await palaceWrite({
@@ -713,6 +725,10 @@ export async function bootstrapImport(
             itemsSkipped++;
             continue;
           }
+          if (!item.source_path.startsWith(home)) {
+            itemsSkipped++;
+            continue;
+          }
           const sz = fileSizeBytes(item.source_path);
           if (sz > MAX_FILE_SIZE) {
             itemsSkipped++;
@@ -720,7 +736,8 @@ export async function bootstrapImport(
           }
           const rawContent = fs.readFileSync(item.source_path, "utf-8");
           const { body, meta } = stripFrontmatter(rawContent);
-          const topic = (meta["name"] ?? item.id.replace("claude-memory:", "")).replace(/\.md$/, "");
+          const rawTopic = (meta["name"] ?? item.id.replace("claude-memory:", "")).replace(/\.md$/, "");
+          const topic = rawTopic.replace(/[^a-zA-Z0-9_\-]/g, "-");
 
           if (meta["type"] === "user") {
             // Route user-type files to awareness instead of palace
@@ -786,6 +803,10 @@ export async function bootstrapImport(
           itemsSkipped++;
           continue;
         }
+        if (!item.source_path.startsWith(home)) {
+          itemsSkipped++;
+          continue;
+        }
         const sz = fileSizeBytes(item.source_path);
         if (sz > MAX_FILE_SIZE) {
           itemsSkipped++;
@@ -793,7 +814,8 @@ export async function bootstrapImport(
         }
         const rawContent = fs.readFileSync(item.source_path, "utf-8");
         const { body, meta } = stripFrontmatter(rawContent);
-        const topic = (meta["name"] ?? item.id.replace("global:", "")).replace(/\.md$/, "");
+        const rawTopic2 = (meta["name"] ?? item.id.replace("global:", "")).replace(/\.md$/, "");
+        const topic = rawTopic2.replace(/[^a-zA-Z0-9_\-]/g, "-");
 
         if (meta["type"] === "user") {
           await awarenessUpdate({

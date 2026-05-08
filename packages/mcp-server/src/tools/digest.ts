@@ -36,7 +36,7 @@ export function register(server: McpServer): void {
 
     if (action === "store") {
       if (!params.title || !params.scope || !params.content) {
-        return { content: [{ type: "text" as const, text: JSON.stringify({ error: "store requires title, scope, and content" }) }] };
+        return { content: [{ type: "text" as const, text: JSON.stringify({ error: "store requires title, scope, and content" }) }], isError: true };
       }
       const result = await digestStore({
         title: params.title,
@@ -53,7 +53,7 @@ export function register(server: McpServer): void {
 
     if (action === "recall") {
       if (!params.query) {
-        return { content: [{ type: "text" as const, text: JSON.stringify({ error: "recall requires query" }) }] };
+        return { content: [{ type: "text" as const, text: JSON.stringify({ error: "recall requires query" }) }], isError: true };
       }
       const result = await digestRecall({
         query: params.query,
@@ -66,7 +66,7 @@ export function register(server: McpServer): void {
 
     if (action === "read") {
       if (!params.digest_id) {
-        return { content: [{ type: "text" as const, text: JSON.stringify({ error: "read requires digest_id" }) }] };
+        return { content: [{ type: "text" as const, text: JSON.stringify({ error: "read requires digest_id" }) }], isError: true };
       }
       const result = await digestRead({
         digest_id: params.digest_id,
@@ -77,13 +77,13 @@ export function register(server: McpServer): void {
 
     if (action === "invalidate") {
       if (!params.digest_id) {
-        return { content: [{ type: "text" as const, text: JSON.stringify({ error: "invalidate requires digest_id" }) }] };
+        return { content: [{ type: "text" as const, text: JSON.stringify({ error: "invalidate requires digest_id" }) }], isError: true };
       }
       const resolvedProject = await resolveProject(params.project);
       markStale(resolvedProject, params.digest_id, params.reason ?? "manually invalidated", params.global);
       return { content: [{ type: "text" as const, text: JSON.stringify({ success: true, digest_id: params.digest_id }) }] };
     }
 
-    return { content: [{ type: "text" as const, text: JSON.stringify({ error: `Unknown action: ${action}` }) }] };
+    return { content: [{ type: "text" as const, text: JSON.stringify({ error: `Unknown action: ${action}` }) }], isError: true };
   });
 }

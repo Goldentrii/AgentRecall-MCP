@@ -35,7 +35,13 @@ export type JournalStateResult =
 
 export async function journalState(input: JournalStateInput): Promise<JournalStateResult> {
   const slug = await resolveProject(input.project);
-  let targetDate = input.date ?? "latest";
+
+  // Validate date format at core entry — blocks path traversal before stateFilePath()/path.join
+  const rawDate = input.date ?? "latest";
+  if (rawDate !== "latest" && !/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+    return { error: "Invalid date format" };
+  }
+  let targetDate = rawDate;
 
   if (targetDate === "latest") {
     const dir = journalDir(slug);
@@ -68,12 +74,31 @@ export async function journalState(input: JournalStateInput): Promise<JournalSta
   if (input.data) {
     try {
       const incoming = JSON.parse(input.data);
-      if (incoming.completed) existing.completed.push(...incoming.completed);
-      if (incoming.failures) existing.failures.push(...incoming.failures);
-      if (incoming.next_actions) existing.next_actions = incoming.next_actions;
-      if (incoming.insights) existing.insights.push(...incoming.insights);
-      if (incoming.state) Object.assign(existing.state, incoming.state);
-      if (incoming.counts) Object.assign(existing.counts, incoming.counts);
+
+      const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+      function safeAssign(target: Record<string, unknown>, source: unknown): void {
+        if (source && typeof source === "object" && !Array.isArray(source)) {
+          for (const [k, v] of Object.entries(source as Record<string, unknown>)) {
+            if (!DANGEROUS_KEYS.has(k)) target[k] = v;
+          }
+        }
+      }
+
+      if (Array.isArray(incoming.completed)) {
+        existing.completed.push(...incoming.completed.slice(0, 100));
+        existing.completed = existing.completed.slice(-500);
+      }
+      if (Array.isArray(incoming.failures)) {
+        existing.failures.push(...incoming.failures.slice(0, 100));
+        existing.failures = existing.failures.slice(-500);
+      }
+      if (Array.isArray(incoming.insights)) {
+        existing.insights.push(...incoming.insights.slice(0, 100));
+        existing.insights = existing.insights.slice(-500);
+      }
+      existing.next_actions = (incoming.next_actions ?? existing.next_actions).slice(0, 50);
+      if (incoming.state) safeAssign(existing.state, incoming.state);
+      if (incoming.counts) safeAssign(existing.counts, incoming.counts);
       existing.timestamp = new Date().toISOString();
     } catch (e) {
       return { error: `Invalid JSON: ${e}` };

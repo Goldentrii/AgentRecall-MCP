@@ -96,6 +96,7 @@ function classifyRoute(content: string, context?: string): Route {
   // Check context hint first (strong signal)
   if (context) {
     const lower = context.toLowerCase();
+    if (/^qa$|^capture$/i.test(lower.trim())) return "journal_capture";
     if (/bug|fix|error|regression|crash/i.test(lower)) return "knowledge_write";
     if (/architecture|design|decision|schema/i.test(lower)) return "palace_write";
     if (/insight|lesson|pattern|across/i.test(lower)) return "awareness_update";

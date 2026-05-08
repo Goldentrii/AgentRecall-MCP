@@ -42,7 +42,7 @@ function formatSessionStart(result: SessionStartResult): string {
 export function register(server: McpServer): void {
   server.registerTool("session_start", {
     title: "Start Session",
-    description: "Load project context for a new session. Returns identity, insights, active rooms, and recent activity in one call.",
+    description: "Load project context for a new session. Returns identity, top insights, active rooms, recent activity, P0 corrections (behavioral rules), and predictive watch_for warnings. One call for cold-start context.",
     inputSchema: {
       project: z.string().default("auto"),
       context: z.string().optional().describe("Optional context for matching cross-project insights"),

@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { resolveProject } from "../storage/project.js";
-import { journalDir } from "../storage/paths.js";
+import { journalDir, sanitizeSlug } from "../storage/paths.js";
 import { ensureDir, todayISO } from "../storage/fs-utils.js";
 import { countLogEntries } from "../helpers/journal-files.js";
 import { detectContentType, extractKeywords } from "../helpers/auto-name.js";
@@ -81,7 +81,8 @@ export async function journalCapture(input: JournalCaptureInput): Promise<Journa
       }
 
       const pd = palaceDir(slug);
-      const targetPath = path.join(pd, "rooms", input.palace_room, "captures.md");
+      const safeRoom = sanitizeSlug(input.palace_room);
+      const targetPath = path.join(pd, "rooms", safeRoom, "captures.md");
       ensureDir(path.dirname(targetPath));
 
       const captureEntry = `\n### Q${entryNum} (${date})\n**Q:** ${input.question}\n**A:** ${input.answer}\n`;

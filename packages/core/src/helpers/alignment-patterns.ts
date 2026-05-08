@@ -22,8 +22,18 @@ export interface WatchForPattern {
   suggestion: string;
 }
 
+function alignmentLogPath(project: string): string {
+  const safe = project.replace(/[^a-zA-Z0-9_\-\.]/g, "-");
+  const root = getRoot();
+  const resolved = path.join(root, "projects", safe, "alignment-log.json");
+  if (!resolved.startsWith(root)) {
+    throw new Error(`Invalid project: ${project}`);
+  }
+  return resolved;
+}
+
 export function readAlignmentLog(project: string): AlignmentRecord[] {
-  const p = path.join(getRoot(), "projects", project, "alignment-log.json");
+  const p = alignmentLogPath(project);
   if (!fs.existsSync(p)) return [];
   try { return JSON.parse(fs.readFileSync(p, "utf-8")); } catch { return []; }
 }
@@ -71,7 +81,10 @@ export interface CalibrationWarning {
 }
 
 export function computeDecisionCalibration(project: string): CalibrationWarning[] {
-  const decisionsDir = path.join(getRoot(), "projects", project, "palace", "rooms", "decisions");
+  const safe = project.replace(/[^a-zA-Z0-9_\-]/g, "-");
+  const root = getRoot();
+  const decisionsDir = path.join(root, "projects", safe, "palace", "rooms", "decisions");
+  if (!decisionsDir.startsWith(root)) return [];
   if (!fs.existsSync(decisionsDir)) return [];
 
   let files: string[];

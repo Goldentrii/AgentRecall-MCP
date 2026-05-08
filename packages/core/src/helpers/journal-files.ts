@@ -66,6 +66,9 @@ export function listJournalFiles(project: string): JournalEntry[] {
  * Read a journal file. Checks primary dir first, then legacy.
  */
 export function readJournalFile(project: string, date: string): string | null {
+  // Validate date format before use in path.join or string matching
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+
   const dirs = journalDirs(project);
   const primaryDir = journalDir(project);
   const allDirs = [primaryDir, ...dirs.filter((d) => d !== primaryDir)];
@@ -89,7 +92,10 @@ export function readJournalFile(project: string, date: string): string | null {
     }
 
     // Legacy session-scoped: YYYY-MM-DD-{sessionId}.md
-    const sessionFiles = files.filter(f => f.match(new RegExp(`^${date}-[a-f0-9]{6}\\.md$`)));
+    // Safe: no RegExp constructed from user input — use startsWith + literal pattern on the suffix
+    const sessionFiles = files.filter(f =>
+      f.startsWith(date + "-") && /^[a-f0-9]{6}\.md$/.test(f.slice(date.length + 1))
+    );
     if (sessionFiles.length > 0) {
       const parts = sessionFiles.map(f => fs.readFileSync(path.join(dir, f), "utf-8"));
       return parts.join("\n\n---\n\n");

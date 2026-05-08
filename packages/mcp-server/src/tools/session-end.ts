@@ -20,6 +20,10 @@ export function register(server: McpServer): void {
   }, async ({ summary, insights, trajectory, project }) => {
     const result = await sessionEnd({ summary, insights, trajectory, project, saveType: "arsave" });
 
+    if (!result.success) {
+      return { content: [{ type: "text" as const, text: JSON.stringify(result) }], isError: true };
+    }
+
     const jsonPayload = JSON.stringify({
       success: result.success,
       journal_written: result.journal_written,

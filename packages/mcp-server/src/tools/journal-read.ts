@@ -10,9 +10,10 @@ export function register(server: McpServer): void {
     inputSchema: {
       date: z
         .string()
+        .regex(/^(\d{4}-\d{2}-\d{2}|latest)$/)
         .default("latest")
         .describe(
-          "ISO date string YYYY-MM-DD. Defaults to 'latest'. Use 'latest' for most recent entry."
+          "ISO date string YYYY-MM-DD or 'latest'. Defaults to 'latest'. Use 'latest' for most recent entry."
         ),
       project: z
         .string()

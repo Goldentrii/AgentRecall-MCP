@@ -80,6 +80,20 @@ export function roomDir(project: string, roomSlug: string): string {
 }
 
 /**
+ * Sanitize a slug (room, topic, etc.) for safe use in path.join().
+ * Strips path separators, dots, and non-alphanumeric characters except _ -
+ * Matches roomDir() regex — no dots allowed (prevents ".." traversal).
+ */
+export function sanitizeSlug(input: string): string {
+  if (!input) return "unnamed";
+  const safe = input
+    .replace(/[^a-zA-Z0-9_\-]/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 100);
+  return safe || "unnamed";
+}
+
+/**
  * Resolve the digest directory for a project.
  */
 export function digestDir(project: string): string {

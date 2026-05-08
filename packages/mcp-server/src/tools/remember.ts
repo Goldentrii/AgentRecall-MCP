@@ -25,6 +25,10 @@ export function register(server: McpServer): void {
   }, async ({ content, context, project }) => {
     const result = await smartRemember({ content, context, project });
 
+    if (!result.success) {
+      return { content: [{ type: "text" as const, text: JSON.stringify(result) }], isError: true };
+    }
+
     // Transparent routing: show where the memory went + how to find it
     const lines = [`Saved to ${result.routed_to} → ${result.file_path ?? result.auto_name}`];
     if (result.retrieval_hint) lines.push(`Find again: ${result.retrieval_hint}`);

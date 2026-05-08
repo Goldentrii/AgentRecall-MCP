@@ -12,7 +12,7 @@ export function register(server: McpServer): void {
     inputSchema: {
       action: z.enum(["read", "write"]).describe("'read' returns state, 'write' merges new data"),
       data: z.string().optional().describe("JSON string to merge into state (write mode only)"),
-      date: z.string().default("latest").describe("ISO date or 'latest'"),
+      date: z.string().regex(/^(\d{4}-\d{2}-\d{2}|latest)$/).default("latest").describe("ISO date YYYY-MM-DD or 'latest'"),
       project: z.string().default("auto"),
     },
   }, async ({ action, data, date, project }) => {

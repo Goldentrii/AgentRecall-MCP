@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { resolveProject } from "../storage/project.js";
-import { palaceDir } from "../storage/paths.js";
+import { palaceDir, sanitizeSlug } from "../storage/paths.js";
 import { ensureDir } from "../storage/fs-utils.js";
 import { ensurePalaceInitialized, createRoom, roomExists, updateRoomMeta, recordAccess } from "../palace/rooms.js";
 import { fanOut } from "../palace/fan-out.js";
@@ -65,7 +65,9 @@ export async function palaceWrite(input: PalaceWriteInput): Promise<PalaceWriteR
   }
   targetTopic = targetTopic ?? "README";
 
-  const targetFile = path.join(pd, "rooms", input.room, `${targetTopic}.md`);
+  const safeRoom = sanitizeSlug(input.room);
+  const safeTopic = sanitizeSlug(targetTopic);
+  const targetFile = path.join(pd, "rooms", safeRoom, `${safeTopic}.md`);
   ensureDir(path.dirname(targetFile));
 
   const timestamp = new Date().toISOString();

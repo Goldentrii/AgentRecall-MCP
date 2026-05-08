@@ -119,10 +119,7 @@ export async function projectBoard(): Promise<ProjectBoardResult> {
   }
 
   // Sort: blocked first, then active (most recent first), then complete, then stale.
-  // Global catchall "tongwu" always last.
   entries.sort((a, b) => {
-    if (a.slug === "tongwu") return 1;
-    if (b.slug === "tongwu") return -1;
     if (STATUS_ORDER[a.status] !== STATUS_ORDER[b.status]) {
       return STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
     }

@@ -12,7 +12,7 @@ export function register(server: McpServer): void {
     description: "Discover existing projects on this machine — git repos, Claude memory, CLAUDE.md files. Returns what CAN be imported into AgentRecall. Read-only, no writes. Run this first if AgentRecall is empty.",
     inputSchema: {
       scan_dirs: z.array(z.string()).optional().describe("Additional directories to scan (default: ~/Projects/, ~/work/, ~/code/, ~/dev/)"),
-      max_depth: z.number().optional().describe("Maximum directory depth to scan (default: 3)"),
+      max_depth: z.number().int().min(1).max(5).optional().describe("Maximum directory depth to scan (default: 3, max: 5)"),
     },
   }, async ({ scan_dirs, max_depth }) => {
     const result = await bootstrapScan({
@@ -61,7 +61,7 @@ export function register(server: McpServer): void {
         scan = scan_result as unknown as BootstrapScanResult;
       }
     } catch {
-      return { content: [{ type: "text" as const, text: "Error: scan_result must be valid JSON from bootstrap_scan" }] };
+      return { content: [{ type: "text" as const, text: "Error: scan_result must be valid JSON from bootstrap_scan" }], isError: true };
     }
 
     const result = await bootstrapImport(scan, {

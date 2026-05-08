@@ -7,7 +7,7 @@ import * as path from "node:path";
 import type { RoomMeta } from "../types.js";
 import { DEFAULT_PALACE_ROOMS, VERSION } from "../types.js";
 import { ensureDir } from "../storage/fs-utils.js";
-import { palaceDir } from "../storage/paths.js";
+import { palaceDir, sanitizeSlug } from "../storage/paths.js";
 import { readJsonSafe, writeJsonAtomic } from "../storage/fs-utils.js";
 import { roomReadmeContent } from "./obsidian.js";
 import { computeSalience } from "./salience.js";
@@ -15,7 +15,8 @@ import { getConnectionCount } from "./graph.js";
 import { withLock } from "../storage/filelock.js";
 
 function roomMetaPath(projectPalaceDir: string, roomSlug: string): string {
-  return path.join(projectPalaceDir, "rooms", roomSlug, "_room.json");
+  const safe = sanitizeSlug(roomSlug);
+  return path.join(projectPalaceDir, "rooms", safe, "_room.json");
 }
 
 export function createRoom(
@@ -27,7 +28,8 @@ export function createRoom(
   connections: string[] = []
 ): RoomMeta {
   const pd = palaceDir(project);
-  const roomPath = path.join(pd, "rooms", slug);
+  const safeSlug = sanitizeSlug(slug);
+  const roomPath = path.join(pd, "rooms", safeSlug);
   ensureDir(roomPath);
 
   const now = new Date().toISOString();

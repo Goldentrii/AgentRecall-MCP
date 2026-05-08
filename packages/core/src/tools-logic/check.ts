@@ -68,7 +68,11 @@ export interface CheckResult {
 }
 
 function alignmentLogPath(project: string): string {
-  return path.join(getRoot(), "projects", project, "alignment-log.json");
+  const safe = project.replace(/[^a-zA-Z0-9_\-]/g, "-");
+  const root = getRoot();
+  const resolved = path.join(root, "projects", safe, "alignment-log.json");
+  if (!resolved.startsWith(root)) throw new Error(`Invalid project: ${project}`);
+  return resolved;
 }
 
 function writeAlignmentLog(project: string, records: AlignmentRecord[]): void {

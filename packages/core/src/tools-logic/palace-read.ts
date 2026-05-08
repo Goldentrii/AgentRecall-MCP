@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { resolveProject } from "../storage/project.js";
-import { palaceDir } from "../storage/paths.js";
+import { palaceDir, sanitizeSlug } from "../storage/paths.js";
 import { ensurePalaceInitialized, getRoomMeta, listRooms, recordAccess } from "../palace/rooms.js";
 
 export interface PalaceReadInput {
@@ -48,9 +48,9 @@ export async function palaceRead(input: PalaceReadInput): Promise<PalaceReadResu
   recordAccess(slug, input.room);
 
   const pd = palaceDir(slug);
-  const targetFile = input.topic
-    ? path.join(pd, "rooms", input.room, `${input.topic}.md`)
-    : path.join(pd, "rooms", input.room, "README.md");
+  const safeRoom = sanitizeSlug(input.room);
+  const safeTopic = input.topic ? sanitizeSlug(input.topic) : "README";
+  const targetFile = path.join(pd, "rooms", safeRoom, `${safeTopic}.md`);
 
   if (!fs.existsSync(targetFile)) {
     return { project: slug, error: `File not found: ${input.topic ? input.topic + '.md' : 'README.md'} in room '${input.room}'` };

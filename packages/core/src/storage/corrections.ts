@@ -29,7 +29,13 @@ export interface CorrectionRecord {
 // ---------------------------------------------------------------------------
 
 function correctionsDir(project: string): string {
-  return path.join(getRoot(), "projects", project, "corrections");
+  const safe = project.replace(/[^a-zA-Z0-9_\-\.]/g, "-");
+  const root = getRoot();
+  const resolved = path.join(root, "projects", safe, "corrections");
+  if (!resolved.startsWith(root)) {
+    throw new Error(`Invalid project: ${project}`);
+  }
+  return resolved;
 }
 
 /** Auto-detect severity: p0 if uses strong negation/mandate language, else p1. */

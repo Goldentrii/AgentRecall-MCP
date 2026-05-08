@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { resolveProject } from "../storage/project.js";
-import { journalDir, palaceDir } from "../storage/paths.js";
+import { journalDir, palaceDir, sanitizeSlug } from "../storage/paths.js";
 import { ensureDir, todayISO } from "../storage/fs-utils.js";
 import { appendToSection } from "../helpers/sections.js";
 import { updateIndex } from "../helpers/journal-files.js";
@@ -112,8 +112,9 @@ export async function journalWrite(input: JournalWriteInput): Promise<JournalWri
     }
 
     const pd = palaceDir(slug);
+    const safeRoom = sanitizeSlug(input.palace_room);
     const topicFile = input.section && input.section !== "replace_all" ? input.section : "journal";
-    const targetPath = path.join(pd, "rooms", input.palace_room, `${topicFile}.md`);
+    const targetPath = path.join(pd, "rooms", safeRoom, `${topicFile}.md`);
     ensureDir(path.dirname(targetPath));
 
     const timestamp = new Date().toISOString();

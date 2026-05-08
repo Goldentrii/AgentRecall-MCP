@@ -9,7 +9,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { palaceDir } from "../storage/paths.js";
+import { palaceDir, sanitizeSlug } from "../storage/paths.js";
 import { extractWikilinks, addBackReference } from "./obsidian.js";
 import { addEdge, getConnectionCount } from "./graph.js";
 import { getRoomMeta, updateRoomMeta, listRooms } from "./rooms.js";
@@ -41,7 +41,7 @@ export function fanOut(
 
   for (const target of allTargets) {
     // Target could be "roomSlug" or "roomSlug/topic"
-    const targetRoom = target.split("/")[0];
+    const targetRoom = sanitizeSlug(target.split("/")[0]);
     if (targetRoom === sourceRoom) continue; // skip self-references
 
     // Add back-reference in target room's README.md
@@ -123,7 +123,7 @@ export function fanOut(
   if (sourceMeta) {
     const newConns = new Set(sourceMeta.connections);
     for (const target of allTargets) {
-      const targetRoom = target.split("/")[0];
+      const targetRoom = sanitizeSlug(target.split("/")[0]);
       if (targetRoom !== sourceRoom) newConns.add(targetRoom);
     }
     updateRoomMeta(project, sourceRoom, {
