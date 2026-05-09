@@ -469,7 +469,19 @@ async function main(): Promise<void> {
         // Project + identity — always show so agent knows the project
         lines.push(`Project: ${result.project}${result.identity && result.identity !== result.project ? ` — ${result.identity.slice(0, 100)}` : ""}`);
 
-        // Watch-for warnings — most critical, always first
+        // P0 corrections — always show, high priority (loaded before watch_for)
+        if (result.corrections && result.corrections.length > 0) {
+          const p0s = result.corrections.filter((c: any) => c.severity === "p0");
+          if (p0s.length > 0) {
+            lines.push("🚨 P0 rules — follow strictly:");
+            for (const c of p0s.slice(0, 5)) {
+              const rule = c.rule || JSON.stringify(c);
+              lines.push(`   - ${rule.slice(0, 80)} → P0 correction — follow this rule strictly`);
+            }
+          }
+        }
+
+        // Watch-for warnings — patterns derived from past correction history
         if (result.watch_for && result.watch_for.length > 0) {
           lines.push("⚠️  Past corrections — adjust approach:");
           for (const w of result.watch_for) {
@@ -505,9 +517,14 @@ async function main(): Promise<void> {
           }
         }
 
-        // Cross-project hint — signal that related insights exist
+        // Cross-project insights — show top 3 inline so agent reads them now
         if (result.cross_project && result.cross_project.length > 0) {
-          lines.push(`🔗 Cross-project: ${result.cross_project.length} related insight(s) from other projects — run /arstart for details`);
+          const shown = result.cross_project.slice(0, 3);
+          const total = result.cross_project.length;
+          lines.push(`🔗 Cross-project (${shown.length} of ${total}):`);
+          for (const cp of shown) {
+            lines.push(`   [${cp.from_project}] ${cp.title.slice(0, 80)}`);
+          }
         }
 
         process.stdout.write(lines.join("\n") + "\n\n");
