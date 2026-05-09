@@ -608,6 +608,17 @@ async function main(): Promise<void> {
         await core.sessionEnd({ summary, project, saveType: "hook-end" });
         process.stderr.write(`[AgentRecall] Session auto-saved\n`);
 
+        // Write summary for arstatus cache script (async, non-blocking)
+        try {
+          const summaryFile = path.join(os.homedir(), ".agent-recall", ".last-session-summary.txt");
+          fs.writeFileSync(summaryFile, summary, "utf-8");
+          // Spawn cache generation in background — never await
+          const { spawn } = await import("node:child_process");
+          spawn("python3", [
+            path.join(os.homedir(), ".claude", "scripts", "ar-arstatus-cache.py"),
+          ], { detached: true, stdio: "ignore" }).unref();
+        } catch { /* non-blocking */ }
+
         // Semantic prefetch — pre-warm next session's context
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
