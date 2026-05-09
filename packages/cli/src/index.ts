@@ -527,6 +527,27 @@ async function main(): Promise<void> {
           }
         }
 
+        // Semantic prefetch from last session
+        try {
+          const prefetchFile = path.join(
+            os.homedir(), ".agent-recall", "projects", project ?? "auto", "semantic-prefetch.json"
+          );
+          if (fs.existsSync(prefetchFile)) {
+            const prefetchData = JSON.parse(fs.readFileSync(prefetchFile, "utf-8")) as {
+              generated: string;
+              results?: Array<{ source: string; title: string }>;
+            };
+            const age = Date.now() - new Date(prefetchData.generated).getTime();
+            // Only show if < 24 hours old
+            if (age < 86400000 && prefetchData.results && prefetchData.results.length > 0) {
+              lines.push("🔍 Pre-loaded semantic context:");
+              for (const r of prefetchData.results.slice(0, 3)) {
+                lines.push(`   [${r.source}] ${r.title.slice(0, 70)}`);
+              }
+            }
+          }
+        } catch { /* non-blocking */ }
+
         process.stdout.write(lines.join("\n") + "\n\n");
       } catch (e) {
         // Never block the session — fail silently
@@ -586,6 +607,32 @@ async function main(): Promise<void> {
 
         await core.sessionEnd({ summary, project, saveType: "hook-end" });
         process.stderr.write(`[AgentRecall] Session auto-saved\n`);
+
+        // Semantic prefetch — pre-warm next session's context
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const coremod = await import("agent-recall-core") as any;
+          const backend = await coremod.getRecallBackend();
+          const prefetchProject = project ?? "auto";
+          if (backend.available() && summary) {
+            const prefetchResults = await backend.search(summary.slice(0, 200), prefetchProject, 5);
+            if (prefetchResults.length > 0) {
+              const prefetchFile = path.join(
+                os.homedir(), ".agent-recall", "projects", prefetchProject, "semantic-prefetch.json"
+              );
+              fs.writeFileSync(prefetchFile, JSON.stringify({
+                generated: new Date().toISOString(),
+                query: summary.slice(0, 100),
+                results: prefetchResults.map((r: { title: string; excerpt?: string; score: number; source: string }) => ({
+                  title: r.title,
+                  excerpt: r.excerpt?.slice(0, 200) ?? "",
+                  score: r.score,
+                  source: r.source,
+                }))
+              }, null, 2), "utf-8");
+            }
+          }
+        } catch { /* non-blocking — prefetch is best-effort */ }
       } catch (e) {
         process.stderr.write(`[AgentRecall hook-end] ${String(e)}\n`);
       }
