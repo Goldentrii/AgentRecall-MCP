@@ -133,47 +133,62 @@ After bootstrap, run `/arstatus` — your projects are ready.
 > **New to AgentRecall?** Read the **[→ Command Reference](docs/commands.md)** — full instructions, all example outputs, installation, and troubleshooting in one place.
 
 > [!IMPORTANT]
-> **Run `/arstatus` at the start of every session.** It shows all your projects, what's pending, what's blocked, and lets you pick what to work on — by number, not by remembering project names. Without it, a fresh agent has no idea where to begin.
+> **Two commands run every single session — no exceptions:**
+> - **`/arstatus`** at the **start** — see all projects, pick what to work on by number
+> - **`/arsave`** at the **end** — write the journal, compound insights, update palace
+>
+> Without `/arstatus`, a fresh agent has zero orientation. Without `/arsave`, nothing compounds. These two are the entire loop.
 
 | Command | When | What it does |
 |---------|------|-------------|
-| ⭐ **`/arstatus`** | **Every session — run this first** | **Status board across ALL projects: pending work, blockers, numbered pick list. The true cold start.** |
-| **`/arstart`** | After picking a project | Load deep context for one project: palace rooms, corrections, task-specific recall |
-| **`/arsave`** | End of session | Write journal + consolidate to palace + update awareness |
-| **`/arsaveall`** | End of day (multi-session) | **Batch save all parallel sessions at once** — scan, merge, deduplicate, done |
-| **`/arbootstrap`** | **First install / switching from another memory system** | **Scan your machine for existing projects and import them into AgentRecall in seconds** |
+| 🔴 **`/arstatus`** | **FIRST — every session** | **Status board across ALL projects. Pending work, blockers, relevance scores, recommended next. Pick by number.** |
+| 🔴 **`/arsave`** | **LAST — every session** | **Write journal + palace consolidation + awareness compounding + semantic prefetch for next session.** |
+| **`/arstart`** | After picking a project | Load deep context: palace rooms, corrections, task-specific recall |
+| **`/arsaveall`** | End of day (multi-session) | Batch save all parallel sessions — scan, merge, deduplicate, done |
+| **`/arbootstrap`** | First install / migrating | Scan your machine for existing projects and import them in seconds |
 
-**The session flow:** `/arstatus` → pick a number → `/arstart <project>` → work → `/arsave`.
+**The session loop:** `/arstatus` → pick a number → `/arstart <project>` → work → **`/arsave`**.
 
 **Running 5 agents in parallel?** Don't `/arsave` five times. Type **`/arsaveall`** once — it scans all of today's sessions across all projects, merges them into consolidated journals, deduplicates insights, and updates awareness in one shot. Each session writes to its own file (session-ID scoped), so **no conflicts, no data loss, no matter how many windows you have open.**
 
 ### What You'll See
 
-Type `/arstatus` → see everything in flight across all projects, pick by number:
+Type `/arstatus` → see everything in flight, pick by number:
 
 ```
-──────────────────────────────────────────────────────────────
-  AgentRecall  Status Board        2026-04-21    5 projects
-──────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────────────
+  AgentRecall  Status Board        2026-05-10    8 projects
+──────────────────────────────────────────────────────────────────────────────
 
-  1  ⚠ novada-site       2026-04-21   BLOCKED
-       Blocked: .env.local missing — Phase 1 cannot proceed
+   1  ⚠ novada-mcp          2026-05-08   BLOCKED  [0.60]
+        Blocked: Scraper API result-fetch endpoint unknown (fudong needed)
 
-  2  ● novada-mcp        2026-04-21
-       Next: fix novada_search POST /request → publish v0.8.0
+   2  ★ ● agentrecall        2026-05-10  [0.65]
+        Why: Build persistent memory...  |  Next: ship v3.5 + LobeHub
 
-  3  ● prismma-scraper   2026-04-17
-       Next: UI upgrade Option A — light mode + 3D visuals
+   3    ● aam                2026-05-06  [0.46]
+        Why: Autonomous agent mode  |  Next: 2AM dream run expansions
 
-  4  ✓ AgentRecall       2026-04-21   complete
-       Collecting real production data
+   4    ● apqc               2026-05-08  [0.43]
+        Next: Deploy to Vercel (needs Pro approval)
 
-──────────────────────────────────────────────────────────────
+   5    - harness            2026-04-26  [0.21]   stale
+        Last: Test aam_plan end-to-end with a real task
+
+  → Recommended: agentrecall  (most relevant to last session)
+
+  ⚡ Cross-project patterns:
+     [7×] Multi-agent: 4 workers + 4 reviewers catches bugs workers miss
+     [4×] Novada Scraper API is async — result-fetch endpoint unknown
+
+──────────────────────────────────────────────────────────────────────────────
   Enter a number, or:
     N  New project (with memory — agent knows your full history)
     X  New project (clean slate — no prior context, pure objectivity)
-──────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────────────
 ```
+
+`[score]` = semantic relevance to your last session. `★` = recommended next. Cross-project patterns surface recurring issues across all your work. All of this disappears gracefully if Supabase is not configured — board renders in pure filesystem mode.
 
 Type `/arsave` → the system saves everything and renders a card with exact file paths and counts:
 
@@ -411,53 +426,56 @@ ar search "rate limiting" --include-palace
 
 ---
 
-## Semantic Recall — pgvector Backend (v3.4.0)
+## Semantic Recall — pgvector Backend (v3.4.10)
 
 > [!NOTE]
-> **New in v3.4.0.** Default keyword recall works without any configuration. Upgrade to Supabase + pgvector when keyword search hits its ceiling: synonyms, paraphrased queries, multi-language recall.
+> **Supabase is optional.** Keyword recall works without any configuration — journals, palace, corrections, all hooks. Add Supabase when you want meaning-based search, `/arstatus` project intelligence, and cross-project insight recall.
 
-Keyword search matches tokens. Semantic search matches **meaning**. After upgrading:
+Keyword search matches tokens. Semantic search matches **meaning**:
 - `recall("session expiry")` also surfaces entries about "token refresh" and "auth timeout"
-- No hand-crafted synonyms needed — embeddings handle the gap
-- Local files remain the source of truth — Supabase is a derived read index
+- `/arstatus` ranks your projects by relevance to today's work — not just last-touched date
+- Cross-project insights from `awareness.md` become searchable across all sessions
 
-### Setup (3 steps)
+**[→ Full Supabase Setup Guide](docs/supabase.md)** — migration SQL, backfill, insight seeding, rebuild commands.
 
-```bash
-# Step 1 — interactive setup wizard
-ar setup supabase
-
-# Step 2 — apply pgvector migration to your Supabase project
-ar setup supabase --migrate
-
-# Step 3 — done. Run /arstart — backfill happens automatically.
-```
-
-The wizard prompts for your Supabase project URL and service role key → writes to `~/.agent-recall/config.json`. Never committed to git.
-
-### How it works
+### How recall works
 
 ```
-remember() / session_end()
-  → writes to local ~/.agent-recall/ as always   ← source of truth, unchanged
-  → async: syncs to Supabase memories table
-      → OpenAI text-embedding-3-small (1536 dims)
-        or Voyage voyage-3-lite (512 dims, zero-padded to 1536)
-      → pgvector stores the embedding
-
 recall(query)
   → Supabase configured?
-      YES → cosine similarity search via pgvector, reranked with local RRF
-      NO  → local keyword search (existing behavior, unchanged)
+      YES → 3-way parallel, merged with Reciprocal Rank Fusion:
+              1. ar_semantic_search   pgvector cosine on ar_entries
+              2. ar_insight_search    pgvector on ar_insights (cross-project)
+              3. FTS on ar_entries    PostgreSQL keyword backup
+      NO  → local keyword search (unchanged — stemming + synonyms, zero dependencies)
 ```
+
+### /arstatus with Supabase
+
+At session end, AR embeds your session summary and ranks all projects by semantic relevance — silently, in the background. Next `/arstatus` render shows:
+
+```
+   2  ★ ● agentrecall        2026-05-10  [0.65]
+        Why: Build persistent memory...  |  Next: ship v3.5
+
+   3    ● novada-mcp          2026-05-08  [0.46]
+        Next: Scraper API endpoint...
+
+  → Recommended: agentrecall  (most relevant to last session)
+
+  ⚡ Cross-project patterns:
+     [7×] Multi-agent pipeline: 4 workers + 4 reviewers catches bugs...
+     [4×] Novada Scraper API is async (task_id model)...
+```
+
+Without Supabase: scores and recommendation line are hidden, board renders identically to before.
 
 ### Graceful degradation
 
-If Supabase is unreachable (network error, quota exceeded, not configured), `recall()` falls back to local keyword search silently. Zero behavior change if the feature is never configured.
-
-**Required:** `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` + either `OPENAI_API_KEY` or `VOYAGE_API_KEY`. All optional — AgentRecall works fully without them.
-
-**Rebuild index:** `ar setup supabase --backfill` — re-embeds all local memories into Supabase.
+Every Supabase path is non-blocking and silently optional:
+- No `config.json` → keyword search, no scores on `/arstatus`, no prefetch. Zero errors.
+- Supabase unreachable → `recall()` falls back to local automatically
+- Embedding API down → sync skipped, local files always intact
 
 ---
 
@@ -483,9 +501,9 @@ Wire once in `~/.claude/settings.json`. Every session is captured automatically,
 }
 ```
 
-- **hook-start** — on every session open: prints identity + top insights + watch_for warnings
+- **hook-start** — on every session open: prints identity + top insights + watch_for warnings + pre-loaded semantic context from last session
 - **hook-correction** — on every prompt: detects corrections (regex) and captures them silently
-- **hook-end** — on every session close: appends a lightweight end-of-session log entry
+- **hook-end** — on every session close: saves journal, generates semantic prefetch for next session, updates `/arstatus` relevance cache in background
 
 ### Session Start (`/arstart`)
 ```
@@ -648,7 +666,7 @@ const ar = new AgentRecall({ project: "my-project" });
 The `agent-recall-cli` package provides the `ar` command for terminal workflows and CI pipelines.
 
 ```
-ar v3.4.0 — AgentRecall CLI
+ar v3.4.10 — AgentRecall CLI
 
 JOURNAL:
   ar read [--date YYYY-MM-DD] [--section <name>]
@@ -809,6 +827,7 @@ All benchmark code: [`benchmark/run.mjs`](benchmark/run.mjs), [`benchmark/ab-com
 | Document | Description |
 |----------|-------------|
 | **[→ Command Reference](docs/commands.md)** | **Full guide to `/arstatus`, `/arstart`, `/arsave`, `/arsaveall` — example outputs, modes, palace rules, troubleshooting** |
+| **[→ Supabase Setup](docs/supabase.md)** | **Migration SQL, backfill, insight seeding, /arstatus enrichment, rebuild commands** |
 | [Intelligent Distance Protocol](docs/intelligent-distance-protocol.md) | The foundational theory — why the gap between human and AI is structural, and how to navigate it |
 | [Scoring Design Rationale](docs/SCORING.md) | Why the scoring system works this way — RRF, Ebbinghaus, Beta distribution, and the bugs they fix |
 | [MCP Adapter Spec](docs/mcp-adapter-spec.md) | Technical spec for building adapters on top of AgentRecall |
@@ -945,28 +964,31 @@ curl -o ~/.claude/skills/agent-recall/SKILL.md \
 
 ---
 
-## 语义召回 — pgvector (v3.4.0)
+## 语义召回 — pgvector (v3.4.10)
 
 > [!NOTE]
-> **v3.4.0 新功能。** 默认关键词召回无需任何配置。当关键词搜索遇到天花板时——同义词、改写查询、多语言——升级到 Supabase pgvector 后端。
+> **Supabase 完全可选。** 默认关键词召回无需任何配置。当关键词搜索遇到天花板时——同义词、改写查询、多语言——升级到 Supabase pgvector 后端获得语义搜索能力。
 
 关键词搜索匹配词汇，语义搜索匹配**含义**。升级后：`recall("会话过期")` 也能找到"token 刷新"和"认证超时"相关的条目，无需手动添加同义词。
 
+**启用方式（[完整部署指南 →](docs/supabase.md)）：**
 ```bash
-# 第 1 步 — 交互式配置向导
+# 第 1 步 — 交互式配置向导（填写 Supabase URL、anon key、OpenAI key）
 ar setup supabase
 
-# 第 2 步 — 将 pgvector 迁移应用到你的 Supabase 项目
-ar setup supabase --migrate
+# 第 2 步 — 回填所有本地文件到 Supabase
+ar setup supabase --backfill
 
-# 第 3 步 — 完成。运行 /arstart — 下次会话自动回填。
+# 第 3 步 — 可选：填充跨项目洞察
+python3 ~/.claude/scripts/ar-populate-insights.py
 ```
 
-本地文件仍为数据源。Supabase 是派生的读取索引 — 随时可删除并用 `ar setup supabase --backfill` 重建。
+本地文件仍为**唯一数据源**。Supabase 是派生的读取索引 — 随时可删除并用 `--backfill` 重建。未配置时 AgentRecall 完全正常运行，零错误。
 
-**所需环境变量：** `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` + `OPENAI_API_KEY`（或 `VOYAGE_API_KEY`）。全部可选 — 不配置时 AgentRecall 完全正常运行。
-
-**优雅降级：** Supabase 不可达时，`recall()` 静默回退到本地关键词搜索，零行为变化。
+**启用后 `/arstatus` 新增：**
+- `[score]` 徽章 — 按语义相关度对项目排序
+- `★` 推荐项目 — 最可能与当前工作相关
+- 跨项目洞察警报 — 来自其他项目的高置信度规律
 
 ---
 
@@ -1118,6 +1140,7 @@ L5: 洞察索引     recall_insight            「跨项目的经验」
 | 文档 | 说明 |
 |------|------|
 | **[→ 命令参考](docs/commands.md)** | **`/arstatus`、`/arstart`、`/arsave`、`/arsaveall` 完整指南** |
+| **[→ Supabase 部署指南](docs/supabase.md)** | **pgvector 设置、迁移 SQL、回填、跨项目智能** |
 | [智能距离协议](docs/intelligent-distance-protocol.md) | 基础理论 — 人类与 AI 之间的差距是结构性的，如何减少信息损失 |
 | [评分设计原理](docs/SCORING.md) | RRF、艾宾浩斯、Beta 分布及其修复的 bug |
 | [v3.4 升级说明](UPGRADE-v3.4.md) | 语义召回、pgvector、10 工具、bootstrap、decisions 房间 |

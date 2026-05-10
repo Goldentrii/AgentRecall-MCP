@@ -29,6 +29,30 @@ export interface ConsolidationResult {
 }
 
 /**
+ * Returns true if the brief contains 3 or more phase markers,
+ * indicating a multi-phase technical session.
+ */
+export function isTechnicalBrief(brief: string): boolean {
+  const phaseCount = (brief.match(/(?:\*\*Phase\s+\d|\bPhase\s+\d|##\s+Phase\s+\d)/gi) ?? []).length;
+  return phaseCount >= 3;
+}
+
+/**
+ * For technical briefs: extracts phase titles as a summary list,
+ * then appends the full brief (up to 6000 chars).
+ */
+export function formatTechnicalBrief(brief: string): string {
+  const phaseTitles = [...brief.matchAll(/\*\*Phase\s+(\d+)\s*[—–-]\s*([^*\n]+)/gi)]
+    .map(m => `- Phase ${m[1]}: ${m[2].trim()}`);
+
+  const summary = phaseTitles.length > 0
+    ? `**Phases:**\n${phaseTitles.join('\n')}\n\n**Full brief:**\n`
+    : '';
+
+  return summary + brief.slice(0, 6000).trim();
+}
+
+/**
  * Consolidate recent journal entries into palace rooms.
  *
  * Process:
@@ -123,7 +147,10 @@ export function consolidateJournalToPalace(
       const evoPath = path.join(pd, "rooms", "goals", "evolution.md");
       ensureDir(path.dirname(evoPath));
 
-      const evoEntry = `\n### ${entry.date} ${sourceRef}\n\n${brief.slice(0, 1000).trim()}\n`;
+      const formattedBrief = isTechnicalBrief(brief)
+        ? formatTechnicalBrief(brief)
+        : brief.slice(0, 1000).trim();
+      const evoEntry = `\n### ${entry.date} ${sourceRef}\n\n${formattedBrief}\n`;
 
       if (fs.existsSync(evoPath)) {
         const existing = fs.readFileSync(evoPath, "utf-8");
