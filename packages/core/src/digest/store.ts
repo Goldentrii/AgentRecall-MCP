@@ -182,8 +182,9 @@ export function listDigests(
 /**
  * Mark a digest as stale (soft-delete).
  */
-export function markStale(project: string, id: string, reason: string, global?: boolean): void {
+export function markStale(project: string, id: string, reason: string, global?: boolean): boolean {
   const dir = global ? digestGlobalDir() : digestDir(project);
+  let found = false;
   withLock(`digest-${global ? "global" : project}`, () => {
     const index = readIndex(dir);
     const entry = index.entries.find((e) => e.id === id);
@@ -191,8 +192,10 @@ export function markStale(project: string, id: string, reason: string, global?: 
       entry.stale = true;
       entry.stale_reason = reason;
       writeIndex(dir, index);
+      found = true;
     }
   });
+  return found;
 }
 
 /**

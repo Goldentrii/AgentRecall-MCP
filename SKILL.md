@@ -13,7 +13,7 @@ description: >-
   search — same API, semantic understanding. Gracefully degrades to local search
   if not configured.
 origin: community
-version: 3.4.0
+version: 3.4.10
 author: Goldentrii
 platform: clawhub
 install:
@@ -63,7 +63,7 @@ skip:
   - "算了"
 ---
 
-# AgentRecall v3.4.0 — Usage Guide
+# AgentRecall v3.4.10 — Usage Guide
 
 AgentRecall is a persistent memory system with 10 MCP tools. This guide describes how and when to use them.
 

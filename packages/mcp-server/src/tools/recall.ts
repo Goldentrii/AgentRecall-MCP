@@ -17,7 +17,14 @@ export function register(server: McpServer): void {
       })).optional().describe("Rate previous results: was each result useful?"),
     },
   }, async ({ query, project, limit, feedback }) => {
-    const result = await smartRecall({ query, project, limit, feedback });
-    return { content: [{ type: "text" as const, text: JSON.stringify(result) }] };
+    try {
+      const result = await smartRecall({ query, project, limit, feedback });
+      return { content: [{ type: "text" as const, text: JSON.stringify(result) }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text" as const, text: `Recall failed: ${err instanceof Error ? err.message : String(err)}` }],
+        isError: true,
+      };
+    }
   });
 }

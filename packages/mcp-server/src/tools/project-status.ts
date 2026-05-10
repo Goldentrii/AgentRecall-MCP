@@ -5,7 +5,7 @@ import { projectStatus } from "agent-recall-core";
 export function register(server: McpServer): void {
   server.registerTool("project_status", {
     title: "Project Status",
-    description: "Get the current operational status of a project — last trajectory, active blockers, next steps, and palace room freshness. Use this when starting work on a long-running project to orient quickly without reading multiple sources.",
+    description: "Optional deeper context for a specific project — call after session_start if you need full status details. Not a replacement for project_board. Returns last trajectory, active blockers, next steps, and palace room freshness.",
     inputSchema: {
       project: z.string().default("auto"),
     },

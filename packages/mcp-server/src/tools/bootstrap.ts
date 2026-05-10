@@ -11,7 +11,7 @@ export function register(server: McpServer): void {
     title: "Bootstrap Scan",
     description: "Discover existing projects on this machine — git repos, Claude memory, CLAUDE.md files. Returns what CAN be imported into AgentRecall. Read-only, no writes. Run this first if AgentRecall is empty.",
     inputSchema: {
-      scan_dirs: z.array(z.string()).optional().describe("Additional directories to scan (default: ~/Projects/, ~/work/, ~/code/, ~/dev/)"),
+      scan_dirs: z.array(z.string()).optional().describe("Additional directories to scan (default: ~/Projects/, ~/work/, ~/code/, ~/dev/, ~/src/, ~/repos/, ~/github/)"),
       max_depth: z.number().int().min(1).max(5).optional().describe("Maximum directory depth to scan (default: 3, max: 5)"),
     },
   }, async ({ scan_dirs, max_depth }) => {
@@ -68,6 +68,13 @@ export function register(server: McpServer): void {
       project_slugs: project_slugs ?? undefined,
       item_types: item_types ?? undefined,
     });
+
+    if (result.errors.length > 0 && result.items_imported === 0) {
+      return {
+        content: [{ type: "text" as const, text: `Bootstrap import failed — ${result.errors.length} errors, 0 items imported.\n${result.errors.slice(0, 3).map(e => `  ${e.project}/${e.item}: ${e.error}`).join("\n")}` }],
+        isError: true,
+      };
+    }
 
     const summary = [
       `Bootstrap import complete:`,

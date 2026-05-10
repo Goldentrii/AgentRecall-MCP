@@ -12,7 +12,7 @@ export function register(server: McpServer): void {
       "Use when making important technical or product decisions: add prior (0-1), evidence items, and posterior. " +
       "Set outcome when decision resolves to close the trail.",
     inputSchema: {
-      goal: z.string().describe("What you think the human wants."),
+      goal: z.string().optional().describe("The goal or decision question you're checking alignment on. Required for alignment checks; optional when recording a pure decision trail (prior/posterior/evidence)."),
       confidence: z.enum(["high", "medium", "low"]),
       assumptions: z.array(z.string()).optional().describe("Key assumptions you're making."),
       human_correction: z.string().optional().describe("After human responds: what they actually wanted (or 'confirmed')."),
@@ -29,7 +29,18 @@ export function register(server: McpServer): void {
       decision_id: z.string().optional().describe("Link multiple check calls to the same decision. Auto-generated if not provided."),
     },
   }, async ({ goal, confidence, assumptions, human_correction, delta, project, prior, evidence, posterior, outcome, decision_id }) => {
-    const result = await check({ goal, confidence, assumptions, human_correction, delta, project, prior, evidence, posterior, outcome, decision_id });
-    return { content: [{ type: "text" as const, text: JSON.stringify(result) }] };
+    if (!goal && !prior) {
+      return { content: [{ type: "text" as const, text: JSON.stringify({ error: "Provide either goal (for alignment check) or prior+posterior+evidence (for decision trail)" }) }], isError: true };
+    }
+    try {
+      // goal is guaranteed non-undefined here by the !goal && !prior guard above
+      const result = await check({ goal: goal!, confidence, assumptions, human_correction, delta, project, prior, evidence, posterior, outcome, decision_id });
+      return { content: [{ type: "text" as const, text: JSON.stringify(result) }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text" as const, text: `Check failed: ${err instanceof Error ? err.message : String(err)}` }],
+        isError: true,
+      };
+    }
   });
 }

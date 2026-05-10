@@ -202,6 +202,36 @@ End-of-day command. Saves the current session AND auto-rescues all other open Cl
 
 ---
 
+## `/arrecall`
+
+Quick recall across all memory. Searches journals, palace rooms, and awareness without starting a full session.
+
+**Usage:** `/arrecall <query>`
+
+Calls `recall({ query, project })` and displays results ranked by relevance.
+
+---
+
+## `/arsave-quick`
+
+Lightweight session save — faster than `/arsave`. Records a brief summary and key completions without full palace consolidation.
+
+**Usage:** `/arsave-quick`
+
+Calls `session_end` with minimal fields. Use when the session was short or low-stakes.
+
+---
+
+## `/arbootstrap`
+
+Import existing projects from your machine into AgentRecall. Discovers git repos, Claude memory files, and CLAUDE.md files.
+
+**Usage:** `/arbootstrap`
+
+Calls `bootstrap_scan` then `bootstrap_import` after confirmation. Safe — read-only scan before any writes.
+
+---
+
 ## Memory Architecture
 
 Three layers — each adds depth, loaded on demand:

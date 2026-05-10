@@ -43,8 +43,8 @@ function printHelp(): void {
 
 JOURNAL:
   ar read [--date YYYY-MM-DD] [--section <name>]
-  ar write <content> [--section <name>]
-  ar capture <question> <answer> [--tags tag1,tag2]
+  ar write <content> [--section <name>] [--palace-room <room>]
+  ar capture <question> <answer> [--tags tag1,tag2] [--palace-room <room>]
   ar list [--limit N]
   ar search <query> [--include-palace]
   ar state read|write [data]
@@ -54,8 +54,8 @@ JOURNAL:
 
 PALACE:
   ar palace read [<room>] [--topic <name>]
-  ar palace write <room> <content> [--topic <name>] [--importance high|medium|low]
-  ar palace walk [--depth identity|active|relevant|full]
+  ar palace write <room> <content> [--importance high|medium|low] [--connections room1,room2]
+  ar palace walk [--depth identity|active|relevant|full] [--focus <keyword>]
     depth: identity(~50t) active(~200t) relevant(~500t) full(~2000t)
   ar palace search <query>
   ar palace lint [--fix]
@@ -67,23 +67,24 @@ WRITE PATH GUIDE:
   ar awareness update --insight "title" --evidence "ev"  → cross-session insights
 
 AWARENESS:
-  ar awareness read
-  ar awareness update --insight "title" --evidence "ev" --applies-when kw1,kw2
+  ar awareness read [--json]
+  ar awareness update --insight "title" --evidence "ev" --applies-when kw1,kw2 [--source <s>] [--severity critical|important|minor]
   ar awareness rollup [--threshold N]
 
 INSIGHT:
-  ar insight <context> [--limit N]
+  ar insight <context> [--limit N] [--project <slug>]
+  ar recall <context> [--limit N] [--project <slug>]  (alias for ar insight)
 
 DIGEST (context cache):
-  ar digest store --title "t" --scope "s" --content "c" [--ttl 168] [--global]
+  ar digest store --title "t" --scope "s" --content "c" [--ttl 168] [--global]  (--title or first positional arg)
   ar digest recall <query> [--limit N] [--stale] [--no-global]
   ar digest list [--stale]
   ar digest invalidate <id> [--reason "why"] [--global]
 
 META:
   ar projects
-  ar synthesize [--entries N]
-  ar knowledge write --category <cat> --title "t" --what "w" --cause "c" --fix "f"
+  ar synthesize [--entries N] [--focus full|decisions|blockers|goals] [--no-palace] [--consolidate]
+  ar knowledge write --category <cat> --title "t" --what "w" --cause "c" --fix "f" [--severity critical|important|minor]
   ar knowledge read [--category <cat>]
 
 DIAGNOSTICS:
@@ -110,11 +111,8 @@ HOOKS (auto-fired by Claude Code hooks — no agent discipline needed):
   ar correct --goal "g" --correction "c" [--delta "d"]  Manually record a correction
   ar merge <target> <source>   Merge two journal files (append source into target, backup source)
 
-DIAGNOSTICS:
-  ar stats             Show memory system health: corrections, feedback, insights, graph edges
-
 SETUP:
-  ar setup supabase              — Configure Supabase for semantic recall
+  ar setup supabase [--backfill]   Backfill all local files to Supabase
 
 GLOBAL FLAGS:
   --root <path>     Storage root (default: ~/.agent-recall)
@@ -432,7 +430,7 @@ async function main(): Promise<void> {
         output(result);
       } else if (sub === "read") {
         const result = await core.knowledgeRead({
-          project: getFlag("--project", knRest) || project,
+          project,
           category: getFlag("--category", knRest),
           query: getFlag("--query", knRest),
         });
@@ -1154,7 +1152,7 @@ async function main(): Promise<void> {
       const mergeSource = rest[1];
       if (!mergeTarget || !mergeSource) {
         output("Usage: ar merge <target-file> <source-file>\nExample: ar merge 2026-04-18.md 2026-04-19.md");
-        break;
+        process.exit(1);
       }
       const mergeResult = await core.journalMerge({
         target_file: mergeTarget,
