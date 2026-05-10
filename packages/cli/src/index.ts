@@ -1392,7 +1392,9 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
     case "bootstrap": {
       const dryRun = hasFlag("--dry-run", rest);
       const doImport = hasFlag("--import", rest);
-      const targetProject = getFlag("--project", rest);
+      // --project is consumed globally (line 17-21) before rest is built,
+      // so fall back to globalProject which holds the spliced value.
+      const targetProject = getFlag("--project", rest) ?? globalProject;
 
       const sourceDirs = getFlag("--source", rest)?.split(",");
       const scan = await core.bootstrapScan(sourceDirs ? { source_dirs: sourceDirs } : undefined);
@@ -1434,7 +1436,8 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
         output(`${LINE}`);
       } else if (dryRun) {
         // ── ar bootstrap --dry-run ────────────────────────────────────────
-        const newProjects = scan.projects.filter((p) => !p.already_in_ar);
+        let newProjects = scan.projects.filter((p) => !p.already_in_ar);
+        if (targetProject) newProjects = newProjects.filter((p) => p.slug === targetProject);
         const totalItems = newProjects.reduce((acc, p) => acc + p.importable_items.length, 0);
 
         output(`${LINE}`);
