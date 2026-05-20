@@ -29,17 +29,15 @@ export function register(server: McpServer): void {
       return { content: [{ type: "text" as const, text: JSON.stringify(result) }], isError: true };
     }
 
-    // Transparent routing: show where the memory went + how to find it
-    const lines = [`Saved to ${result.routed_to} → ${result.file_path ?? result.auto_name}`];
+    // Show exactly where the memory was written
+    const indicator = result.entry_indicator ? ` [${result.entry_indicator}]` : "";
+    const dest = result.file_path ?? result.auto_name;
+    const lines = [`Saved → ${dest}${indicator}`];
     if (result.retrieval_hint) lines.push(`Find again: ${result.retrieval_hint}`);
-    if (result.tags && result.tags.length > 0) lines.push(`Tags: ${result.tags.join(", ")}`);
     if (result.consistency_warnings && result.consistency_warnings.length > 0) {
       lines.push(`⚠ Consistency: ${result.consistency_warnings.map(w => w.detail).join("; ")}`);
     }
 
-    return { content: [
-      { type: "text" as const, text: lines.join("\n") },
-      { type: "text" as const, text: JSON.stringify(result) },
-    ] };
+    return { content: [{ type: "text" as const, text: lines.join("\n") }] };
   });
 }

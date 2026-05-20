@@ -106,8 +106,10 @@ export async function check(input: CheckInput): Promise<CheckResult> {
       const corrTags = generateTags(corrText);
       const corrDate = todayISO();
       const corrRule = corrText.split(/[.\n]/)[0]?.trim().slice(0, 100) ?? corrText.slice(0, 100);
-      // Auto-detect severity based on correction language
-      const p0Patterns = /\bnever\b|\balways\b|\bno\b|\bdon'?t\b|\bdo not\b|\bmust not\b|\bforbid/i;
+      // Auto-detect severity based on correction language.
+      // "no" alone is NOT a P0 trigger — it's too broad ("no, use the blue button" ≠ rule).
+      // P0 requires explicit prohibition/mandate language.
+      const p0Patterns = /\bnever\b|\balways\b|\bdon'?t\b|\bdo not\b|\bmust not\b|\bforbid\b|\bprohibit\b/i;
       const severity: "p0" | "p1" = p0Patterns.test(corrText) ? "p0" : "p1";
       const corrId = `${corrDate}-${corrRule.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30)}`;
       writeCorrection(slug, {

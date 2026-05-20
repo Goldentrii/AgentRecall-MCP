@@ -13,8 +13,6 @@ import { palaceWrite } from "./palace-write.js";
 import { knowledgeWrite } from "./knowledge-write.js";
 import { awarenessUpdate } from "./awareness-update.js";
 import { getRoot } from "../types.js";
-import { captureLogFileName } from "../storage/session.js";
-import { todayISO } from "../storage/fs-utils.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,6 +32,8 @@ export interface SmartRememberResult {
   result: unknown;
   /** Exact file path where the memory was stored */
   file_path?: string;
+  /** Entry type indicator: "new", "appended", "Q4", "insight #7", etc. */
+  entry_indicator?: string;
   /** Query hint: what to search to find this memory again */
   retrieval_hint?: string;
   /** Semantic tags assigned to this memory */
@@ -216,27 +216,32 @@ export async function smartRemember(input: SmartRememberInput): Promise<SmartRem
     // Consistency check is best-effort — never blocks save
   }
 
-  // Extract file path from the routed result (transparent routing)
+  // Extract file path and entry indicator from the routed result
   let file_path: string | undefined;
+  let entry_indicator: string | undefined;
   const resultObj = result as Record<string, unknown> | undefined;
   if (resultObj) {
-    // palace_write returns file_path directly
-    if (typeof resultObj.file_path === "string") file_path = resultObj.file_path;
-    // knowledge_write returns file
-    else if (typeof resultObj.file === "string") file_path = resultObj.file;
-    // awareness_update → show awareness.md path
-    else if (route === "awareness_update") {
-      const root = getRoot();
-      file_path = `${root}/awareness.md`;
+    // palace_write returns file_path + is_new directly
+    if (typeof resultObj.file_path === "string") {
+      file_path = resultObj.file_path;
+      entry_indicator = resultObj.is_new === true ? "new" : "appended";
     }
-    // journal_capture → show actual capture log filename
-    else if (route === "journal_capture") {
-      const root = getRoot();
-      const slug = input.project ?? "auto";
-      const date = todayISO();
-      const journalDirPath = `${root}/projects/${slug}/journal`;
-      const captureFile = captureLogFileName(date, false);
-      file_path = `${journalDirPath}/${captureFile}`;
+    // knowledge_write returns file
+    else if (typeof resultObj.file === "string") {
+      file_path = resultObj.file;
+      entry_indicator = "appended";
+    }
+    // awareness_update now returns file_path directly
+    else if (route === "awareness_update" && typeof resultObj.file_path === "string") {
+      file_path = resultObj.file_path;
+      const n = typeof resultObj.total_insights === "number" ? resultObj.total_insights : undefined;
+      entry_indicator = n !== undefined ? `insight #${n}` : "insight added";
+    }
+    // journal_capture now returns file_path directly
+    else if (route === "journal_capture" && typeof resultObj.file_path === "string") {
+      file_path = resultObj.file_path;
+      const q = typeof resultObj.entry_number === "number" ? resultObj.entry_number : undefined;
+      entry_indicator = q !== undefined ? `Q${q}` : "captured";
     }
   }
 
@@ -276,6 +281,7 @@ export async function smartRemember(input: SmartRememberInput): Promise<SmartRem
     auto_name: autoName,
     result,
     file_path: displayPath,
+    entry_indicator,
     retrieval_hint,
     tags,
     consistency_warnings,

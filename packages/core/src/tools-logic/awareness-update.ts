@@ -1,3 +1,4 @@
+import * as path from "node:path";
 import {
   readAwarenessState,
   writeAwarenessState,
@@ -7,6 +8,7 @@ import {
   renderAwareness,
 } from "../palace/awareness.js";
 import { addIndexedInsight } from "../palace/insights-index.js";
+import { getRoot } from "../types.js";
 
 export interface AwarenessUpdateInput {
   insights: Array<{
@@ -28,6 +30,8 @@ export interface AwarenessUpdateResult {
   insights_processed: Array<{ title: string; action: string }>;
   compound_insights_detected: number;
   total_insights: number;
+  /** Exact path of the awareness file written */
+  file_path: string;
 }
 
 export async function awarenessUpdate(input: AwarenessUpdateInput): Promise<AwarenessUpdateResult> {
@@ -88,5 +92,6 @@ export async function awarenessUpdate(input: AwarenessUpdateInput): Promise<Awar
     insights_processed: results,
     compound_insights_detected: compounds.length,
     total_insights: readAwarenessState()?.topInsights.length ?? 0,
+    file_path: path.join(getRoot(), "awareness.md"),
   };
 }

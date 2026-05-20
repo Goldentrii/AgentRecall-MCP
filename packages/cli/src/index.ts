@@ -729,8 +729,31 @@ async function main(): Promise<void> {
           prompt = raw; // fallback: treat raw input as the prompt
         }
 
+        // Behavioral correction signals — frequency/repetition language that implies a pattern,
+        // not a one-time task redirect. Only behavioral corrections are stored as rules.
+        // Task corrections ("no, use the blue button") are ephemeral and should NOT persist
+        // across sessions as P0 mandates.
+        const BEHAVIORAL_SIGNALS = [
+          /\bagain\b/i,             // "you did it again"
+          /\bkeep\s+\w+ing\b/i,    // "you keep doing..."
+          /\balways\b/i,            // "you always add..."
+          /\bevery\s+time\b/i,      // "every time you..."
+          /\byou\s+still\b/i,       // "you still..."
+          /\bhow\s+many\s+times\b/i,
+          /\bi\s+told\s+you\b/i,    // "I told you already"
+          /\bnever\s+do\b/i,         // "never do this" = rule
+          /\bdon'?t\s+ever\b/i,
+          /\btend\s+to\b/i,          // "you tend to..."
+          /\bthis\s+is\s+a\s+(?:rule|pattern)\b/i,
+          /\bremember\s+(?:this\s+rule|for\s+next\s+time)\b/i,
+          // Chinese frequency/behavioral signals
+          /你总是/, /每次/, /又来了/, /反复/, /多少次/, /你老是/, /一直都/, /还是在做/,
+        ];
+        const isBehavioral = BEHAVIORAL_SIGNALS.some((p) => p.test(prompt));
+
         const isCorrection = CORRECTION_PATTERNS.some((p) => p.test(prompt));
-        if (isCorrection && prompt.length > 3) {
+        // Only store if it's a correction AND has behavioral signals (repeating pattern, not task redirect)
+        if (isCorrection && isBehavioral && prompt.length > 3) {
           // Per-message dedup: skip if exact same prompt was already processed
           const promptHash = quickHash(prompt);
           if (seenEntries.some(e => e.hash === promptHash)) {

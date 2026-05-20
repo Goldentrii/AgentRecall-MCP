@@ -38,17 +38,18 @@ export function register(server: McpServer): void {
         };
       }
 
-      const lines: string[] = [
-        `[memory_query] Intent: "${result.intent}" | Project: ${result.project}`,
-        "",
-      ];
-      for (const r of result.results) {
-        const room = r.room ? ` (${r.room})` : "";
-        lines.push(`[${r.source}][${r.confidence.toUpperCase()}]${room} ${r.title}`);
-        if (r.excerpt) {
-          lines.push(`  ${r.excerpt.replace(/\n/g, " ").slice(0, 150)}`);
-        }
+      const lines: string[] = [];
+      for (let i = 0; i < result.results.length; i++) {
+        const r = result.results[i];
+        const conf = r.confidence.toUpperCase().slice(0, 3);
+        const room = r.room ? `/${r.room}` : "";
+        const excerpt = r.excerpt ? ` — ${r.excerpt.replace(/\n/g, " ").slice(0, 80)}` : "";
+        lines.push(`[${i + 1}][${r.source}${room}][${conf}] ${r.title}${excerpt}`);
       }
+      // Feedback nudge
+      lines.push("");
+      lines.push("— Rate these on next recall() to improve future ranking:");
+      lines.push(`  IDs: ${result.results.map((r, i) => `${i + 1}=${r.id}`).join("  ")}`);
 
       return { content: [{ type: "text" as const, text: lines.join("\n") }] };
     } catch (err) {

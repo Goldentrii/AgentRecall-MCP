@@ -26,6 +26,7 @@ export interface MemoryQueryInput {
 }
 
 export interface MemoryQueryItem {
+  id: string;
   source: "palace" | "journal" | "insight";
   title: string;
   excerpt: string;
@@ -71,6 +72,7 @@ export async function memoryQuery(input: MemoryQueryInput): Promise<MemoryQueryR
     .filter((r) => r.score >= minScore)
     .slice(0, limit)
     .map((r) => ({
+      id: r.id,
       source: r.source,
       title: r.title,
       excerpt: r.excerpt,

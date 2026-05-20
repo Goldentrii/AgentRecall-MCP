@@ -61,7 +61,8 @@ if (args.includes("--help") || args.includes("-h")) {
 AI agent memory — session context, persistent memory, cross-project insights.
 
 Usage:
-  npx agent-recall-mcp              Start the MCP server (stdio transport)
+  npx agent-recall-mcp              Start (6 core tools: session_start, remember, recall, session_end, check, memory_query)
+  npx agent-recall-mcp --full       Start with all tools (adds project_board, project_status, digest, bootstrap)
   npx agent-recall-mcp --help       Show this help
   npx agent-recall-mcp --list-tools List available MCP tools
 
@@ -74,34 +75,49 @@ All data stays local. No cloud, no telemetry.
   process.exit(0);
 }
 
+// --full: register all tools including setup/advanced tools
+// Default: 6 core tools only (lower token overhead per session)
+const fullMode = args.includes("--full");
+
 if (args.includes("--list-tools")) {
-  const tools = [
-    { name: "project_board", description: "Status board across all projects — run this first, before session_start" },
-    { name: "project_status", description: "Quick project health check — trajectory, blockers, room freshness" },
+  const coreTools = [
     { name: "session_start", description: "Load project context for a new session" },
     { name: "remember", description: "Save a memory — auto-routes to the right store" },
-    { name: "recall", description: "Search all memory stores, return ranked results" },
+    { name: "recall", description: "Search all memory stores, return ranked results with feedback" },
     { name: "session_end", description: "Save session summary, insights, and trajectory" },
     { name: "check", description: "Record understanding, get predictive warnings from past corrections" },
-    { name: "digest", description: "Context cache — store/recall/read/invalidate pre-computed analysis results" },
-    { name: "bootstrap_scan", description: "Discover existing projects on this machine — read-only scan" },
-    { name: "bootstrap_import", description: "Import discovered projects into AgentRecall" },
+    { name: "memory_query", description: "Pull-on-demand recall — call mid-task before decisions" },
   ];
+  const fullTools = [
+    { name: "project_board", description: "Status board across all projects (use --full to enable)" },
+    { name: "project_status", description: "Quick project health check (use --full to enable)" },
+    { name: "digest", description: "Context cache — store/recall/read/invalidate pre-computed analysis (use --full)" },
+    { name: "bootstrap_scan", description: "Discover existing projects on this machine (use --full to enable)" },
+    { name: "bootstrap_import", description: "Import discovered projects into AgentRecall (use --full to enable)" },
+  ];
+  const tools = fullMode ? [...coreTools, ...fullTools] : coreTools;
   process.stdout.write(JSON.stringify(tools, null, 2) + "\n");
   process.exit(0);
 }
 
-// Register primary tools
-registerProjectBoard(server);
-registerProjectStatus(server);
+// ── Core tools (always registered) ───────────────────────────────────────────
 registerSessionStart(server);
 registerRemember(server);
 registerRecall(server);
 registerSessionEnd(server);
 registerCheck(server);
-registerDigest(server);
-registerBootstrap(server);
 registerMemoryQuery(server);
+
+// ── Extended tools (--full mode only) ────────────────────────────────────────
+// Use when you need project status boards, context caching, or first-time bootstrap.
+// Start server with: npx agent-recall-mcp --full
+if (fullMode) {
+  registerProjectBoard(server);
+  registerProjectStatus(server);
+  registerDigest(server);
+  registerBootstrap(server);
+}
+
 registerJournalResources(server);
 registerAwarenessResource(server);
 registerSessionPrompts(server);

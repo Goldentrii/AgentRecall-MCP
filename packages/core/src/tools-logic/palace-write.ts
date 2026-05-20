@@ -32,6 +32,8 @@ export interface PalaceWriteResult {
   fan_out: { updated_rooms: string[]; new_edges: number };
   generated_name?: string;
   file_path?: string;
+  /** true if this created a new file, false if appended to existing */
+  is_new: boolean;
 }
 
 function stripFrontmatterFromContent(rawContent: string): string {
@@ -72,8 +74,10 @@ export async function palaceWrite(input: PalaceWriteInput): Promise<PalaceWriteR
 
   const timestamp = new Date().toISOString();
 
+  const fileExistedBefore = fs.existsSync(targetFile);
+
   if (targetTopic === "README") {
-    let existing = fs.existsSync(targetFile) ? fs.readFileSync(targetFile, "utf-8") : "";
+    let existing = fileExistedBefore ? fs.readFileSync(targetFile, "utf-8") : "";
     const entry = `\n### ${timestamp.slice(0, 10)} — ${importance}\n\n${content}\n`;
 
     if (existing.includes("## Memories")) {
@@ -86,7 +90,7 @@ export async function palaceWrite(input: PalaceWriteInput): Promise<PalaceWriteR
 
     fs.writeFileSync(targetFile, existing, "utf-8");
   } else {
-    if (fs.existsSync(targetFile)) {
+    if (fileExistedBefore) {
       const existing = fs.readFileSync(targetFile, "utf-8");
       const entry = `\n### ${timestamp.slice(0, 10)} — ${importance}\n\n${content}\n`;
       fs.writeFileSync(targetFile, existing + entry, "utf-8");
@@ -117,5 +121,6 @@ export async function palaceWrite(input: PalaceWriteInput): Promise<PalaceWriteR
     fan_out: { updated_rooms: fanOutResult.updatedRooms, new_edges: fanOutResult.newEdges },
     generated_name: generatedName,
     file_path: targetFile,
+    is_new: !fileExistedBefore,
   };
 }

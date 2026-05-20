@@ -25,6 +25,8 @@ export interface JournalCaptureResult {
   entry_number: number;
   palace: { room: string } | null;
   auto_tags?: string[];
+  /** Exact path of the capture log file written */
+  file_path: string;
 }
 
 export async function journalCapture(input: JournalCaptureInput): Promise<JournalCaptureResult> {
@@ -100,5 +102,5 @@ export async function journalCapture(input: JournalCaptureInput): Promise<Journa
     }
   }
 
-  return { success: true, entry_number: entryNum, palace: palaceResult, auto_tags: autoTags };
+  return { success: true, entry_number: entryNum, palace: palaceResult, auto_tags: autoTags, file_path: logPath };
 }
