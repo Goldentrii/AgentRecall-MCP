@@ -213,6 +213,7 @@ export { sessionStart, type SessionStartInput, type SessionStartResult } from ".
 export { sessionEnd, checkInsightQuality, type SessionEndInput, type SessionEndResult, type InsightQualityWarning, type MergeSuggestion } from "./tools-logic/session-end.js";
 export { promoteConfirmedInsights, type PromotionResult } from "./tools-logic/insight-promotion.js";
 export { check, type CheckInput, type CheckResult, type WatchFor, type PastDelta } from "./tools-logic/check.js";
+export { memoryQuery, type MemoryQueryInput, type MemoryQueryResult, type MemoryQueryItem } from "./tools-logic/memory-query.js";
 export { projectStatus, type ProjectStatusInput, type ProjectStatusResult } from "./tools-logic/project-status.js";
 
 // Digest — context cache (v4.0)

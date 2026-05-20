@@ -132,7 +132,8 @@ export function readActiveCorrections(project: string): CorrectionRecord[] {
 
 /**
  * Read only P0 corrections (always-load), sorted newest first.
+ * Respects active field — archived corrections (active:false) are excluded.
  */
 export function readP0Corrections(project: string): CorrectionRecord[] {
-  return readCorrections(project).filter((r) => r.severity === "p0");
+  return readCorrections(project).filter((r) => r.severity === "p0" && r.active !== false);
 }

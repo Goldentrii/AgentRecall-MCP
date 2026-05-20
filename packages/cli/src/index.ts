@@ -108,6 +108,7 @@ HOOKS (auto-fired by Claude Code hooks — no agent discipline needed):
   ar hook-end            Session end: auto-save journal if not already saved today
   ar hook-correction     Read UserPromptSubmit JSON from stdin, capture corrections silently
   ar hook-ambient        Read UserPromptSubmit JSON from stdin, inject relevant memories into context
+  ar hook-save           Read UserPromptSubmit JSON from stdin, detect "save session"/"retain" phrases, prompt agent to call session_end()
   ar correct --goal "g" --correction "c" [--delta "d"]  Manually record a correction
   ar merge <target> <source>   Merge two journal files (append source into target, backup source)
 
@@ -931,13 +932,14 @@ async function main(): Promise<void> {
         let out = "[AgentRecall] Relevant past context:\n";
         for (const item of items) {
           const source = item.source ?? "memory";
+          const conf = (item.confidence ?? "low").toUpperCase().slice(0, 3);  // HIGH/MED/LOW/WEA
           const title = (item.title ?? "").slice(0, 80).replace(/\n/g, " ");
           const rawExcerpt = (item.excerpt ?? "").replace(/\n/g, " ").trim();
           const excerpt = rawExcerpt.length > 120
             ? rawExcerpt.slice(0, 120) + "…"
             : rawExcerpt;
           const suffix = excerpt ? ` — ${excerpt}` : "";
-          out += `• [${source}] ${title}${suffix}\n`;
+          out += `• [${source}][${conf}] ${title}${suffix}\n`;
         }
         process.stdout.write(out);
 
@@ -957,6 +959,53 @@ async function main(): Promise<void> {
         } catch { /* non-blocking */ }
       } catch (e) {
         process.stderr.write(`[AgentRecall hook-ambient] ${String(e)}\n`);
+      }
+      process.exit(0);
+    }
+
+    case "hook-save": {
+      // Reads UserPromptSubmit JSON from stdin.
+      // Detects save-intent phrases and injects a prompt for Claude to call session_end().
+      // Always exits 0 — never blocks the conversation.
+      const SAVE_PATTERNS = [
+        /\bsave\s+(?:the\s+|this\s+)?session\b/i,
+        /\bsave\s+this\b/i,
+        /\bretain\s+this\b/i,
+        /\bcheckpoint\b/i,
+        /\bdon'?t\s+forget\s+this\b/i,
+        /\bkeep\s+a\s+note\b/i,
+        /\bwrite\s+(?:this\s+)?down\b/i,
+        /\bremember\s+(?:this|that|what we did)\b/i,
+        /\bbookmark\s+this\b/i,
+        /\blog\s+this\b/i,
+        /保存|记录一下|存档|别忘了|记住这个|写下来/,
+      ];
+
+      try {
+        const chunks: Buffer[] = [];
+        for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+        const raw = Buffer.concat(chunks).toString("utf-8").trim();
+        if (!raw) process.exit(0);
+
+        let prompt = "";
+        try {
+          const parsed = JSON.parse(raw);
+          prompt = parsed.prompt ?? parsed.message ?? parsed.user_message ?? "";
+        } catch {
+          prompt = raw;
+        }
+
+        if (!prompt || prompt.length < 4) process.exit(0);
+
+        const isSaveIntent = SAVE_PATTERNS.some((p) => p.test(prompt));
+        if (!isSaveIntent) process.exit(0);
+
+        // Inject signal — Claude reads this and calls session_end()
+        process.stdout.write(
+          "[AgentRecall] ⚡ Save intent detected — call session_end() now to persist this session to memory.\n"
+        );
+      } catch (e) {
+        process.stderr.write(`[AgentRecall hook-save] ${String(e)}\n`);
       }
       process.exit(0);
     }

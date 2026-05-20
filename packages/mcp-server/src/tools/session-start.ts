@@ -25,16 +25,20 @@ function formatSessionStart(result: SessionStartResult): string {
   }
 
   if (result.corrections && result.corrections.length > 0) {
-    lines.push(`## P0 Rules`);
+    lines.push(`## ⛔ HARD RULES — always follow, no exceptions`);
+    lines.push(`These are behavioral constraints, not suggestions. Treat violations as errors.`);
     for (const c of result.corrections) {
-      lines.push(`- ${c.rule}`);
+      const weight = c.weight !== undefined ? ` (weight: ${c.weight})` : "";
+      lines.push(`[${c.severity.toUpperCase()}]${weight} ${c.rule}`);
     }
     lines.push("");
   }
 
-  // Then the full structured data for programmatic use
-  lines.push("## Context");
-  lines.push(JSON.stringify(result, null, 2));
+  // Context is soft — informs decisions, not mandatory
+  lines.push("## Context (informational — use to inform, not to constrain)");
+  // Omit corrections from JSON blob to avoid duplication and ambiguity
+  const { corrections: _omit, ...contextWithoutCorrections } = result;
+  lines.push(JSON.stringify(contextWithoutCorrections, null, 2));
 
   return lines.join("\n");
 }

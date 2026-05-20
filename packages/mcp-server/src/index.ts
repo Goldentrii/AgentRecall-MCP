@@ -14,6 +14,7 @@ import { register as registerDigest } from "./tools/digest.js";
 import { register as registerProjectBoard } from "./tools/project-board.js";
 import { register as registerProjectStatus } from "./tools/project-status.js";
 import { register as registerBootstrap } from "./tools/bootstrap.js";
+import { register as registerMemoryQuery } from "./tools/memory-query.js";
 
 // ── Legacy tools (still importable for SDK/CLI, not registered by default) ──
 // DEPRECATED v3.4: use session_start instead
@@ -100,6 +101,7 @@ registerSessionEnd(server);
 registerCheck(server);
 registerDigest(server);
 registerBootstrap(server);
+registerMemoryQuery(server);
 registerJournalResources(server);
 registerAwarenessResource(server);
 registerSessionPrompts(server);
