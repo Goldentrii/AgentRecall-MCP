@@ -12,14 +12,18 @@ describe("RecallBackend interface", () => {
     assert.equal(backend.available(), true);
   });
 
-  it("getRecallBackend returns LocalRecallBackend when no config", async () => {
+  it("getRecallBackend returns a local backend when no Supabase config", async () => {
     const { setRoot, resetRoot } = await import("agent-recall-core");
-    const { getRecallBackend, LocalRecallBackend, resetRecallBackend } = await import("agent-recall-core");
+    const { getRecallBackend, LocalRecallBackend, LocalVectorRecallBackend, resetRecallBackend } = await import("agent-recall-core");
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ar-backend-"));
     setRoot(tmpDir);
     resetRecallBackend();
     const backend = await getRecallBackend();
-    assert.ok(backend instanceof LocalRecallBackend);
+    // keyword backend (no OPENAI_API_KEY) or vector backend (OPENAI_API_KEY set) — both are local
+    assert.ok(
+      backend instanceof LocalRecallBackend || backend instanceof LocalVectorRecallBackend,
+      `Expected local backend, got ${backend?.constructor?.name}`
+    );
     fs.rmSync(tmpDir, { recursive: true, force: true });
     resetRoot();
     resetRecallBackend();

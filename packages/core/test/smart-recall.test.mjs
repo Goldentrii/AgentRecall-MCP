@@ -110,16 +110,20 @@ describe("Smart recall — ambient dedup logic", () => {
 });
 
 describe("RecallBackend selection", () => {
-  it("uses LocalRecallBackend when no Supabase config", async () => {
+  it("uses a local backend (keyword or vector) when no Supabase config", async () => {
     const { setRoot, resetRoot } = await import("agent-recall-core");
-    const { getRecallBackend, LocalRecallBackend, resetRecallBackend } = await import("agent-recall-core");
+    const { getRecallBackend, LocalRecallBackend, LocalVectorRecallBackend, resetRecallBackend } = await import("agent-recall-core");
     const tmpDir = (await import("node:fs")).mkdtempSync(
       (await import("node:path")).join((await import("node:os")).tmpdir(), "ar-sel-")
     );
     setRoot(tmpDir);
     resetRecallBackend();
     const backend = await getRecallBackend();
-    assert.ok(backend instanceof LocalRecallBackend);
+    // Either keyword (no API key) or vector (OPENAI_API_KEY present) — both are local, not Supabase
+    assert.ok(
+      backend instanceof LocalRecallBackend || backend instanceof LocalVectorRecallBackend,
+      `Expected local backend, got ${backend?.constructor?.name}`
+    );
     (await import("node:fs")).rmSync(tmpDir, { recursive: true, force: true });
     resetRoot();
     resetRecallBackend();

@@ -32,7 +32,9 @@ export function register(server: McpServer): void {
     // Show exactly where the memory was written
     const indicator = result.entry_indicator ? ` [${result.entry_indicator}]` : "";
     const dest = result.file_path ?? result.auto_name;
-    const lines = [`Saved → ${dest}${indicator}`];
+    const lines: string[] = [];
+    if (result.conflict_warning) lines.push(result.conflict_warning);
+    lines.push(`Saved → ${dest}${indicator}`);
     if (result.retrieval_hint) lines.push(`Find again: ${result.retrieval_hint}`);
     if (result.consistency_warnings && result.consistency_warnings.length > 0) {
       lines.push(`⚠ Consistency: ${result.consistency_warnings.map(w => w.detail).join("; ")}`);

@@ -1,6 +1,7 @@
 // packages/core/src/tools-logic/recall-backend.ts
 import type { SmartRecallResultItem } from "./smart-recall.js";
 import { readSupabaseConfig } from "../supabase/config.js";
+import { LocalVectorRecallBackend } from "../vector/local-vector-backend.js";
 
 /**
  * RecallBackend — thin read abstraction for recall search.
@@ -71,6 +72,13 @@ export async function getRecallBackend(): Promise<RecallBackend> {
     }
   } catch {
     // Supabase not configured or module not yet available (Task 8).
+  }
+
+  // If OPENAI_API_KEY is set and no Supabase config, use local vector backend.
+  const vectorBackend = new LocalVectorRecallBackend();
+  if (vectorBackend.available()) {
+    _cachedBackend = vectorBackend;
+    return vectorBackend;
   }
 
   _cachedBackend = new LocalRecallBackend();

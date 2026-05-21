@@ -70,7 +70,7 @@ function formatTerse(result: SessionStartResult): string {
   if (result.active_rooms && result.active_rooms.length > 0) {
     lines.push("");
     const roomSummary = result.active_rooms
-      .map((r) => `${r.name}(${r.salience.toFixed(2)})${r.stale ? "⚠" : ""}`)
+      .map((r) => `${r.name}${r.stale ? " ⚠stale" : ""}`)
       .join(" · ");
     lines.push(`🏛  Palace: ${roomSummary}`);
   }

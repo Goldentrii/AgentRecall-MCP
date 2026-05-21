@@ -8,6 +8,7 @@
 import { generateSlug, detectContentType } from "../helpers/auto-name.js";
 import { generateTags } from "../helpers/tag-generator.js";
 import { consistencyCheck, type ConsistencyWarning } from "../helpers/consistency.js";
+import { scanForConflicts, formatConflictWarning } from "../helpers/conflict-scan.js";
 import { journalCapture } from "./journal-capture.js";
 import { palaceWrite } from "./palace-write.js";
 import { knowledgeWrite } from "./knowledge-write.js";
@@ -39,6 +40,8 @@ export interface SmartRememberResult {
   /** Semantic tags assigned to this memory */
   tags?: string[];
   consistency_warnings?: ConsistencyWarning[];
+  /** Conflict warning: populated when new content contradicts existing memories */
+  conflict_warning?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -137,6 +140,19 @@ export async function smartRemember(input: SmartRememberInput): Promise<SmartRem
   const route = classifyRoute(input.content, input.context);
   const slugResult = generateSlug(input.content);
   const autoName = slugResult.slug;
+
+  // Conflict scan: compare new content against existing memories BEFORE saving.
+  // Runs only when content is long enough (>20 chars enforced inside scanForConflicts).
+  // Never blocks save — wrapped in try/catch.
+  let conflict_warning: string | undefined;
+  try {
+    const conflictResult = await scanForConflicts(input.content, input.project);
+    if (conflictResult.hasConflict && conflictResult.matches.length > 0) {
+      conflict_warning = formatConflictWarning(conflictResult.matches, input.project);
+    }
+  } catch {
+    // Conflict scan is best-effort — never blocks save
+  }
 
   let result: unknown;
 
@@ -274,6 +290,27 @@ export async function smartRemember(input: SmartRememberInput): Promise<SmartRem
     linkToSimilar(input.project, input.content, savedSlug).catch(() => {});
   }
 
+  // Fire-and-forget vector indexing — never blocks the save path.
+  // Only runs when OPENAI_API_KEY is set; silently skipped otherwise.
+  if (file_path && input.project) {
+    const itemId =
+      route === "palace_write" &&
+      typeof resultObj?.room === "string" &&
+      typeof resultObj?.topic === "string"
+        ? `${resultObj.room}/${resultObj.topic}`
+        : autoName;
+    const vectorSource: "palace" | "journal" | "insight" =
+      route === "awareness_update" ? "insight"
+      : route === "journal_capture" ? "journal"
+      : "palace";
+    const vectorExcerpt = input.content.slice(0, 300);
+    import("./smart-remember-vector.js")
+      .then(({ indexRemembered }) =>
+        indexRemembered(input.project!, itemId, vectorSource, autoName, vectorExcerpt, input.content)
+      )
+      .catch(() => {});
+  }
+
   return {
     success: true,
     routed_to: route,
@@ -285,5 +322,6 @@ export async function smartRemember(input: SmartRememberInput): Promise<SmartRem
     retrieval_hint,
     tags,
     consistency_warnings,
+    conflict_warning,
   };
 }

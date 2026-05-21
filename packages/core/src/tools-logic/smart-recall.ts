@@ -506,6 +506,10 @@ export async function smartRecall(input: SmartRecallInput): Promise<SmartRecallR
     results = await localRecallSearch(input.query, input.project, limit, input.since);
   } else {
     results = await backend.search(input.query, input.project, limit);
+    // If the vector backend returned nothing (index not yet populated), fall back to keyword search.
+    if (results.length === 0 && backend.constructor?.name === "LocalVectorRecallBackend") {
+      results = await localRecallSearch(input.query, input.project, limit);
+    }
   }
 
   // ── Apply Beta feedback multiplier (shared across all backends) ──────────
