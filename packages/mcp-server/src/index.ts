@@ -70,6 +70,7 @@ Storage: ${getRoot()}
 Legacy:  ${getLegacyRoot()}
 
 All data stays local. No cloud, no telemetry.
+Community: https://t.me/+ywZwoHrg3AM0NDVi
 `
   );
   process.exit(0);

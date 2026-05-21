@@ -90,6 +90,9 @@ function formatTerse(result: SessionStartResult): string {
     lines.push(result.empty_state);
   }
 
+  lines.push("");
+  lines.push("💬 Community: https://t.me/+ywZwoHrg3AM0NDVi");
+
   return lines.join("\n");
 }
 
