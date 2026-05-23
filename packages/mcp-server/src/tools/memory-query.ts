@@ -7,20 +7,25 @@ export function register(server: McpServer): void {
     title: "Memory Query",
     description: "Use when the user asks to search across all memory stores with a natural language query.",
     inputSchema: {
-      intent: z.string().describe("What you are about to do or decide. Be specific: 'push to npm', 'modify the auth middleware', 'call the Novada search API'."),
+      query: z.string().optional().describe("Natural language search query. Use this for free-text search like 'corrections.ts P0 regex' or 'what did we decide about auth'."),
+      intent: z.string().optional().describe("What you are about to do or decide. Alias for query — use either one."),
       project: z.string().default("auto"),
       min_confidence: z.enum(["high", "medium", "low"]).default("medium").describe("Minimum confidence threshold. 'high' = very relevant only. 'low' = broader, more noise."),
       limit: z.number().int().min(1).max(10).default(5),
     },
-  }, async ({ intent, project, min_confidence, limit }) => {
+  }, async ({ query, intent, project, min_confidence, limit }) => {
+    const searchIntent = query || intent;
+    if (!searchIntent) {
+      return { content: [{ type: "text" as const, text: "Provide either 'query' or 'intent' parameter." }], isError: true };
+    }
     try {
-      const result = await memoryQuery({ intent, project, min_confidence, limit });
+      const result = await memoryQuery({ intent: searchIntent, project, min_confidence, limit });
 
       if (result.empty) {
         return {
           content: [{
             type: "text" as const,
-            text: result.guidance ?? `No relevant memory found for: "${intent}". Proceed normally.`,
+            text: result.guidance ?? `No relevant memory found for: "${searchIntent}". Proceed normally.`,
           }],
         };
       }

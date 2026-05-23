@@ -8,7 +8,8 @@ export function register(server: McpServer): void {
     description: "Use when the user asks to validate understanding, verify alignment, or check if their interpretation matches the human's intent.",
     inputSchema: {
       goal: z.string().optional().describe("The goal or decision question you're checking alignment on. Required for alignment checks; optional when recording a pure decision trail (prior/posterior/evidence)."),
-      confidence: z.enum(["high", "medium", "low"]),
+      understanding: z.string().optional().describe("Alias for goal — use when saying 'check my understanding: X'. Provide either goal or understanding."),
+      confidence: z.enum(["high", "medium", "low"]).default("medium").describe("How confident you are. Defaults to medium."),
       assumptions: z.array(z.string()).optional().describe("Key assumptions you're making."),
       human_correction: z.string().optional().describe("After human responds: what they actually wanted (or 'confirmed')."),
       delta: z.string().optional().describe("The gap between your understanding and reality (or 'none')."),
@@ -23,13 +24,13 @@ export function register(server: McpServer): void {
       outcome: z.string().optional().describe("Final decision result: 'confirmed', 'rejected', 'partial', or free text. Triggers decision trail persistence."),
       decision_id: z.string().optional().describe("Link multiple check calls to the same decision. Auto-generated if not provided."),
     },
-  }, async ({ goal, confidence, assumptions, human_correction, delta, project, prior, evidence, posterior, outcome, decision_id }) => {
-    if (!goal && !prior) {
-      return { content: [{ type: "text" as const, text: JSON.stringify({ error: "Provide either goal (for alignment check) or prior+posterior+evidence (for decision trail)" }) }], isError: true };
+  }, async ({ goal, understanding, confidence, assumptions, human_correction, delta, project, prior, evidence, posterior, outcome, decision_id }) => {
+    const effectiveGoal = goal || understanding;
+    if (!effectiveGoal && !prior) {
+      return { content: [{ type: "text" as const, text: JSON.stringify({ error: "Provide either goal/understanding (for alignment check) or prior+posterior+evidence (for decision trail)" }) }], isError: true };
     }
     try {
-      // goal is guaranteed non-undefined here by the !goal && !prior guard above
-      const result = await check({ goal: goal!, confidence, assumptions, human_correction, delta, project, prior, evidence, posterior, outcome, decision_id });
+      const result = await check({ goal: effectiveGoal!, confidence, assumptions, human_correction, delta, project, prior, evidence, posterior, outcome, decision_id });
       return { content: [{ type: "text" as const, text: JSON.stringify(result) }] };
     } catch (err) {
       return {
