@@ -22,12 +22,7 @@ function formatResults(items: SmartRecallResultItem[]): string {
 export function register(server: McpServer): void {
   server.registerTool("recall", {
     title: "Recall",
-    description:
-      "Search all memory stores at once. Returns ranked results from palace, journal, and insights. " +
-      "Results include IDs — pass them as feedback on your NEXT recall() call to improve future ranking: " +
-      "`feedback:[{id:'abc123', useful:true}]`. " +
-      "Provide feedback when a result was used to make a decision (useful:true) or was irrelevant (useful:false). " +
-      "The scoring engine uses a Bayesian Beta distribution — 3+ positive signals meaningfully boost a result.",
+    description: "Use when the user asks to recall, search, find, or look up previous memory, context, or decisions.",
     inputSchema: {
       query: z.string().describe("What to search for."),
       project: z.string().default("auto"),

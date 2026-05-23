@@ -5,12 +5,7 @@ import { check } from "agent-recall-core";
 export function register(server: McpServer): void {
   server.registerTool("check", {
     title: "Check Understanding",
-    description:
-      "TWO USE CASES: (1) Goal verification — record what you think the human wants, get warnings from past corrections. " +
-      "Use before starting work: check({ goal: '...', confidence: 'high/medium/low' }). " +
-      "(2) Decision trail — track a decision with Bayesian prior/posterior/evidence for calibrated judgment. " +
-      "Use when making important technical or product decisions: add prior (0-1), evidence items, and posterior. " +
-      "Set outcome when decision resolves to close the trail.",
+    description: "Use when the user asks to validate understanding, verify alignment, or check if their interpretation matches the human's intent.",
     inputSchema: {
       goal: z.string().optional().describe("The goal or decision question you're checking alignment on. Required for alignment checks; optional when recording a pure decision trail (prior/posterior/evidence)."),
       confidence: z.enum(["high", "medium", "low"]),

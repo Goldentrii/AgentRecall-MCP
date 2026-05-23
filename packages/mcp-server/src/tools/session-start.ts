@@ -127,9 +127,7 @@ function formatVerbose(result: SessionStartResult): string {
 export function register(server: McpServer): void {
   server.registerTool("session_start", {
     title: "Start Session",
-    description:
-      "Load project context for a new session. Returns identity, top insights, active rooms, recent activity, P0 corrections (hard rules), and predictive watch_for warnings. " +
-      "Default output is terse (~250 tokens). Pass verbose:true for full JSON context.",
+    description: "Use when the user asks to start, load, continue, resume, or open memory for a project.",
     inputSchema: {
       project: z.string().default("auto"),
       context: z.string().optional().describe("Optional context for matching cross-project insights"),

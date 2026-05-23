@@ -5,20 +5,7 @@ import { memoryQuery } from "agent-recall-core";
 export function register(server: McpServer): void {
   server.registerTool("memory_query", {
     title: "Memory Query",
-    description: [
-      "On-demand, intent-scoped recall. Call this mid-task when you recognize you're about to make",
-      "a decision that may have prior context — e.g. before pushing code, modifying auth, or calling an API.",
-      "",
-      "Unlike `recall` (general search), memory_query takes a description of what you're ABOUT TO DO",
-      "and returns only high/medium confidence results relevant to that intent.",
-      "",
-      "Examples:",
-      "  memory_query({ intent: 'push to npm' })         → surfaces 'never publish without approval'",
-      "  memory_query({ intent: 'modify auth middleware' }) → surfaces past auth gotchas",
-      "  memory_query({ intent: 'call Novada search API' })  → surfaces API behavior notes",
-      "",
-      "Use this as a lightweight pre-action check. If empty:true, no prior context exists — proceed normally.",
-    ].join("\n"),
+    description: "Use when the user asks to search across all memory stores with a natural language query.",
     inputSchema: {
       intent: z.string().describe("What you are about to do or decide. Be specific: 'push to npm', 'modify the auth middleware', 'call the Novada search API'."),
       project: z.string().default("auto"),

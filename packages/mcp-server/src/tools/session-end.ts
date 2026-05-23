@@ -5,7 +5,7 @@ import { sessionEnd } from "agent-recall-core";
 export function register(server: McpServer): void {
   server.registerTool("session_end", {
     title: "End Session",
-    description: "Save session summary, insights, and trajectory. Writes journal, updates awareness, consolidates to palace.",
+    description: "Use when the user asks to save, checkpoint, summarize, end, retain, or persist the current session.",
     inputSchema: {
       summary: z.string().describe("What happened this session. Simple session: 2-3 sentences. Multi-phase session: one paragraph per completed phase (e.g. 'Phase 1 — Name: what happened. Phase 2 — Name: what happened. Decisions: X. Blockers: Y.'). Never compress a multi-phase session to 2 sentences — it makes the journal useless."),
       insights: z.array(z.object({

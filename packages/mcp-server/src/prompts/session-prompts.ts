@@ -2,6 +2,64 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 export function register(server: McpServer): void {
+  server.registerPrompt("show_projects", {
+    title: "Show Projects",
+    description: "Show the AgentRecall project status board.",
+  }, async () => {
+    return {
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: "Call `project_board()` and show the AgentRecall projects and active work.",
+          },
+        },
+      ],
+    };
+  });
+
+  server.registerPrompt("start_project", {
+    title: "Start Project",
+    description: "Start or resume AgentRecall memory for a project.",
+    argsSchema: {
+      project: z.string().describe("Project slug, name, or number to start"),
+    },
+  }, async (args) => {
+    return {
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: `Call \`session_start(project="${args.project}")\` to start or resume AgentRecall memory for this project.`,
+          },
+        },
+      ],
+    };
+  });
+
+  server.registerPrompt("save_session", {
+    title: "Save Session",
+    description: "Save the current session to AgentRecall.",
+    argsSchema: {
+      summary: z.string().optional().describe("Optional summary hint for the session"),
+    },
+  }, async (args) => {
+    const summaryHint = args.summary ? ` Summary hint: "${args.summary}"` : "";
+    return {
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: `Call \`session_end()\` to save the current AgentRecall session.${summaryHint}`,
+          },
+        },
+      ],
+    };
+  });
+
   // ── /arstart — Cold start a session ───────────────────────────────────
   server.registerPrompt("arstart", {
     title: "Start Session",

@@ -5,11 +5,7 @@ import { smartRemember } from "agent-recall-core";
 export function register(server: McpServer): void {
   server.registerTool("remember", {
     title: "Remember",
-    description: "Save any memory — auto-classifies and routes. " +
-      "Use this for unstructured notes, lessons, and quick captures. " +
-      "Use `context: 'architecture'` or `context: 'decision'` for palace routing. " +
-      "Use `context: 'qa'` for Q&A capture. " +
-      "Pass context hint to override auto-routing.",
+    description: "Use when the user asks to remember, store, note, or save a specific decision, fact, or insight.",
     inputSchema: {
       content: z.string().describe("What to remember."),
       context: z.string().optional().describe(
