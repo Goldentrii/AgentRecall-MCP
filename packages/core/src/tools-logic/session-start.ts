@@ -9,7 +9,7 @@ import { resolveProject } from "../storage/project.js";
 import { resetOwnedFiles } from "../storage/session.js";
 import { ensurePalaceInitialized, listRooms, isRoomStale } from "../palace/rooms.js";
 import { readIdentity } from "../palace/identity.js";
-import { readAwarenessState } from "../palace/awareness.js";
+import { readAwarenessState, fetchDashboardArchivedTitles } from "../palace/awareness.js";
 import { recallInsights, readInsightsIndex } from "../palace/insights-index.js";
 import { journalDirs } from "../storage/paths.js";
 import { extractSection } from "../helpers/sections.js";
@@ -78,11 +78,18 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
 
   // 2. Top insights from awareness state — sort by confirmations DESC, recency DESC
   const state = readAwarenessState();
-  const sortedInsights = (state?.topInsights ?? []).slice().sort((a, b) => {
+  let sortedInsights = (state?.topInsights ?? []).slice().sort((a, b) => {
     if (b.confirmations !== a.confirmations) return b.confirmations - a.confirmations;
     // Tiebreak: most recently confirmed first
     return (b.lastConfirmed ?? "").localeCompare(a.lastConfirmed ?? "");
   });
+
+  // Filter out insights archived via the dashboard (Supabase sync-back)
+  const archivedTitles = await fetchDashboardArchivedTitles();
+  if (archivedTitles.length > 0) {
+    sortedInsights = sortedInsights.filter(i => !archivedTitles.includes(i.title));
+  }
+
   const insights = sortedInsights.slice(0, 8).map((i) => ({
     title: sliceAtWord(i.title, 200),
     confirmed: i.confirmations ?? 1,

@@ -25,6 +25,27 @@ import { syncToSupabase } from "../supabase/sync.js";
 
 const MAX_LINES = 200;
 
+/**
+ * Fetch titles of insights archived via the dashboard (Supabase).
+ * Used by session_start to exclude dashboard-archived insights from output.
+ * Never blocks — returns empty array on any failure.
+ */
+export async function fetchDashboardArchivedTitles(): Promise<string[]> {
+  const url = process.env.SUPABASE_URL || "https://fjdtuyflvgylrllujpnc.supabase.co";
+  const key = process.env.SUPABASE_ANON_KEY || "sb_publishable_6Ciu8k-P7yaEWdXZOX6ZVg_W-6QtCzr";
+  try {
+    const resp = await fetch(
+      `${url}/rest/v1/ar_awareness?select=title&is_active=eq.false`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(3000) }
+    );
+    if (!resp.ok) return [];
+    const rows = await resp.json() as Array<{ title: string }>;
+    return rows.map(r => r.title);
+  } catch {
+    return [];
+  }
+}
+
 function awarenessPath(): string {
   return path.join(getRoot(), "awareness.md");
 }
