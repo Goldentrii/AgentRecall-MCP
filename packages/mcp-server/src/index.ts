@@ -16,6 +16,22 @@ import { register as registerProjectStatus } from "./tools/project-status.js";
 import { register as registerBootstrap } from "./tools/bootstrap.js";
 import { register as registerMemoryQuery } from "./tools/memory-query.js";
 
+// ── Pipeline tools (experimental — project narrative spine) ──────────────
+import { register as registerPipelineOpen } from "./tools/pipeline-open.js";
+import { register as registerPipelineClose } from "./tools/pipeline-close.js";
+import { register as registerPipelineList } from "./tools/pipeline-list.js";
+import { register as registerPipelineCurrent } from "./tools/pipeline-current.js";
+import { register as registerPipelineShow } from "./tools/pipeline-show.js";
+
+// ── Skill tools (procedural memory layer) ─────────────────────────────────
+import { register as registerSkillWrite } from "./tools/skill-write.js";
+import { register as registerSkillRecall } from "./tools/skill-recall.js";
+import { register as registerSkillList } from "./tools/skill-list.js";
+
+// ── Dashboard + reflection ───────────────────────────────────────────────
+import { register as registerDashboardExport } from "./tools/dashboard-export.js";
+import { register as registerSessionEndReflect } from "./tools/session-end-reflect.js";
+
 // ── Legacy tools (still importable for SDK/CLI, not registered by default) ──
 // DEPRECATED v3.4: use session_start instead
 // import { register as registerJournalColdStart } from "./tools/journal-cold-start.js";
@@ -108,6 +124,22 @@ registerRecall(server);
 registerSessionEnd(server);
 registerCheck(server);
 registerMemoryQuery(server);
+
+// Pipeline tools — always on, project narrative spine
+registerPipelineOpen(server);
+registerPipelineClose(server);
+registerPipelineList(server);
+registerPipelineCurrent(server);
+registerPipelineShow(server);
+
+// Procedural memory layer (V10)
+registerSkillWrite(server);
+registerSkillRecall(server);
+registerSkillList(server);
+
+// Dashboard + reflection
+registerDashboardExport(server);
+registerSessionEndReflect(server);
 
 // ── Extended tools (--full mode only) ────────────────────────────────────────
 // Use when you need project status boards, context caching, or first-time bootstrap.

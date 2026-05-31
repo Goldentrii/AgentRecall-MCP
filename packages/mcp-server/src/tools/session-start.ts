@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as z from "zod/v4";
-import { sessionStart, type SessionStartResult } from "agent-recall-core";
+import { sessionStart, sessionStartLite, type SessionStartResult } from "agent-recall-core";
 
 /** Truncate to nearest word boundary */
 function trunc(s: string, n: number): string {
@@ -127,13 +127,27 @@ function formatVerbose(result: SessionStartResult): string {
 export function register(server: McpServer): void {
   server.registerTool("session_start", {
     title: "Start Session",
-    description: "Use when the user asks to start, load, continue, resume, or open memory for a project.",
+    description: "Use when the user asks to start, load, continue, resume, or open memory for a project. Set mode='lite' for a ≤500-token briefing (good for fresh conversations where the agent will pull memory on demand via recall/memory_query/skill_recall).",
     inputSchema: {
       project: z.string().default("auto"),
       context: z.string().optional().describe("Optional context for matching cross-project insights"),
       verbose: z.boolean().default(false).describe("Set true to get full JSON context instead of terse summary"),
+      mode: z.enum(["full", "lite"]).default("full").describe("'lite' = ≤500-token sketch; agent must pull on demand. 'full' = current rich payload."),
     },
-  }, async ({ project, context, verbose }) => {
+  }, async ({ project, context, verbose, mode }) => {
+    if (mode === "lite") {
+      const lite = await sessionStartLite({ project });
+      const text = [
+        `AgentRecall (lite) — ${lite.project}   sessions: ${lite.total_sessions}   last: ${lite.last_session_date ?? "—"}`,
+        lite.identity_oneliner ? `Intention: ${lite.identity_oneliner}` : "",
+        lite.active_phase ? `▶ Active phase: ${lite.active_phase}${lite.active_phase_goal ? ` — ${lite.active_phase_goal}` : ""}` : "",
+        lite.open_corrections_p0_count > 0 ? `⛔ ${lite.open_corrections_p0_count} P0 corrections active — call recall() if working on related code.` : "",
+        lite.total_skills > 0 ? `🛠  ${lite.total_skills} skills available — call skill_recall({intent}) before non-trivial tasks.` : "",
+        "",
+        lite.hint,
+      ].filter(Boolean).join("\n");
+      return { content: [{ type: "text" as const, text }] };
+    }
     const result = await sessionStart({ project, context });
     const text = verbose ? formatVerbose(result) : formatTerse(result);
     return { content: [{ type: "text" as const, text }] };

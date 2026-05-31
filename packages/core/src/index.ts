@@ -281,3 +281,109 @@ export { LocalVectorRecallBackend } from "./vector/local-vector-backend.js";
 export { embed } from "./vector/embedding.js";
 export { upsertVector, queryVector, vectorIndexPath } from "./vector/local-vector-store.js";
 export type { VectorItem } from "./vector/local-vector-store.js";
+
+// Pipeline — project narrative spine (phases / milestones)
+export {
+  pipelineDir,
+  milestoneFileName,
+  parseMilestoneFile,
+  listMilestones,
+  findActiveMilestone,
+  nextOrder,
+  renderMilestone,
+  writeMilestone,
+  summarize as summarizeMilestone,
+} from "./palace/pipeline.js";
+export type {
+  Milestone,
+  MilestoneMeta,
+  MilestoneSections,
+  MilestoneSummary,
+  PhaseStatus,
+} from "./palace/pipeline.js";
+export { pipelineOpen } from "./tools-logic/pipeline-open.js";
+export type { PipelineOpenInput, PipelineOpenResult } from "./tools-logic/pipeline-open.js";
+export { pipelineClose } from "./tools-logic/pipeline-close.js";
+export type { PipelineCloseInput, PipelineCloseResult } from "./tools-logic/pipeline-close.js";
+export { pipelineList } from "./tools-logic/pipeline-list.js";
+export type { PipelineListInput, PipelineListResult } from "./tools-logic/pipeline-list.js";
+export { pipelineCurrent } from "./tools-logic/pipeline-current.js";
+export type { PipelineCurrentInput, PipelineCurrentResult } from "./tools-logic/pipeline-current.js";
+export { pipelineShow } from "./tools-logic/pipeline-show.js";
+export type { PipelineShowInput, PipelineShowResult, SubstrateStats } from "./tools-logic/pipeline-show.js";
+
+// Naming system v1 — unified scope/type/topic/temporal/slug grammar
+export {
+  toSlug,
+  canonicalPath,
+  parseCanonicalName,
+  validateCanonicalName,
+  isValidType,
+  buildIndexEntry,
+  legacyToCanonicalType,
+} from "./naming.js";
+export type { MemoryScope, MemoryType, CanonicalName, NamingIndexEntry } from "./naming.js";
+
+// Modern Hopfield — energy-based associative retrieval (Ramsauer 2020)
+export { hopfieldRecall, hopfieldRerank } from "./palace/hopfield.js";
+export type {
+  HopfieldRecallInput,
+  HopfieldRecallResult,
+  RerankInput,
+  RerankItem,
+} from "./palace/hopfield.js";
+
+// FSRS-lite — decay + reinforcement scoring
+// (FSRS_ARCHIVE_THRESHOLD aliased to avoid collision with palace/salience ARCHIVE_THRESHOLD)
+export {
+  initFsrs,
+  score as scoreFsrs,
+  reinforce as reinforceFsrs,
+  penalize as penalizeFsrs,
+  ARCHIVE_THRESHOLD as FSRS_ARCHIVE_THRESHOLD,
+  HOT_THRESHOLD as FSRS_HOT_THRESHOLD,
+  DEFAULT_INITIAL_STABILITY as FSRS_DEFAULT_INITIAL_STABILITY,
+} from "./palace/fsrs.js";
+export type { FsrsState, FsrsScore } from "./palace/fsrs.js";
+
+// Skills — procedural memory layer (5th type)
+export {
+  skillsDir,
+  listSkills,
+  nextSkillOrder,
+  writeSkill,
+  parseSkillFile,
+  recallSkillsByIntent,
+} from "./palace/skills.js";
+export type { Skill, SkillMeta, SkillBody } from "./palace/skills.js";
+
+export { skillWrite } from "./tools-logic/skill-write.js";
+export type { SkillWriteInput, SkillWriteResult } from "./tools-logic/skill-write.js";
+export { skillRecall } from "./tools-logic/skill-recall.js";
+export type { SkillRecallInput, SkillRecallResult, SkillRecallHit } from "./tools-logic/skill-recall.js";
+export { skillList } from "./tools-logic/skill-list.js";
+export type { SkillListInput, SkillListResult, SkillListItem } from "./tools-logic/skill-list.js";
+
+// Corrections — outcome tracking (V9)
+export {
+  recordOutcome,
+  getCorrectionKPIs,
+} from "./storage/corrections.js";
+export type { CorrectionOutcome, CorrectionKPI } from "./storage/corrections.js";
+
+// session_start lite (V6)
+export { sessionStartLite } from "./tools-logic/session-start-lite.js";
+export type { SessionStartLiteInput, SessionStartLiteResult } from "./tools-logic/session-start-lite.js";
+
+// session_end reflection (V2)
+export { sessionEndReflect } from "./tools-logic/session-end-reflect.js";
+export type { ReflectInput, ReflectResult, ReflectInputBundle } from "./tools-logic/session-end-reflect.js";
+
+// Dashboard export (V8)
+export { dashboardExport } from "./tools-logic/dashboard-export.js";
+export type {
+  DashboardExportInput,
+  DashboardExportResult,
+  DashboardSnapshot,
+  DashboardProjectSnapshot,
+} from "./tools-logic/dashboard-export.js";

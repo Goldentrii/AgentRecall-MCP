@@ -20,6 +20,8 @@ import { extractKeywords } from "../helpers/auto-name.js";
 import type { SaveType } from "../storage/session.js";
 import { autoClassifySig, autoClassifyTheme } from "../helpers/journal-sig-theme.js";
 import type { SignificanceTag, ThemeTag } from "../helpers/journal-sig-theme.js";
+import { pipelineOpen } from "./pipeline-open.js";
+import { pipelineClose } from "./pipeline-close.js";
 
 export interface SessionEndInput {
   summary: string;
@@ -35,6 +37,26 @@ export interface SessionEndInput {
   saveType?: SaveType;
   sig?: SignificanceTag;   // NEW — auto-classified if not provided
   theme?: ThemeTag;        // NEW — auto-classified if not provided
+  /**
+   * Optionally close the currently-active pipeline phase as part of this save.
+   * No LLM auto-detect — caller must supply the three reflection fields.
+   */
+  close_phase?: {
+    what_was_hard: string;
+    how_solved: string;
+    synthesis: string;
+    status?: "closed" | "abandoned" | "pivoted";
+    related_journal?: string[];
+    related_insights?: string[];
+  };
+  /**
+   * Optionally open a new pipeline phase as part of this save (e.g. when a
+   * watershed session pivots into the next strategic direction).
+   */
+  open_phase?: {
+    phase_name: string;
+    goal: string;
+  };
 }
 
 export interface MergeSuggestion {
@@ -51,6 +73,14 @@ export interface InsightQualityWarning {
   suggestion: string;
 }
 
+export interface PipelinePhaseAction {
+  ok: boolean;
+  order?: number;
+  phase?: string;
+  file_path?: string;
+  error?: string;
+}
+
 export interface SessionEndResult {
   success: boolean;
   journal_written: boolean;
@@ -63,6 +93,8 @@ export interface SessionEndResult {
   card: string;
   merge_suggestions?: MergeSuggestion[];
   quality_warnings?: InsightQualityWarning[];
+  pipeline_closed?: PipelinePhaseAction;
+  pipeline_opened?: PipelinePhaseAction;
 }
 
 export function checkInsightQuality(
@@ -332,6 +364,39 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
   // Auto-promote confirmed cross-session insights into awareness
   promoteConfirmedInsights(3);
 
+  // Pipeline integration: caller can close the current phase and/or open a
+  // new one as part of this save. No LLM, no auto-detect — explicit only.
+  let pipelineClosed: PipelinePhaseAction | undefined;
+  let pipelineOpened: PipelinePhaseAction | undefined;
+
+  if (input.close_phase) {
+    const cp = input.close_phase;
+    const r = await pipelineClose({
+      project: slug,
+      what_was_hard: cp.what_was_hard,
+      how_solved: cp.how_solved,
+      synthesis: cp.synthesis,
+      status: cp.status,
+      related_journal: cp.related_journal,
+      related_insights: cp.related_insights,
+    });
+    pipelineClosed = r.success
+      ? { ok: true, order: r.order, phase: r.phase, file_path: r.file_path }
+      : { ok: false, error: r.error };
+  }
+
+  if (input.open_phase) {
+    const op = input.open_phase;
+    const r = await pipelineOpen({
+      project: slug,
+      phase_name: op.phase_name,
+      goal: op.goal,
+    });
+    pipelineOpened = r.success
+      ? { ok: true, order: r.order, phase: r.phase, file_path: r.file_path }
+      : { ok: false, error: r.error };
+  }
+
   return {
     success: journalWritten || awarenessUpdated,
     journal_written: journalWritten,
@@ -344,5 +409,7 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
     card,
     merge_suggestions: mergeSuggestions.length > 0 ? mergeSuggestions : undefined,
     quality_warnings: qualityWarnings.length > 0 ? qualityWarnings : undefined,
+    ...(pipelineClosed ? { pipeline_closed: pipelineClosed } : {}),
+    ...(pipelineOpened ? { pipeline_opened: pipelineOpened } : {}),
   };
 }

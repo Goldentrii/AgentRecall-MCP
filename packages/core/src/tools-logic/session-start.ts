@@ -23,6 +23,7 @@ import * as path from "node:path";
 import { getRoot } from "../types.js";
 import { readSupabaseConfig } from "../supabase/config.js";
 import { backfill } from "../supabase/sync.js";
+import { listMilestones } from "../palace/pipeline.js";
 
 /** Slice text at the nearest word boundary, avoiding mid-word truncation. */
 function sliceAtWord(text: string, maxLen: number): string {
@@ -50,6 +51,18 @@ export interface SessionStartResult {
     last_date: string | null;
     last_trajectory: string | null;
     sessions_count: number;
+  } | null;
+  /**
+   * Project narrative spine summary. Null when no pipeline files exist.
+   * Shape: { active_phase, closed_count, last_synthesis, stale_days }
+   */
+  pipeline: {
+    active_phase: string | null;
+    active_phase_goal: string | null;
+    active_phase_opened: string | null;
+    active_phase_stale_days: number;
+    closed_count: number;
+    last_synthesis: string | null;
   } | null;
   empty_state?: string;
 }
@@ -230,6 +243,29 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
     });
   }
 
+  // Pipeline narrative spine summary — null if no pipeline files exist for project
+  const pipelineMilestones = listMilestones(slug);
+  let pipeline: SessionStartResult["pipeline"] = null;
+  if (pipelineMilestones.length > 0) {
+    const active = pipelineMilestones.find((m) => m.meta.status === "active") ?? null;
+    const closedList = pipelineMilestones.filter((m) => m.meta.status === "closed");
+    const lastClosed = closedList[closedList.length - 1] ?? null;
+    const staleDays = active && active.meta.opened
+      ? Math.max(0, Math.round((Date.now() - new Date(active.meta.opened).getTime()) / 86400000))
+      : 0;
+    pipeline = {
+      active_phase: active?.meta.phase ?? null,
+      active_phase_goal: active?.sections.goal && active.sections.goal !== "(in progress)" ? active.sections.goal : null,
+      active_phase_opened: active?.meta.opened ?? null,
+      active_phase_stale_days: staleDays,
+      closed_count: closedList.length,
+      last_synthesis:
+        lastClosed && lastClosed.sections.synthesis && lastClosed.sections.synthesis !== "(in progress)"
+          ? lastClosed.sections.synthesis
+          : null,
+    };
+  }
+
   return {
     project: slug,
     identity,
@@ -240,6 +276,7 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
     watch_for,
     corrections,
     resume,
+    pipeline,
     empty_state: isEmpty ? "No memory found for this project. Try: bootstrap_scan() to import existing projects, or start working and use remember() to save decisions." : undefined,
   };
 }
