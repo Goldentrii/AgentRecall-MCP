@@ -281,3 +281,4 @@ export { LocalVectorRecallBackend } from "./vector/local-vector-backend.js";
 export { embed } from "./vector/embedding.js";
 export { upsertVector, queryVector, vectorIndexPath } from "./vector/local-vector-store.js";
 export type { VectorItem } from "./vector/local-vector-store.js";
+export * from "./tools-logic/memory-map.js";
