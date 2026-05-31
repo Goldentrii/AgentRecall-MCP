@@ -5,6 +5,30 @@
 
 import type { RoomMeta } from "../types.js";
 
+/**
+ * Quote a scalar value safely for YAML.
+ * Always JSON-stringifies strings that contain newline, colon, dash, hash, or
+ * other YAML-significant characters, preventing injection where an attacker
+ * (or prompt-injected LLM) could close the frontmatter or forge keys.
+ */
+function quoteScalar(value: unknown): string {
+  if (typeof value === "boolean" || typeof value === "number") {
+    return String(value);
+  }
+  if (typeof value !== "string") {
+    return JSON.stringify(value);
+  }
+  // Quote if the string contains anything that could be YAML-significant,
+  // including leading/trailing whitespace, or starts with a special marker.
+  // JSON.stringify gives us valid double-quoted YAML for free (newline → \n etc).
+  if (/[\n\r\t"'#:&*!|>%@`{}\[\]?,]|^\s|\s$|^-|^---|^\.\.\./.test(value)) {
+    return JSON.stringify(value);
+  }
+  // Empty string must be quoted
+  if (value === "") return '""';
+  return value;
+}
+
 export function generateFrontmatter(meta: Record<string, unknown>): string {
   const lines = ["---"];
   for (const [key, value] of Object.entries(meta)) {
@@ -14,7 +38,7 @@ export function generateFrontmatter(meta: Record<string, unknown>): string {
     } else if (typeof value === "object") {
       lines.push(`${key}: ${JSON.stringify(value)}`);
     } else {
-      lines.push(`${key}: ${value}`);
+      lines.push(`${key}: ${quoteScalar(value)}`);
     }
   }
   lines.push("---", "");

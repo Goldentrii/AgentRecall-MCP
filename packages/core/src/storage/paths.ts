@@ -1,5 +1,9 @@
 /**
  * Journal and palace directory path resolution.
+ *
+ * Security: every project-name sanitizer strips dots (preventing ".." traversal)
+ * AND verifies the resolved path stays under root with a trailing-separator check
+ * (preventing `~/.agent-recallEVIL` prefix bypass).
  */
 
 import * as fs from "node:fs";
@@ -7,16 +11,38 @@ import * as path from "node:path";
 import { getRoot, getLegacyRoot } from "../types.js";
 
 /**
+ * Sanitize a project name for safe use in path.join().
+ * Strips ALL non-alphanumeric chars (including dots) to prevent ".." traversal.
+ */
+function sanitizeProject(project: string): string {
+  if (!project) return "unnamed";
+  const safe = project
+    .replace(/[^a-zA-Z0-9_\-]/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 100);
+  return safe || "unnamed";
+}
+
+/**
+ * Check that `resolved` is strictly inside `root` (rejects prefix matches like
+ * "/foo/bar" being inside "/foo/ba"). Throws if not.
+ */
+function assertInsideRoot(resolved: string, root: string, project: string): void {
+  const rootWithSep = root.endsWith(path.sep) ? root : root + path.sep;
+  if (!resolved.startsWith(rootWithSep) && resolved !== root) {
+    throw new Error(`Invalid project name (path escape): ${project}`);
+  }
+}
+
+/**
  * Resolve the journal directory for a project.
  * For writes, always use the new location.
  */
 export function journalDir(project: string): string {
-  const safe = project.replace(/[^a-zA-Z0-9_\-\.]/g, "-");
+  const safe = sanitizeProject(project);
   const root = getRoot();
   const resolved = path.join(root, "projects", safe, "journal");
-  if (!resolved.startsWith(root)) {
-    throw new Error(`Invalid project name: ${project}`);
-  }
+  assertInsideRoot(resolved, root, project);
   return resolved;
 }
 
@@ -58,12 +84,10 @@ export function journalDirs(project: string): string[] {
  * Resolve the palace directory for a project.
  */
 export function palaceDir(project: string): string {
-  const safe = project.replace(/[^a-zA-Z0-9_\-\.]/g, "-");
+  const safe = sanitizeProject(project);
   const root = getRoot();
   const resolved = path.join(root, "projects", safe, "palace");
-  if (!resolved.startsWith(root)) {
-    throw new Error(`Invalid project name: ${project}`);
-  }
+  assertInsideRoot(resolved, root, project);
   return resolved;
 }
 
@@ -73,9 +97,7 @@ export function palaceDir(project: string): string {
 export function roomDir(project: string, roomSlug: string): string {
   const safeSlug = roomSlug.replace(/[^a-zA-Z0-9_\-]/g, "-");
   const resolved = path.join(palaceDir(project), "rooms", safeSlug);
-  if (!resolved.startsWith(getRoot())) {
-    throw new Error(`Invalid room slug: ${roomSlug}`);
-  }
+  assertInsideRoot(resolved, getRoot(), `${project}/${roomSlug}`);
   return resolved;
 }
 
@@ -97,12 +119,10 @@ export function sanitizeSlug(input: string): string {
  * Resolve the digest directory for a project.
  */
 export function digestDir(project: string): string {
-  const safe = project.replace(/[^a-zA-Z0-9_\-\.]/g, "-");
+  const safe = sanitizeProject(project);
   const root = getRoot();
   const resolved = path.join(root, "projects", safe, "digest");
-  if (!resolved.startsWith(root)) {
-    throw new Error(`Invalid project name: ${project}`);
-  }
+  assertInsideRoot(resolved, root, project);
   return resolved;
 }
 
