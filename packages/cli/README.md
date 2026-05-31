@@ -8,7 +8,7 @@
   <a href="https://www.npmjs.com/package/agent-recall-mcp"><img src="https://img.shields.io/npm/v/agent-recall-mcp?style=flat-square&label=MCP&color=5D34F2" alt="MCP npm"></a>
   <a href="https://www.npmjs.com/package/agent-recall-sdk"><img src="https://img.shields.io/npm/v/agent-recall-sdk?style=flat-square&label=SDK&color=0EA5E9" alt="SDK npm"></a>
   <a href="https://www.npmjs.com/package/agent-recall-cli"><img src="https://img.shields.io/npm/v/agent-recall-cli?style=flat-square&label=CLI&color=10B981" alt="CLI npm"></a>
-  <a href="https://github.com/Goldentrii/AgentRecall/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen?style=flat-square" alt="License"></a>
+  <a href="https://github.com/Goldentrii/AgentRecall-MCP/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen?style=flat-square" alt="License"></a>
   <a href="https://lobehub.com/mcp/goldentrii-agentrecall"><img src="https://lobehub.com/badge/mcp/goldentrii-agentrecall" alt="MCP Badge"></a>
   <img src="https://img.shields.io/badge/MCP-10_tools-orange?style=flat-square" alt="Tools">
   <img src="https://img.shields.io/badge/cloud-zero-blue?style=flat-square" alt="Zero Cloud">
@@ -259,11 +259,11 @@ The cards are **rendered server-side** — computed from actual operation result
 ```bash
 # Install commands (one-time, Claude Code only)
 mkdir -p ~/.claude/commands
-curl -o ~/.claude/commands/arstatus.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arstatus.md
-curl -o ~/.claude/commands/arstart.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arstart.md
-curl -o ~/.claude/commands/arsave.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arsave.md
-curl -o ~/.claude/commands/arsaveall.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arsaveall.md
-curl -o ~/.claude/commands/arbootstrap.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arbootstrap.md
+curl -o ~/.claude/commands/arstatus.md https://raw.githubusercontent.com/Goldentrii/AgentRecall-MCP/main/commands/arstatus.md
+curl -o ~/.claude/commands/arstart.md https://raw.githubusercontent.com/Goldentrii/AgentRecall-MCP/main/commands/arstart.md
+curl -o ~/.claude/commands/arsave.md https://raw.githubusercontent.com/Goldentrii/AgentRecall-MCP/main/commands/arsave.md
+curl -o ~/.claude/commands/arsaveall.md https://raw.githubusercontent.com/Goldentrii/AgentRecall-MCP/main/commands/arsaveall.md
+curl -o ~/.claude/commands/arbootstrap.md https://raw.githubusercontent.com/Goldentrii/AgentRecall-MCP/main/commands/arbootstrap.md
 ```
 
 ### The Difference
@@ -299,7 +299,7 @@ Agent 5 finishes: you /arsave again            → Zero conflicts (session-ID sc
 
 **Layer 2 (30 seconds):** Every time you correct your agent — "no, not that version", "ask me first" — that correction is stored permanently and recalled before the agent makes the same mistake again. After 10 sessions, your agent understands your priorities, your communication style, your non-negotiables.
 
-**Layer 3 (2 minutes):** The [Intelligent Distance Protocol](https://github.com/Goldentrii/AgentRecall/wiki/Intelligent-Distance). The structural gap between human thinking and AI action can't be closed — but it can be navigated better every session. Corrections are training data. The 200-line awareness cap forces quality over quantity. Cross-project insights mean lessons learned once apply everywhere.
+**Layer 3 (2 minutes):** The [Intelligent Distance Protocol](https://github.com/Goldentrii/AgentRecall-MCP/wiki/Intelligent-Distance). The structural gap between human thinking and AI action can't be closed — but it can be navigated better every session. Corrections are training data. The 200-line awareness cap forces quality over quantity. Cross-project insights mean lessons learned once apply everywhere.
 
 ---
 
@@ -383,7 +383,7 @@ codex mcp add agent-recall -- npx -y agent-recall-mcp
 ```bash
 mkdir -p ~/.claude/skills/agent-recall
 curl -o ~/.claude/skills/agent-recall/SKILL.md \
-  https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/SKILL.md
+  https://raw.githubusercontent.com/Goldentrii/AgentRecall-MCP/main/SKILL.md
 ```
 
 ### SDK (for JS/TS applications)
@@ -823,7 +823,7 @@ All benchmark code: [`benchmark/run.mjs`](benchmark/run.mjs), [`benchmark/ab-com
 
 Built by [tongwu](https://github.com/Goldentrii) at [Novada](https://www.novada.com).
 
-- Issues & feedback: [GitHub Issues](https://github.com/Goldentrii/AgentRecall/issues)
+- Issues & feedback: [GitHub Issues](https://github.com/Goldentrii/AgentRecall-MCP/issues)
 - Email: [tong.wu@novada.com](mailto:tong.wu@novada.com)
 - Website: [novada.com](https://www.novada.com)
 
@@ -912,10 +912,10 @@ MIT License.
 ```bash
 # 安装命令（一次性，仅 Claude Code）
 mkdir -p ~/.claude/commands
-curl -o ~/.claude/commands/arstatus.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arstatus.md
-curl -o ~/.claude/commands/arstart.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arstart.md
-curl -o ~/.claude/commands/arsave.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arsave.md
-curl -o ~/.claude/commands/arsaveall.md https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/commands/arsaveall.md
+curl -o ~/.claude/commands/arstatus.md https://raw.githubusercontent.com/Goldentrii/AgentRecall-MCP/main/commands/arstatus.md
+curl -o ~/.claude/commands/arstart.md https://raw.githubusercontent.com/Goldentrii/AgentRecall-MCP/main/commands/arstart.md
+curl -o ~/.claude/commands/arsave.md https://raw.githubusercontent.com/Goldentrii/AgentRecall-MCP/main/commands/arsave.md
+curl -o ~/.claude/commands/arsaveall.md https://raw.githubusercontent.com/Goldentrii/AgentRecall-MCP/main/commands/arsaveall.md
 ```
 
 ---
@@ -940,7 +940,7 @@ codex mcp add agent-recall -- npx -y agent-recall-mcp
 ```bash
 mkdir -p ~/.claude/skills/agent-recall
 curl -o ~/.claude/skills/agent-recall/SKILL.md \
-  https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/SKILL.md
+  https://raw.githubusercontent.com/Goldentrii/AgentRecall-MCP/main/SKILL.md
 ```
 
 ---
@@ -1128,17 +1128,17 @@ L5: 洞察索引     recall_insight            「跨项目的经验」
 
 由 [tongwu](https://github.com/Goldentrii) 在 [Novada](https://www.novada.com) 构建。
 
-- Issues & 反馈：[GitHub Issues](https://github.com/Goldentrii/AgentRecall/issues)
+- Issues & 反馈：[GitHub Issues](https://github.com/Goldentrii/AgentRecall-MCP/issues)
 - 邮箱：[tong.wu@novada.com](mailto:tong.wu@novada.com)
 
 MIT 许可证。
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=Goldentrii%2FAgentRecall&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=Goldentrii%2FAgentRecall-MCP&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Goldentrii/AgentRecall&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Goldentrii/AgentRecall&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Goldentrii/AgentRecall&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Goldentrii/AgentRecall-MCP&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Goldentrii/AgentRecall-MCP&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Goldentrii/AgentRecall-MCP&type=date&legend=top-left" />
  </picture>
 </a>
