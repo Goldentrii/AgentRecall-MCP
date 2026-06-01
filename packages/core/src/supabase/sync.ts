@@ -1,11 +1,11 @@
 // packages/core/src/supabase/sync.ts
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import { getSupabaseClient } from "./client.js";
 import { readSupabaseConfig } from "./config.js";
 import { createEmbeddingProvider, type EmbeddingProvider } from "./embedding.js";
+import { getRoot } from "../types.js";
 
 // ---------------------------------------------------------------------------
 // Utilities (exported for testing)
@@ -55,8 +55,11 @@ export function parseMemoryFile(content: string): ParsedMemoryFile {
 }
 
 export function deriveSlug(filePath: string): string {
-  const parts = filePath.split(path.sep);
-  const fileName = path.basename(filePath, ".md");
+  const parts = filePath.split(/[\\/]+/).filter(Boolean);
+  const rawFileName = parts[parts.length - 1] ?? filePath;
+  const fileName = rawFileName.endsWith(".md")
+    ? rawFileName.slice(0, -3)
+    : path.parse(rawFileName).name;
 
   const journalIdx = parts.indexOf("journal");
   const palaceIdx = parts.indexOf("rooms");
@@ -74,7 +77,7 @@ export function deriveSlug(filePath: string): string {
 // ---------------------------------------------------------------------------
 
 export function logSyncError(message: string): void {
-  const logPath = path.join(os.homedir(), ".agent-recall", "sync-errors.log");
+  const logPath = path.join(getRoot(), "sync-errors.log");
   const timestamp = new Date().toISOString();
   const line = `${timestamp} ${message}\n`;
   fs.mkdirSync(path.dirname(logPath), { recursive: true });
