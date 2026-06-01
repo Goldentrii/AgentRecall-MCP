@@ -22,6 +22,7 @@ import { ensureDir } from "../storage/fs-utils.js";
 import { extractKeywords } from "../helpers/auto-name.js";
 import { withLock } from "../storage/filelock.js";
 import { syncToSupabase } from "../supabase/sync.js";
+import { readSupabaseConfig } from "../supabase/config.js";
 
 const MAX_LINES = 200;
 
@@ -31,8 +32,11 @@ const MAX_LINES = 200;
  * Never blocks — returns empty array on any failure.
  */
 export async function fetchDashboardArchivedTitles(): Promise<string[]> {
-  const url = process.env.SUPABASE_URL || "https://fjdtuyflvgylrllujpnc.supabase.co";
-  const key = process.env.SUPABASE_ANON_KEY || "sb_publishable_6Ciu8k-P7yaEWdXZOX6ZVg_W-6QtCzr";
+  const config = readSupabaseConfig();
+  if (!config) return [];
+
+  const url = config.supabase_url.replace(/\/+$/, "");
+  const key = config.supabase_anon_key;
   try {
     const resp = await fetch(
       `${url}/rest/v1/ar_awareness?select=title&is_active=eq.false`,
