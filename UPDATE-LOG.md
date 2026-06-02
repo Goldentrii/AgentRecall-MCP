@@ -230,6 +230,60 @@ When defined, any agent (Claude, GPT, Gemini) can read/write the same memory sto
 
 ---
 
+## Release — v3.4.21 (2026-06-03)
+
+**Patch release shipping the 7-item real-usage feedback pass.** Same conservative
+versioning as 3.4.20 — added tools + protective fixes, no breaking changes.
+
+### Published
+| Package | npm |
+|---|---|
+| `agent-recall-core` | [3.4.21](https://www.npmjs.com/package/agent-recall-core) |
+| `agent-recall-mcp` | [3.4.21](https://www.npmjs.com/package/agent-recall-mcp) |
+| `agent-recall-sdk` | [3.4.21](https://www.npmjs.com/package/agent-recall-sdk) |
+| `agent-recall-cli` | [3.4.21](https://www.npmjs.com/package/agent-recall-cli) |
+
+GitHub: tag `v3.4.21` on `main`.
+
+### Commits behind this release
+```
+bcf1a5a  chore: release v3.4.21 — 7-item real-usage feedback pass
+192c4c2           docs: UPDATE-LOG entry for 7-item real-usage feedback pass
+5818510           feat(check_action): unified pre-action proactive matcher (items 3+5/7)
+eff348e           feat(behavior+session): register_rule tool + startup noise cap (items 6,7/7)
+6c0fe86           feat(session_start): surface dream cron failures as red banner (item 2/7)
+2b008c6           feat(routing): cwd-allowlist for explicit project detection (item 1/7)
+```
+
+Plus (in `~/.claude` repo, auto-synced):
+- Item 4 — `ar-sync-status.py <slug>` no longer prints picker (silent in single-slug mode)
+
+### What ships under v3.4.21 (one-page summary)
+
+| Item | Surface |
+|------|---------|
+| Wrong project routing | `cwd-allowlist.json` per project + cwd-aware `detectProject()` priority. Auto-registers on explicit `resolveProject()`. macOS symlink-safe (`fs.realpathSync`). |
+| Silent dream failures | New `🔴` banner at top of `session_start` when ≥2 consecutive failure nights in `~/.aam/dreams/`. |
+| Pre-action proactive matcher | New MCP tool `check_action({ action_description })` — returns matching behavior rules + active corrections (P0-first) + high-salience insights. Default `min_overlap=2` (signal floor). Deterministic <50 ms. |
+| Permanent behavior rules | New MCP tool `register_rule({ name, when, do })` + `palace/behavior-policies.json` store. Always-loaded above insights/rooms at session_start under "📜 Behavior policies". Hit-counter bumps on each load. |
+| Startup noise cap | session_start surfacing: 3 insights (was 8), 1 cross-project (was 5), 3 palace rooms (was 5). Behavior rules NOT capped — commitments, not context. |
+| Side fixes | Internal `agent-recall-core` dep pin bumped to 3.4.21 in mcp/sdk/cli. `VERSION` constant in `core/src/types.ts` bumped to 3.4.21. |
+
+### Migration
+
+Zero-break:
+- `cwd_allowlist` defaults to empty for existing projects (auto-fills via use)
+- New MCP tools (`check_action`, `register_rule`) are additive
+- `session_start` payload shrunk but the omitted items are still pull-able via `recall()` / `memory_query()`
+- `dream_health` field added to `SessionStartResult` (null when healthy)
+- `behavior_rules` field added to `SessionStartResult` (empty array when none registered)
+
+### Total tool surface after this release
+
+20 MCP tools — pipeline (5) · skills (3) · session (4) · core (5) · dashboard/reflection (2) · new in 3.4.21 (`register_rule`, `check_action`).
+
+---
+
 ## Post-v3.4.20 — Real-Usage Feedback Pass (2026-06-03)
 
 Seven concrete fixes from a Claude agent that ran a 4-hour high-intensity
