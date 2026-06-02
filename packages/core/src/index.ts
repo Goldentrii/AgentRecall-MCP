@@ -141,6 +141,14 @@ export type {
 } from "./storage/behavior-policies.js";
 export { registerRule } from "./tools-logic/register-rule.js";
 export type { RegisterRuleToolInput, RegisterRuleToolResult } from "./tools-logic/register-rule.js";
+export { checkAction } from "./tools-logic/check-action.js";
+export type {
+  CheckActionInput,
+  CheckActionResult,
+  RuleMatch,
+  CorrectionMatch,
+  InsightMatch,
+} from "./tools-logic/check-action.js";
 export { getSessionId, journalFileName, captureLogFileName, resetOwnedFiles, resetSessionState } from "./storage/session.js";
 export type { SaveType, SmartNameOpts } from "./storage/session.js";
 export { acquireLock, withLock } from "./storage/filelock.js";

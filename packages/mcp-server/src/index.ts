@@ -35,6 +35,9 @@ import { register as registerSessionEndReflect } from "./tools/session-end-refle
 // ── Behavior policies (always-loaded IF-THEN rules) ──────────────────────
 import { register as registerRegisterRule } from "./tools/register-rule.js";
 
+// ── Pre-action proactive matcher (items 3 + 5) ──────────────────────────
+import { register as registerCheckAction } from "./tools/check-action.js";
+
 // ── Legacy tools (still importable for SDK/CLI, not registered by default) ──
 // DEPRECATED v3.4: use session_start instead
 // import { register as registerJournalColdStart } from "./tools/journal-cold-start.js";
@@ -146,6 +149,9 @@ registerSessionEndReflect(server);
 
 // Behavior policies (item 6)
 registerRegisterRule(server);
+
+// Pre-action proactive matcher (items 3 + 5)
+registerCheckAction(server);
 
 // ── Extended tools (--full mode only) ────────────────────────────────────────
 // Use when you need project status boards, context caching, or first-time bootstrap.
