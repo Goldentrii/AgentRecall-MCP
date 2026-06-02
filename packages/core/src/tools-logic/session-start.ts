@@ -24,6 +24,7 @@ import { getRoot } from "../types.js";
 import { readSupabaseConfig } from "../supabase/config.js";
 import { backfill } from "../supabase/sync.js";
 import { listMilestones } from "../palace/pipeline.js";
+import { getDreamHealth, type DreamHealth } from "../storage/dream-health.js";
 
 /** Slice text at the nearest word boundary, avoiding mid-word truncation. */
 function sliceAtWord(text: string, maxLen: number): string {
@@ -52,6 +53,12 @@ export interface SessionStartResult {
     last_trajectory: string | null;
     sessions_count: number;
   } | null;
+  /**
+   * Dream cron health — null when healthy, populated when ≥2 consecutive
+   * failure nights detected. Surfaced as a red banner so users notice the
+   * awareness backfill is broken instead of finding out days later.
+   */
+  dream_health: DreamHealth | null;
   /**
    * Project narrative spine summary. Null when no pipeline files exist.
    * Shape: { active_phase, closed_count, last_synthesis, stale_days }
@@ -243,6 +250,10 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
     });
   }
 
+  // Dream cron health — surface when broken for ≥2 nights
+  const dreamHealthRaw = getDreamHealth();
+  const dreamHealth: DreamHealth | null = dreamHealthRaw.banner ? dreamHealthRaw : null;
+
   // Pipeline narrative spine summary — null if no pipeline files exist for project
   const pipelineMilestones = listMilestones(slug);
   let pipeline: SessionStartResult["pipeline"] = null;
@@ -276,6 +287,7 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
     watch_for,
     corrections,
     resume,
+    dream_health: dreamHealth,
     pipeline,
     empty_state: isEmpty ? "No memory found for this project. Try: bootstrap_scan() to import existing projects, or start working and use remember() to save decisions." : undefined,
   };

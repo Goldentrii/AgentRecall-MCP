@@ -13,6 +13,14 @@ function trunc(s: string, n: number): string {
 function formatTerse(result: SessionStartResult): string {
   const lines: string[] = [];
 
+  // ── Dream cron failure banner (red, top priority) ─────────────────────
+  // Surfaces broken automation so the user notices before the awareness
+  // backfill stays stale for another week.
+  if (result.dream_health?.banner) {
+    lines.push(`🔴 ${result.dream_health.banner}`);
+    lines.push("");
+  }
+
   // ── Header ──────────────────────────────────────────────────────────────
   const sessionCount = result.resume?.sessions_count ?? 0;
   const lastDate = result.resume?.last_date ?? "—";

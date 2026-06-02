@@ -126,6 +126,8 @@ export { ensureDir, todayISO, readJsonSafe, writeJsonAtomic } from "./storage/fs
 export { detectProject, resolveProject, listAllProjects } from "./storage/project.js";
 export { readCwdAllowlist, addCwdToAllowlist, findProjectByCwd } from "./storage/cwd-allowlist.js";
 export type { CwdAllowlist } from "./storage/cwd-allowlist.js";
+export { getDreamHealth } from "./storage/dream-health.js";
+export type { DreamHealth } from "./storage/dream-health.js";
 export { getSessionId, journalFileName, captureLogFileName, resetOwnedFiles, resetSessionState } from "./storage/session.js";
 export type { SaveType, SmartNameOpts } from "./storage/session.js";
 export { acquireLock, withLock } from "./storage/filelock.js";
