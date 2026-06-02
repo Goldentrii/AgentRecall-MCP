@@ -128,6 +128,19 @@ export { readCwdAllowlist, addCwdToAllowlist, findProjectByCwd } from "./storage
 export type { CwdAllowlist } from "./storage/cwd-allowlist.js";
 export { getDreamHealth } from "./storage/dream-health.js";
 export type { DreamHealth } from "./storage/dream-health.js";
+export {
+  readBehaviorPolicies,
+  registerBehaviorRule,
+  recordPolicyLoad,
+} from "./storage/behavior-policies.js";
+export type {
+  BehaviorRule,
+  BehaviorPoliciesFile,
+  RegisterRuleInput,
+  RegisterRuleResult,
+} from "./storage/behavior-policies.js";
+export { registerRule } from "./tools-logic/register-rule.js";
+export type { RegisterRuleToolInput, RegisterRuleToolResult } from "./tools-logic/register-rule.js";
 export { getSessionId, journalFileName, captureLogFileName, resetOwnedFiles, resetSessionState } from "./storage/session.js";
 export type { SaveType, SmartNameOpts } from "./storage/session.js";
 export { acquireLock, withLock } from "./storage/filelock.js";

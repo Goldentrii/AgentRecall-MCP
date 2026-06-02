@@ -32,6 +32,9 @@ import { register as registerSkillList } from "./tools/skill-list.js";
 import { register as registerDashboardExport } from "./tools/dashboard-export.js";
 import { register as registerSessionEndReflect } from "./tools/session-end-reflect.js";
 
+// ── Behavior policies (always-loaded IF-THEN rules) ──────────────────────
+import { register as registerRegisterRule } from "./tools/register-rule.js";
+
 // ── Legacy tools (still importable for SDK/CLI, not registered by default) ──
 // DEPRECATED v3.4: use session_start instead
 // import { register as registerJournalColdStart } from "./tools/journal-cold-start.js";
@@ -140,6 +143,9 @@ registerSkillList(server);
 // Dashboard + reflection
 registerDashboardExport(server);
 registerSessionEndReflect(server);
+
+// Behavior policies (item 6)
+registerRegisterRule(server);
 
 // ── Extended tools (--full mode only) ────────────────────────────────────────
 // Use when you need project status boards, context caching, or first-time bootstrap.

@@ -25,6 +25,7 @@ import { readSupabaseConfig } from "../supabase/config.js";
 import { backfill } from "../supabase/sync.js";
 import { listMilestones } from "../palace/pipeline.js";
 import { getDreamHealth, type DreamHealth } from "../storage/dream-health.js";
+import { readBehaviorPolicies, recordPolicyLoad, type BehaviorRule } from "../storage/behavior-policies.js";
 
 /** Slice text at the nearest word boundary, avoiding mid-word truncation. */
 function sliceAtWord(text: string, maxLen: number): string {
@@ -53,6 +54,12 @@ export interface SessionStartResult {
     last_trajectory: string | null;
     sessions_count: number;
   } | null;
+  /**
+   * Always-loaded behavior policies — IF-THEN rules that govern agent
+   * conduct. Surfaced at the TOP of session_start above insights/rooms so
+   * the agent treats them as commitments, not advisory context.
+   */
+  behavior_rules: BehaviorRule[];
   /**
    * Dream cron health — null when healthy, populated when ≥2 consecutive
    * failure nights detected. Surfaced as a red banner so users notice the
@@ -110,15 +117,18 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
     sortedInsights = sortedInsights.filter(i => !archivedTitles.includes(i.title));
   }
 
-  const insights = sortedInsights.slice(0, 8).map((i) => ({
+  // Cap startup noise: top 3 awareness insights (was 8). Anything below the
+  // top 3 by salience pollutes more than it informs at session-start. Agents
+  // can pull deeper via recall() on demand.
+  const insights = sortedInsights.slice(0, 3).map((i) => ({
     title: sliceAtWord(i.title, 200),
     confirmed: i.confirmations ?? 1,
     severity: i.severity ?? "important",
     trend: i.trend,
   }));
 
-  // 3. Active rooms — top 5 by salience
-  const rooms = listRooms(slug).slice(0, 5);
+  // 3. Active rooms — top 3 by salience (was 5). Same noise-cap rationale.
+  const rooms = listRooms(slug).slice(0, 3);
   const active_rooms: Array<{ name: string; salience: number; one_liner: string; topics?: string[]; last_updated: string; stale: boolean }> = rooms.map((r) => ({
     name: r.name,
     salience: r.salience,
@@ -137,9 +147,11 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
     }
   }
 
-  // 4. Cross-project insights matching current context
+  // 4. Cross-project insights matching current context — cap at 1 (was 5).
+  // The top match is almost always the only one worth surfacing at startup;
+  // additional hits are noise. Agents can pull more via recall() when needed.
   const context = input.context ?? slug;
-  const matched = recallInsights(context, 5, slug);
+  const matched = recallInsights(context, 1, slug);
   const cross_project = matched.map((i) => ({
     title: sliceAtWord(i.title, 100),
     from_project: (i.projects?.[0] ?? (i.source ?? "unknown").replace(/\s+\d{4}-\d{2}-\d{2}.*$/, "")).slice(0, 30),
@@ -250,6 +262,12 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
     });
   }
 
+  // Behavior policies — always-loaded high-salience rules. Bump hit counter
+  // FIRST so the returned objects reflect post-bump state (the on-disk store
+  // and the result payload agree on what an agent saw this session).
+  if (readBehaviorPolicies(slug).rules.length > 0) recordPolicyLoad(slug);
+  const behaviorRules = readBehaviorPolicies(slug).rules;
+
   // Dream cron health — surface when broken for ≥2 nights
   const dreamHealthRaw = getDreamHealth();
   const dreamHealth: DreamHealth | null = dreamHealthRaw.banner ? dreamHealthRaw : null;
@@ -287,6 +305,7 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
     watch_for,
     corrections,
     resume,
+    behavior_rules: behaviorRules,
     dream_health: dreamHealth,
     pipeline,
     empty_state: isEmpty ? "No memory found for this project. Try: bootstrap_scan() to import existing projects, or start working and use remember() to save decisions." : undefined,

@@ -30,6 +30,15 @@ function formatTerse(result: SessionStartResult): string {
     lines.push(`Trajectory: ${trunc(result.resume.last_trajectory, 120)}`);
   }
 
+  // ── Behavior policies (always-loaded, above insights/rooms) ────────────
+  if (result.behavior_rules && result.behavior_rules.length > 0) {
+    lines.push("");
+    lines.push("📜 Behavior policies (always follow):");
+    for (const r of result.behavior_rules) {
+      lines.push(`  • [${r.name}] WHEN ${trunc(r.when, 80)} → DO ${trunc(r.do, 100)}`);
+    }
+  }
+
   // ── Hard rules (P0 corrections) — highest priority ───────────────────
   if (result.corrections && result.corrections.length > 0) {
     lines.push("");
