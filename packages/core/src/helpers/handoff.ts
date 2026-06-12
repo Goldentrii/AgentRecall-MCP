@@ -74,7 +74,10 @@ export function generateHandoff(slug: string): string {
   // ── Intention ─────────────────────────────────────────────────────────────
   try {
     const identity = readIdentity(slug);
-    const intention = firstMeaningfulLine(identity);
+    let intention = firstMeaningfulLine(identity);
+    // identity.md often already starts with "**Intention:** ..." — strip the
+    // prefix so the template's own label doesn't double it.
+    if (intention) intention = intention.replace(/^\*{0,2}Intention:?\*{0,2}\s*/i, "");
     if (intention) {
       lines.push(`**Intention:** ${intention}`);
       lines.push("");

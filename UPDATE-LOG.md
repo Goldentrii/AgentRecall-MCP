@@ -230,6 +230,28 @@ When defined, any agent (Claude, GPT, Gemini) can read/write the same memory sto
 
 ---
 
+## Release — v3.4.23 (2026-06-12)
+
+**Ships the entire V4 "Memory as Environment" execution** (perf-check P0s + Sprints 0-2)
+as one patch release, per no-version-inflation policy. Published: agent-recall-{core,mcp,sdk,cli}@3.4.23.
+
+| Area | Change |
+|---|---|
+| Recall latency | 10.5s → 2.5s worst-case → ms after circuit breaker (2s embed timeout + parallel local fallback + honest `degraded` field) |
+| Learning loop | Outcome events fully automatic: `retrieved` at session_start (1/day, local-TZ), `heeded`/`recurred` heuristic at session_end. First KPI data in product history |
+| North-star | 🎯 Alignment line (N% corrections heeded) at top of session_start + dashboard `alignment_precision`. Null until real data — no fake claims |
+| Insight funnel | Confirm-first: near-duplicates (containment ≥0.6) CONFIRM instead of re-add; cap eviction protects count≥2. benchmark/funnel.mjs 18/18 |
+| Correction hygiene | `retractCorrection` + write-time quality gate (rule-only classification, 11/11 calibration) + triage script; 64/81 legacy noise corrections retracted (reversible) |
+| Tool surface | Default MCP registration 18 → 5 (session_start, session_end, remember, recall, check); 13 pull tools behind `--full` (Automaticity Law) |
+| Moment hooks | `ar hook-pretool` (advisory checkAction on publish/push/rm -rf/--force/deploy) + `hook-ambient` precision floor (silence below threshold) |
+| Portable memory | `projects/<slug>/handoff.md` auto-written at every session_end (≤2200 chars, cross-agent briefing); doubled-Intention prefix fixed this release |
+| Review fixes | Local-TZ outcome guards (UTC+8 bug), surfaced correction-gate rejection in `check`, dead degraded-reason discriminant removed |
+
+Full traceback: docs/internal/PERF-CHECK-2026-06-12.md (measured baseline) + docs/internal/V4-PLAN.md
+(sprint briefs) + the "V4 Sprint 1+2 executed" entry below. Suites: consistency 10/10 · funnel 18/18.
+
+---
+
 ## V4 Sprint 1+2 — "Memory as Environment" executed (2026-06-12, local only)
 
 Plan: docs/internal/V4-PLAN.md · Perf baseline: docs/internal/PERF-CHECK-2026-06-12.md
