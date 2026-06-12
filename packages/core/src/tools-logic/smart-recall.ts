@@ -101,7 +101,9 @@ function scoreLabel(score: number): string {
 }
 
 export interface SmartRecallDegraded {
-  reason: "timeout" | "error";
+  // Errors and timeouts intentionally collapse to "timeout" (withTimeout
+  // swallows both); a distinct "error" reason was a dead discriminant.
+  reason: "timeout";
   backend: string;
 }
 

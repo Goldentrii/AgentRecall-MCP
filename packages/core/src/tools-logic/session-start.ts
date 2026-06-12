@@ -282,10 +282,13 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
   // double-counting if session_start is called twice in the same session
   // (e.g. on reconnect or tool retry).
   {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    // Local-TZ date for the 1/day guard (Sprint-0 review: toISOString is UTC,
+    // which breaks the guard for users in UTC+5..+14 — e.g. 07:50 local in UTC+8
+    // is "yesterday" in UTC). "sv" locale formats as YYYY-MM-DD.
+    const todayStr = new Date().toLocaleDateString("sv");
     const nowISO = new Date().toISOString();
     for (const c of corrections) {
-      if (c.last_retrieved?.slice(0, 10) === todayStr) continue; // already counted today
+      if (c.last_retrieved && new Date(c.last_retrieved).toLocaleDateString("sv") === todayStr) continue; // already counted today
       try {
         recordOutcome({
           correction_id: c.id,

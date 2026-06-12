@@ -220,10 +220,11 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
   // Fire-and-forget: outcome tracking must NEVER affect the session_end result.
   if (journalWritten) {
     try {
-      const todayStr = new Date().toISOString().slice(0, 10);
+      // Local-TZ date matching (see session-start.ts guard comment).
+      const todayStr = new Date().toLocaleDateString("sv");
       const nowISO = new Date().toISOString();
       const todays = readCorrections(slug).filter(
-        (c) => c.last_retrieved?.slice(0, 10) === todayStr && c.active !== false
+        (c) => c.last_retrieved && new Date(c.last_retrieved).toLocaleDateString("sv") === todayStr && c.active !== false
       );
       const recurrenceMarker = /\b(again|recurred|repeated|violat|broke the rule|same mistake)\b/i;
       const summaryLower = input.summary.toLowerCase();
