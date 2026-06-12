@@ -11,6 +11,7 @@ import { awarenessUpdate } from "./awareness-update.js";
 import { promoteConfirmedInsights } from "./insight-promotion.js";
 import { consolidateJournalToPalace } from "../palace/consolidate.js";
 import { resolveProject } from "../storage/project.js";
+import { readCorrections, recordOutcome } from "../storage/corrections.js";
 import { ensurePalaceInitialized, listRooms } from "../palace/rooms.js";
 import { journalDir } from "../storage/paths.js";
 import { readAwarenessState } from "../palace/awareness.js";
@@ -204,6 +205,54 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
     journalWritten = true;
   } catch (err) {
     journalWriteError = err instanceof Error ? err.message : String(err);
+  }
+
+  // 1b. P0-B: auto-record heeded/recurred outcomes for corrections that were
+  // retrieved today (last_retrieved date matches today). This is a default-heeded
+  // heuristic with recurrence detection — coarse but closes the learning loop
+  // automatically without requiring the agent to remember to call recordOutcome.
+  //
+  // Heuristic v1: classify "recurred" only when the session summary contains
+  // ≥ 2 content words from the correction rule (length ≥ 4, lowercased) AND
+  // also contains a recurrence marker. Default to "heeded" when markers absent.
+  // Precision improves when check_action wiring lands in a future sprint.
+  //
+  // Fire-and-forget: outcome tracking must NEVER affect the session_end result.
+  if (journalWritten) {
+    try {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const nowISO = new Date().toISOString();
+      const todays = readCorrections(slug).filter(
+        (c) => c.last_retrieved?.slice(0, 10) === todayStr && c.active !== false
+      );
+      const recurrenceMarker = /\b(again|recurred|repeated|violat|broke the rule|same mistake)\b/i;
+      const summaryLower = input.summary.toLowerCase();
+      for (const c of todays) {
+        try {
+          // Extract content words (≥ 4 chars) from the rule text
+          const ruleWords = c.rule
+            .toLowerCase()
+            .split(/\W+/)
+            .filter((w) => w.length >= 4);
+          const matchCount = ruleWords.filter((w) => summaryLower.includes(w)).length;
+          const hasRecurrenceMarker = recurrenceMarker.test(input.summary);
+          const violated = matchCount >= 2 && hasRecurrenceMarker;
+          recordOutcome({
+            correction_id: c.id,
+            project: slug,
+            kind: violated ? "recurred" : "heeded",
+            at: nowISO,
+            evidence: violated
+              ? "recurrence markers in session summary"
+              : "no recurrence evidence in session summary",
+          });
+        } catch {
+          // Per-correction errors are swallowed — don't abort the loop
+        }
+      }
+    } catch {
+      // Outcome tracking must NEVER break session_end — swallow all errors
+    }
   }
 
   // 2. Update awareness with insights

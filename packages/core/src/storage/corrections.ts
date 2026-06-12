@@ -37,6 +37,9 @@ export interface CorrectionRecord {
   precision?: number;         // heeded / retrieved (cached, recomputed on outcome)
   last_retrieved?: string;    // ISO timestamp
   last_outcome?: string;      // ISO timestamp of most recent heeded/recurrence event
+  /** Set when retractCorrection() soft-deletes this record. */
+  retracted_at?: string;      // ISO timestamp of retraction
+  retract_reason?: string;    // Free-text reason (e.g. "triage-2026-06-12: capture noise")
 }
 
 export interface CorrectionOutcome {
@@ -126,10 +129,66 @@ function applyCorrectionDefaults(record: CorrectionRecord, holderDefault: string
 // ---------------------------------------------------------------------------
 
 /**
+ * Capture-quality gate — rejects context-free fragments, pure acknowledgments,
+ * and text that carries no actionable signal.
+ *
+ * Rules (in order):
+ *  1. Must be ≥ 15 chars after trim.
+ *  2. Must NOT be a pure acknowledgment / fragment (applies only when ≤ 60 chars).
+ *  3. Must contain at least one imperative/modal marker — i.e. an actionable signal.
+ *
+ * Returns { ok: true } when the text passes all gates, or { ok: false, reason }
+ * explaining which gate fired. Callers may surface the reason in a warning.
+ */
+export function isLikelyRealCorrection(text: string): { ok: boolean; reason?: string } {
+  const trimmed = text.trim();
+
+  // Gate 1 — minimum length
+  if (trimmed.length < 15) {
+    return { ok: false, reason: "too short (< 15 chars)" };
+  }
+
+  // Gate 2 — pure-acknowledgment / fragment patterns (only when ≤ 60 chars to
+  // avoid false-positive rejections on longer elaborations that happen to start
+  // with "ok" or "yes").
+  //   • "no" / "no, that's wrong"
+  //   • "ok ...", "okay ...", "good ...", "yes ...", "wait ...", "hmm(m+) ..."
+  const acknowledgmentPattern = /^(no[,.]?\s*(that'?s\s+wrong\.?)?|ok(ay)?\b.*|good\b.*|yes\b.*|wait\b.*|hmm+\b.*)$/i;
+  if (trimmed.length <= 60 && acknowledgmentPattern.test(trimmed)) {
+    return { ok: false, reason: "pure acknowledgment or fragment — no rule content" };
+  }
+
+  // Gate 3 — must contain at least one imperative/modal marker
+  const actionablePattern = /\b(never|always|don'?t|do not|must|should|use|stop|avoid|prefer|instead|make sure|remember to)\b/i;
+  if (!actionablePattern.test(trimmed)) {
+    return { ok: false, reason: "no actionable signal — missing imperative/modal marker (never/always/don't/must/should/use/stop/avoid/prefer/instead/make sure/remember to)" };
+  }
+
+  return { ok: true };
+}
+
+export interface WriteCorrectionResult {
+  written: boolean;
+  reason?: string;
+}
+
+/**
  * Write a correction to persistent storage.
  * Auto-detects severity from the rule/context text.
+ *
+ * Applies the capture-quality gate before writing. Returns { written: false, reason }
+ * if the gate rejects the text — callers that previously ignored the void return
+ * are unaffected (the return value was void, now it is an object; ignoring it
+ * still compiles and runs correctly).
  */
-export function writeCorrection(project: string, correction: CorrectionRecord): void {
+export function writeCorrection(project: string, correction: CorrectionRecord): WriteCorrectionResult {
+  // Capture-quality gate — reject noise before touching disk
+  const gateText = `${correction.rule} ${correction.context}`.trim();
+  const gate = isLikelyRealCorrection(gateText);
+  if (!gate.ok) {
+    return { written: false, reason: gate.reason };
+  }
+
   const dir = correctionsDir(project);
   ensureDir(dir);
 
@@ -144,6 +203,8 @@ export function writeCorrection(project: string, correction: CorrectionRecord): 
   const tmp = `${filepath}.tmp.${process.pid}.${Date.now()}`;
   fs.writeFileSync(tmp, JSON.stringify(record, null, 2), { encoding: "utf-8", mode: 0o600 });
   fs.renameSync(tmp, filepath);
+
+  return { written: true };
 }
 
 /**
@@ -185,6 +246,44 @@ export function readActiveCorrections(project: string): CorrectionRecord[] {
  */
 export function readP0Corrections(project: string): CorrectionRecord[] {
   return readCorrections(project).filter((r) => r.severity === "p0" && r.active !== false);
+}
+
+export interface RetractCorrectionResult {
+  success: boolean;
+  id?: string;
+  error?: string;
+}
+
+/**
+ * Retract (soft-delete) a correction by setting active:false.
+ * The file is rewritten atomically — never deleted. The record remains in
+ * _outcomes.jsonl history and can be manually reactivated by editing the JSON.
+ */
+export function retractCorrection(project: string, id: string, reason?: string): RetractCorrectionResult {
+  const dir = correctionsDir(project);
+
+  // Find the correction record by id
+  const all = readCorrections(project);
+  const target = all.find((r) => r.id === id);
+  if (!target) {
+    return { success: false, error: `correction not found: ${id}` };
+  }
+
+  const updated: CorrectionRecord = {
+    ...target,
+    active: false,
+    retracted_at: new Date().toISOString(),
+    ...(reason !== undefined ? { retract_reason: reason } : {}),
+  };
+
+  const filename = `${updated.date}-${slugify(updated.rule || updated.id)}.json`;
+  const filepath = path.join(dir, filename);
+  // Atomic rewrite — tmp + rename, mode 0600
+  const tmp = `${filepath}.tmp.${process.pid}.${Date.now()}`;
+  fs.writeFileSync(tmp, JSON.stringify(updated, null, 2), { encoding: "utf-8", mode: 0o600 });
+  fs.renameSync(tmp, filepath);
+
+  return { success: true, id };
 }
 
 /**

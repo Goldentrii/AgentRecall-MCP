@@ -39,3 +39,27 @@ P1-D unjam insight funnel (similarity-confirmation; eviction prefers old count-1
 P1-E pull→push conversions; demote zero-usage tools behind --full
 P1-F ambient hook precision floor (silence > noise)
 P2   local semantic embeddings (MiniLM) → fixes paraphrase blindness; then wire Hopfield
+
+---
+## Execution log (same day)
+
+Shipped (verified, local commit only):
+- P0-A: recall latency 10,549ms → 2,512ms worst-case (2s embed timeout + 2.5s budget +
+  parallel local fallback + process circuit breaker → ms after 2 remote failures).
+  Honest `degraded` field on fallback. Env overrides: AGENT_RECALL_EMBED_TIMEOUT_MS,
+  AGENT_RECALL_RECALL_BUDGET_MS.
+- P0-B: outcome loop ALIVE — session_start auto-writes `retrieved` (1/correction/day),
+  session_end heuristically writes `heeded`/`recurred` (default-heeded + recurrence
+  markers; documented as Heuristic v1). First KPI data ever: retrieved=6 heeded=6
+  precision=1.0 on AgentRecall project.
+- P0-C (partial): retractCorrection() + isLikelyRealCorrection() capture gate wired into
+  writeCorrection (rejects fragments at write time); scripts/correction-triage.mjs dry-run.
+
+NOT applied (honest deferral):
+- Bulk triage of the 81 existing corrections: dry-run flags 45/81 as noise (56%), but
+  spot-check found false positives BOTH ways — real preference rules flagged noise
+  ("beige/warm palette", "one version bump per release") and famous noise kept ok
+  ("No, that's wrong") because classification runs on rule+context concatenated.
+  Next session: classify on rule only + allow preference-statements ("user wants/prefers"),
+  then re-run triage. Fresh-eyes code review of this diff also queued (deferred for
+  context budget — first task next session).

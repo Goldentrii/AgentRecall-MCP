@@ -155,8 +155,19 @@ export type { SaveType, SmartNameOpts } from "./storage/session.js";
 export { acquireLock, withLock } from "./storage/filelock.js";
 
 // Storage — corrections
-export { writeCorrection, readCorrections, readActiveCorrections, readP0Corrections } from "./storage/corrections.js";
-export type { CorrectionRecord } from "./storage/corrections.js";
+export {
+  writeCorrection,
+  readCorrections,
+  readActiveCorrections,
+  readP0Corrections,
+  retractCorrection,
+  isLikelyRealCorrection,
+} from "./storage/corrections.js";
+export type {
+  CorrectionRecord,
+  WriteCorrectionResult,
+  RetractCorrectionResult,
+} from "./storage/corrections.js";
 
 // Helpers
 export {
@@ -232,7 +243,7 @@ export { journalMerge, type JournalMergeInput, type MergeReceipt } from "./tools
 // Tool logic — smart routing
 export { smartRemember, type SmartRememberInput, type SmartRememberResult } from "./tools-logic/smart-remember.js";
 export { smartRemember as remember } from "./tools-logic/smart-remember.js";
-export { smartRecall, type SmartRecallInput, type SmartRecallResult, type SmartRecallResultItem } from "./tools-logic/smart-recall.js";
+export { smartRecall, type SmartRecallInput, type SmartRecallResult, type SmartRecallResultItem, type SmartRecallDegraded } from "./tools-logic/smart-recall.js";
 
 // Tool logic — v3.4 composite tools (5-tool surface)
 export { sessionStart, type SessionStartInput, type SessionStartResult } from "./tools-logic/session-start.js";
@@ -296,7 +307,7 @@ export { syncToSupabase, backfill, contentHash, parseMemoryFile, deriveSlug, log
 export type { ParsedMemoryFile } from "./supabase/sync.js";
 
 // RecallBackend
-export { LocalRecallBackend, getRecallBackend, resetRecallBackend } from "./tools-logic/recall-backend.js";
+export { LocalRecallBackend, getRecallBackend, resetRecallBackend, recordRemoteFailure, recordRemoteSuccess } from "./tools-logic/recall-backend.js";
 export type { RecallBackend } from "./tools-logic/recall-backend.js";
 
 // Supabase — recall backend
