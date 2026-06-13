@@ -366,7 +366,11 @@ export function recordOutcome(outcome: CorrectionOutcome): void {
     updated.last_outcome = outcome.at;
   }
   const r = updated.retrieved_count ?? 0;
-  updated.precision = r > 0 ? Number(((updated.heeded_count ?? 0) / r).toFixed(3)) : undefined;
+  // Clamp to [0,1]: `retrieved` is guarded 1/day but `heeded` can fire on every
+  // session_end, so raw heeded/retrieved can exceed 1.0 ("150% heeded" is
+  // nonsense). min(1, …) keeps the metric honest. (Root-cause follow-up: apply
+  // the same 1/day guard to heeded as retrieved has, for finer resolution.)
+  updated.precision = r > 0 ? Math.min(1, Number(((updated.heeded_count ?? 0) / r).toFixed(3))) : undefined;
 
   // Re-write the JSON file atomically (tmp + rename — prevents truncation on SIGTERM).
   const filename = `${updated.date}-${slugify(updated.rule || updated.id)}.json`;
@@ -409,7 +413,7 @@ export function getCorrectionKPIs(project: string): CorrectionKPI {
     retrieved,
     heeded,
     recurred,
-    precision: retrieved > 0 ? Number((heeded / retrieved).toFixed(3)) : NaN,
+    precision: retrieved > 0 ? Math.min(1, Number((heeded / retrieved).toFixed(3))) : NaN,
     noise_candidates: noise,
     high_signal: hot,
   };

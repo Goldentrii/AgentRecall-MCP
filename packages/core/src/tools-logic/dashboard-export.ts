@@ -9,7 +9,19 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import * as os from "node:os";
 import { getRoot } from "../types.js";
+import { listJournalFiles } from "../helpers/journal-files.js";
+import { buildRecentActivity, type ActivityEvent } from "../helpers/activity-feed.js";
+import { readActiveCorrections, getCorrectionKPIs, type CorrectionKPI } from "../storage/corrections.js";
+import { listMilestones, summarize as summarizeMilestone, type MilestoneSummary } from "../palace/pipeline.js";
+import { listRooms } from "../palace/rooms.js";
+import type { RoomMeta } from "../types.js";
+import { listSkills } from "../palace/skills.js";
+import { readAwarenessState } from "../palace/awareness.js";
+import { palaceDir } from "../storage/paths.js";
+import { readGraph } from "../palace/graph.js";
+import { buildIndexEntry, type NamingIndexEntry } from "../naming.js";
 
 /**
  * Scan for ALL projects with any memory layer (journal, palace, corrections, skills, pipeline).
@@ -30,15 +42,6 @@ function listAllProjectsForDashboard(): string[] {
   }
   return out.sort();
 }
-import { listJournalFiles } from "../helpers/journal-files.js";
-import { readActiveCorrections, getCorrectionKPIs, type CorrectionKPI } from "../storage/corrections.js";
-import { listMilestones, summarize as summarizeMilestone, type MilestoneSummary } from "../palace/pipeline.js";
-import { listRooms } from "../palace/rooms.js";
-import type { RoomMeta } from "../types.js";
-import { listSkills } from "../palace/skills.js";
-import { readAwarenessState } from "../palace/awareness.js";
-import { palaceDir } from "../storage/paths.js";
-import { buildIndexEntry, type NamingIndexEntry } from "../naming.js";
 
 export interface DashboardProjectSnapshot {
   slug: string;
@@ -73,6 +76,46 @@ export interface DashboardProjectSnapshot {
    * Null when retrieved === 0 (no outcome data yet — no fake claims).
    */
   alignment_precision: number | null;
+  /**
+   * FEED 4 — alignment detail object (additive; alignment_precision kept for back-compat).
+   * Promotes the bare precision number into a full KPI object.
+   */
+  alignment: {
+    precision: number | null;
+    retrieved: number;
+    heeded: number;
+    recurred: number;
+  };
+  /**
+   * FEED 2 — recent activity timeline, newest-first, up to 20 events.
+   * Merges sessions, corrections, outcomes, pipeline phases, and skills.
+   */
+  recent_activity: ActivityEvent[];
+  /**
+   * FEED 3 — palace graph edges for this project (deduped, no self-loops).
+   * source/target are room-level slugs (first path segment before "/").
+   */
+  palace_edges: Array<{ source: string; target: string; type: string; weight: number }>;
+}
+
+/** One cell in the 14-day dream health heatmap. */
+export interface DreamHealthCell {
+  date: string;     // YYYY-MM-DD
+  status: "ok" | "fail" | "none";
+}
+
+/** FEED 1 — machine-global dream health (14-day heatmap + summary). */
+export interface DashboardDreamHealth {
+  /** 14 cells, ordered oldest→newest (index 0 = 13 days ago, index 13 = yesterday). */
+  cells: DreamHealthCell[];
+  success_count: number;
+  fail_count: number;
+  /** Date string of most recent failure, or null. */
+  last_fail_date: string | null;
+  /** Date string of most recent success, or null. */
+  last_success_date: string | null;
+  /** Banner string when consecutive_failures >= 2, else null. */
+  banner: string | null;
 }
 
 export interface DashboardSnapshot {
@@ -86,6 +129,11 @@ export interface DashboardSnapshot {
   };
   /** Canonical naming index — every well-named file across all projects. */
   naming_index: NamingIndexEntry[];
+  /**
+   * FEED 1 — machine-global dream health heatmap (14 days).
+   * This is NOT per-project — AAM dreams run against the whole memory system.
+   */
+  dream_health: DashboardDreamHealth;
 }
 
 export interface DashboardExportInput {
@@ -100,6 +148,131 @@ export interface DashboardExportResult {
   generated_at: string;
   project_count: number;
   snapshot: DashboardSnapshot;
+}
+
+// ---------------------------------------------------------------------------
+// FEED 1: 14-day dream health heatmap
+// ---------------------------------------------------------------------------
+
+const DREAMS_DIR = path.join(os.homedir(), ".aam", "dreams");
+const HEATMAP_DAYS = 14;
+const DREAM_BANNER_THRESHOLD = 2;
+
+function dateNDaysAgo(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+function isDreamSuccess(logPath: string): boolean {
+  try {
+    const content = fs.readFileSync(logPath, "utf-8");
+    return /Dream(?:\s+run)?\s+complete/i.test(content);
+  } catch {
+    return false;
+  }
+}
+
+function buildDreamHealth14Days(): DashboardDreamHealth {
+  const cells: DreamHealthCell[] = [];
+  let successCount = 0;
+  let failCount = 0;
+  let lastFailDate: string | null = null;
+  let lastSuccessDate: string | null = null;
+
+  // Build cells oldest→newest: index 0 = (HEATMAP_DAYS-1) days ago, index 13 = yesterday
+  // "Today" is in-progress, so we always stop at yesterday (i=1).
+  for (let i = HEATMAP_DAYS; i >= 1; i--) {
+    const dateStr = dateNDaysAgo(i);
+    if (!fs.existsSync(DREAMS_DIR)) {
+      cells.push({ date: dateStr, status: "none" });
+      continue;
+    }
+    const logPath = path.join(DREAMS_DIR, `run-${dateStr}.log`);
+    if (!fs.existsSync(logPath)) {
+      cells.push({ date: dateStr, status: "none" });
+      continue;
+    }
+    if (isDreamSuccess(logPath)) {
+      cells.push({ date: dateStr, status: "ok" });
+      successCount++;
+      // Loop goes oldest→newest (i decreases). Overwrite every time so the
+      // final value is the most-recent (largest date) success encountered.
+      lastSuccessDate = dateStr;
+    } else {
+      cells.push({ date: dateStr, status: "fail" });
+      failCount++;
+      // Same: overwrite to keep the most-recent failure date.
+      lastFailDate = dateStr;
+    }
+  }
+
+  // Compute consecutive failures (from most recent cell backwards)
+  let consecutiveFailures = 0;
+  for (let i = cells.length - 1; i >= 0; i--) {
+    if (cells[i].status === "fail") {
+      consecutiveFailures++;
+    } else if (cells[i].status === "ok") {
+      break;
+    }
+    // "none" breaks the streak too (no run = unknown health)
+    else {
+      break;
+    }
+  }
+
+  let banner: string | null = null;
+  if (consecutiveFailures >= DREAM_BANNER_THRESHOLD) {
+    const lastSuccess = lastSuccessDate ?? `>${HEATMAP_DAYS} days ago`;
+    banner =
+      `⚠ Dream cron failed ${consecutiveFailures} nights in a row ` +
+      `(last success: ${lastSuccess}). The awareness backfill is broken — ` +
+      `check ~/.aam/dreams/run-${lastFailDate}.log for auth or network errors.`;
+  }
+
+  return {
+    cells,
+    success_count: successCount,
+    fail_count: failCount,
+    last_fail_date: lastFailDate,
+    last_success_date: lastSuccessDate,
+    banner,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// FEED 3: palace graph edges (per-project)
+// ---------------------------------------------------------------------------
+
+function buildPalaceEdges(
+  slug: string,
+): Array<{ source: string; target: string; type: string; weight: number }> {
+  try {
+    const pd = palaceDir(slug);
+    const graph = readGraph(pd);
+    const seen = new Set<string>();
+    const edges: Array<{ source: string; target: string; type: string; weight: number }> = [];
+
+    for (const edge of graph.edges) {
+      // Extract room-level slug (first path segment)
+      const source = edge.from.split("/")[0];
+      const target = edge.to.split("/")[0];
+
+      // Drop self-loops
+      if (source === target) continue;
+
+      // Dedupe by source+target+type
+      const key = `${source}::${target}::${edge.type}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      edges.push({ source, target, type: edge.type, weight: edge.weight });
+    }
+
+    return edges;
+  } catch {
+    return [];
+  }
 }
 
 function countTopicsInRoom(slug: string, room: RoomMeta): number {
@@ -147,6 +320,12 @@ function snapshotProject(slug: string): DashboardProjectSnapshot {
   // Null when retrieved === 0 — no fake claims before real outcome data exists
   const alignmentPrecision = kpis.retrieved > 0 ? kpis.precision : null;
 
+  // FEED 2 — recent activity (20 events, newest-first)
+  const recentActivity = buildRecentActivity(slug, 20);
+
+  // FEED 3 — palace graph edges
+  const palaceEdges = buildPalaceEdges(slug);
+
   return {
     slug,
     total_sessions: journals.length,
@@ -178,7 +357,19 @@ function snapshotProject(slug: string): DashboardProjectSnapshot {
       kpis,
     },
     global_insights_top: globalInsightsTop,
+    // Back-compat field (bare number)
     alignment_precision: alignmentPrecision,
+    // FEED 4 — full alignment object (additive)
+    alignment: {
+      precision: alignmentPrecision,
+      retrieved: kpis.retrieved,
+      heeded: kpis.heeded,
+      recurred: kpis.recurred,
+    },
+    // FEED 2
+    recent_activity: recentActivity,
+    // FEED 3
+    palace_edges: palaceEdges,
   };
 }
 
@@ -314,6 +505,8 @@ export async function dashboardExport(input: DashboardExportInput): Promise<Dash
 
   const namingIndex = buildNamingIndex(snapshots);
   const awareness = readAwarenessState();
+  // FEED 1 — machine-global dream health heatmap
+  const dreamHealth = buildDreamHealth14Days();
 
   const snapshot: DashboardSnapshot = {
     generated_at: new Date().toISOString(),
@@ -325,6 +518,7 @@ export async function dashboardExport(input: DashboardExportInput): Promise<Dash
       naming_index_count: namingIndex.length,
     },
     naming_index: namingIndex,
+    dream_health: dreamHealth,
   };
 
   const jsonPath = path.join(root, "dashboard.json");

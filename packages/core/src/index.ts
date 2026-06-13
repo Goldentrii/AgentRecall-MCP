@@ -430,4 +430,10 @@ export type {
   DashboardExportResult,
   DashboardSnapshot,
   DashboardProjectSnapshot,
+  DashboardDreamHealth,
+  DreamHealthCell,
 } from "./tools-logic/dashboard-export.js";
+
+// Helpers — activity feed
+export { buildRecentActivity } from "./helpers/activity-feed.js";
+export type { ActivityEvent } from "./helpers/activity-feed.js";
