@@ -28,14 +28,25 @@ export function createRoom(
   connections: string[] = []
 ): RoomMeta {
   const pd = palaceDir(project);
+  // Reject empty/whitespace slugs at the source. An empty slug used to slip through
+  // (sanitizeSlug("") => "unnamed") creating a blank room whose meta.slug stayed ""
+  // — desynced from its on-disk dir and crashing slug-keyed consumers (e.g. the
+  // Cytoscape palace graph). Guard here so all callers are covered.
+  if (!slug || !slug.trim()) {
+    throw new Error(
+      `createRoom: room slug is empty. Provide a non-empty room slug (e.g. 'goals', 'architecture'). agent_instruction: retry with a concrete room name.`
+    );
+  }
   const safeSlug = sanitizeSlug(slug);
   const roomPath = path.join(pd, "rooms", safeSlug);
   ensureDir(roomPath);
 
+  // Persist the SANITIZED slug so meta.slug always matches the on-disk directory.
+  const safeName = name && name.trim() ? name : safeSlug;
   const now = new Date().toISOString();
   const meta: RoomMeta = {
-    slug,
-    name,
+    slug: safeSlug,
+    name: safeName,
     description,
     created: now,
     updated: now,

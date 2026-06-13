@@ -544,6 +544,54 @@ The 4-family math survey produced 4 ready-to-implement primitives. Hopfield (6k)
 
 ---
 
+## War Room dashboard — production hardening + empty-room routing fix (2026-06-13/14)
+
+Took the `claude-design` war-room dashboard from a 100%-mock mockup to a real-data, fully-offline, accessible operations dashboard — and, in the process, surfaced and fixed a real memory-routing bug in the palace layer.
+
+### Track 1 — exporter feeds (committed 8633f60, prior)
+`dashboard-export.ts` grew 4 missing panel feeds (14-day dream-health heatmap, `recent_activity[]`, `palace_edges[]`, per-project `alignment{}`) + `activity-feed.ts`. Precision clamped to [0,1] (a per-session `heeded` increment could exceed the 1/day-guarded `retrieved`, yielding precision > 1.0).
+
+### Track 2 — dashboard HTML (this session)
+Worker (Sonnet) + two fresh-eyes review rounds (code-reviewer, never self-review) + live headless verification in the user's Chrome.
+
+| Fix | Severity | What |
+|-----|----------|------|
+| Offline | P0 | Vendored ECharts 5.4.3, Cytoscape 3.26.0, Nunito + JetBrains-Mono → local `static/` (11 woff2 + 2 JS + fonts.css). **0 network resource loads.** Kills the zero-cloud/privacy contradiction. |
+| Real data | P0 | `fetch('./dashboard.json')` + 5s poll bound to the verified schema; MOCK demoted to a labeled cold-start fallback. |
+| States | P0 | Loading / fetch-error / per-panel empty states; `safeNum`/`safePct` guards — **no NaN/null/undefined reaches the DOM**. |
+| `0 \|\| fallback` bug | HIGH | Falsy-coalesce let a real `0` retrieved/heeded fall through to the kpis value → explicit null checks. |
+| NaN at source | HIGH | `precision` normalized to null once after resolve, instead of relying on every downstream guard. |
+| ResizeObserver leak | HIGH | Observer was stored on the freshly-disposed ECharts instance → one leaked per 5s poll. Moved to a module-level ref, disconnected before re-render. (Verified: 8 renders → 1 live observer.) |
+| Reduced-motion | P1 | Now gates ECharts entrance animation + Cytoscape layout, not just CSS. |
+| a11y | P1 | `role`/`aria-label` per panel, `aria-live` banners, keyboard-focusable cards, color+glyph status redundancy (✓/✗/·). |
+| Agent contract | P1 | `⤓ JSON` copy button + HTML comment pointing agents at `~/.agent-recall/dashboard.json` (read JSON, don't scrape DOM). |
+| Clipboard on file:// | MED | Guarded `navigator.clipboard` undefined in non-secure context. |
+| Scale | P2 | Cytoscape capped to top-30 rooms by salience. |
+
+Installed to runtime `~/.agent-recall/{dashboard.html,static/}` (old → `dashboard-legacy.html`) and shipped copy in `scripts/`.
+
+### Track 3 — empty-slug palace room bug (root cause, found via the dashboard crash)
+The Cytoscape palace graph crashed on the **AgentRecall** project with `Can not create element with invalid string ID ''`. Root cause was a real memory bug, not a dashboard bug:
+
+- `palace_write` accepted an empty `room` arg with no guard. `sanitizeSlug("")` returns `"unnamed"`, so the on-disk dir was `unnamed/`, but `createRoom` persisted the **raw** slug `""` into `_room.json` — meta desynced from disk.
+- Over time **216 writes** routed to this nameless room.
+
+Fixes (all green: build 0 errors, consistency 10/10, funnel 18/18, new `room-slug-guards.mjs` 9/9):
+
+| Layer | Fix | File |
+|-------|-----|------|
+| Root cause | `createRoom` throws on empty/whitespace slug; persists `sanitizeSlug(slug)` into meta (slug now always matches dir) | `palace/rooms.ts` |
+| Boundary | `palaceWrite` throws on empty/whitespace `room` before any side effect | `tools-logic/palace-write.ts` |
+| Boundary | MCP `room` schema: `z.string().min(1).regex(/[a-zA-Z0-9]/)` (per the CLAUDE.md `z.string()`→`path.join` rule) | `mcp-server/.../palace-write.ts` |
+| Regression (caught in review) | whitespace-only `palace_room` is truthy → trim-guard in `journal-write`/`journal-capture` so the new throw can't abort a journal write that already hit disk | `tools-logic/journal-*.ts` |
+| Consistency | `palaceWrite` routes + returns `safeRoom` (matches persisted meta.slug) | `tools-logic/palace-write.ts` |
+| Data repair | existing blank `unnamed/_room.json` repaired to `slug:"unnamed"` (non-destructive; 216-access history preserved for user to delete via `ar`) | runtime data |
+| Defense-in-depth | dashboard filters empty-slug rooms before building Cytoscape nodes | `dashboard.html` |
+
+**Verification:** AgentRecall palace now renders all 12 rooms (incl. repaired `unnamed`), 48 projects, 0 console errors, fonts load offline, DOM clean.
+
+---
+
 ## Design Principles (from the review session, 2026-04-17)
 
 1. **Hooks over discretion** — critical saves must be harness-enforced, not agent-decided

@@ -75,7 +75,9 @@ export async function journalCapture(input: JournalCaptureInput): Promise<Journa
   }
 
   let palaceResult: JournalCaptureResult["palace"] = null;
-  if (input.palace_room) {
+  // Trim-guard for consistency with journal-write/palace-write (the try/catch below
+  // would swallow the createRoom throw anyway, but skip the no-op work cleanly).
+  if (input.palace_room && input.palace_room.trim()) {
     try {
       ensurePalaceInitialized(slug);
       if (!roomExists(slug, input.palace_room)) {
