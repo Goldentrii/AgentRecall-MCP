@@ -592,6 +592,22 @@ Fixes (all green: build 0 errors, consistency 10/10, funnel 18/18, new `room-slu
 
 ---
 
+## War-room dashboard — demo-hardening (2026-06-15)
+
+Pre-demo review (boss/external audience) of the war-room dashboard surfaced 4 credibility blemishes + 1 metric bug. All fixed and verified live (Chrome, 0 console errors); suites green (consistency 10/10, funnel 18/18, new `heeded-guard.mjs` 5/5).
+
+| Issue | Fix | File |
+|-------|-----|------|
+| Dashboard listed 48 "projects" incl. junk (`.aam`, `..-..`, `_archived_*`, a `.md` leak, a UUID dir, empty scaffolds) | New `isRealProjectSlug` (no dot/underscore/`.md`/UUID/denylist) + `hasRealMemory` gate (≥1 journal entry OR ≥1 palace topic). 48 → 18, matching the `arstatus` CLI (consistency anchor). Palace-only projects still show (correct for other npm users); broken-symlink `statSync` guarded | `tools-logic/dashboard-export.ts` |
+| Pipeline panel empty for all projects (narrative layer unused) | Repurposed → **Memory Composition**: real per-project stats (sessions/rooms/topics/skills/corrections/links + "memory since" span) | `scripts/dashboard.html` |
+| Stale banner conflated data-age with "dream cron stuck" | Banner copy fixed to "Dashboard data N old — re-run dashboard_export" | `scripts/dashboard.html` |
+| Synthetic sine "sparkline" posing as real precision history | Replaced with honest "precision trend · tracking from now" placeholder | `scripts/dashboard.html` |
+| Metric bug: "11/10 heeded" (heeded_count > retrieved_count) | Root cause: session_end recorded a `heeded` outcome on EVERY same-day call while `retrieved` is 1/day-guarded. Added matching 1/day guard via `last_outcome`; reconciled 3 existing inflated counters (cap heeded ≤ retrieved) | `tools-logic/session-end.ts` + runtime data |
+
+Reviewed by fresh-eyes code-reviewer (GO). Local-only — no push/publish/version-bump per REDLINE.
+
+---
+
 ## Design Principles (from the review session, 2026-04-17)
 
 1. **Hooks over discretion** — critical saves must be harness-enforced, not agent-decided

@@ -23,22 +23,78 @@ import { palaceDir } from "../storage/paths.js";
 import { readGraph } from "../palace/graph.js";
 import { buildIndexEntry, type NamingIndexEntry } from "../naming.js";
 
+// Non-project directories that leak into ~/.agent-recall/projects/ — filesystem
+// path fragments, accidental cwd-derived slugs, scaffolds, and test fixtures.
+// Mirrors the CLI status board (ar-sync-status.py SKIP_SLUGS) so the dashboard
+// and the terminal board agree on what counts as a real project.
+const NON_PROJECT_SLUGS = new Set<string>([
+  "build",
+  "Downloads",
+  "Projects",
+  "default",
+  "runtime",
+  "monitor",
+  "mcp",
+  "phase-1",
+  "this-project-does-not-exist-xyz",
+  "not-a-real-project-xyz",
+]);
+const UUID_SLUG_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
- * Scan for ALL projects with any memory layer (journal, palace, corrections, skills, pipeline).
- * Stricter than listAllProjects which requires journal entries — dashboard cares about everything.
+ * A slug is a real project only if it isn't a dotdir / underscore-dir / leaked
+ * filename / UUID / known non-project. Structural rules first (cheap, robust),
+ * then the explicit denylist.
+ */
+function isRealProjectSlug(slug: string): boolean {
+  if (!slug || slug.startsWith(".") || slug.startsWith("_")) return false;
+  if (slug.endsWith(".md")) return false;
+  if (UUID_SLUG_RE.test(slug)) return false;
+  if (NON_PROJECT_SLUGS.has(slug)) return false;
+  return true;
+}
+
+/** True if a project has substantive memory: at least one journal entry OR at
+ * least one palace topic file. Broader than journal-only (a palace-only project
+ * — real for some agent workflows — still appears), but excludes empty scaffolds
+ * and corrections-only-with-nothing-else dirs (a single stray correction and no
+ * journal/palace is too thin to be a project). For this install the result
+ * matches the arstatus CLI board. */
+function hasRealMemory(slug: string, projectDir: string): boolean {
+  if (listJournalFiles(slug).length > 0) return true;
+  // Palace: any room with at least one topic file (a .md that isn't the README scaffold).
+  try {
+    const roomsDir = path.join(projectDir, "palace", "rooms");
+    for (const room of fs.readdirSync(roomsDir)) {
+      const files = fs.readdirSync(path.join(roomsDir, room));
+      if (files.some((f) => f.endsWith(".md") && f !== "README.md")) return true;
+    }
+  } catch {
+    /* no palace dir — fall through */
+  }
+  return false;
+}
+
+/**
+ * Scan for real projects that have actual memory to show. Inclusion requires a
+ * structurally-valid slug AND real memory in at least one layer. Empty scaffolds
+ * and path-leak junk are excluded so the dashboard shows only genuine projects;
+ * for this install the result matches the arstatus CLI board.
  */
 function listAllProjectsForDashboard(): string[] {
   const projectsDir = path.join(getRoot(), "projects");
   if (!fs.existsSync(projectsDir)) return [];
   const out: string[] = [];
   for (const slug of fs.readdirSync(projectsDir)) {
+    if (!isRealProjectSlug(slug)) continue;
     const projectDir = path.join(projectsDir, slug);
-    if (!fs.statSync(projectDir).isDirectory()) continue;
-    // Include if ANY sub-dir of interest exists
-    const hasContent = ["journal", "palace", "corrections"].some((sub) =>
-      fs.existsSync(path.join(projectDir, sub)),
-    );
-    if (hasContent) out.push(slug);
+    try {
+      if (!fs.statSync(projectDir).isDirectory()) continue;
+    } catch {
+      continue; // broken/dangling symlink — skip rather than throw
+    }
+    if (!hasRealMemory(slug, projectDir)) continue;
+    out.push(slug);
   }
   return out.sort();
 }

@@ -563,7 +563,7 @@
 
   <!-- Full-width amber stale overlay -->
   <div id="stale-banner" role="status" aria-live="polite">
-    <span>⚠ Data <span id="stale-age-span"></span> old — dream cron may be stuck</span>
+    <span>⚠ Dashboard data <span id="stale-age-span"></span> old — re-run <code>dashboard_export</code> to refresh</span>
     <span class="stale-refresh" id="stale-refresh" role="button" tabindex="0">↻ reload</span>
   </div>
 </header>
@@ -584,13 +584,14 @@
     </div>
   </section>
 
-  <!-- P2: Active Pipeline (1fr) -->
-  <section class="panel" id="panel-pipeline" aria-label="Active Pipeline">
+  <!-- P2: Memory Composition (1fr) — DOM ids keep the legacy "pipeline" name
+       (CSS-coupled); the panel now renders per-project memory stats. -->
+  <section class="panel" id="panel-pipeline" aria-label="Memory Composition">
     <div class="panel-hdr">
-      <span class="panel-title">Pipeline</span>
-      <select class="project-select" id="pipeline-select" aria-label="Select project for pipeline view"></select>
+      <span class="panel-title">Memory</span>
+      <select class="project-select" id="pipeline-select" aria-label="Select project for memory view"></select>
     </div>
-    <div class="panel-body" role="region" aria-label="Pipeline phases">
+    <div class="panel-body" role="region" aria-label="Memory composition for the selected project">
       <div class="pipeline-scroll" id="pipeline-body"></div>
     </div>
   </section>
@@ -930,7 +931,7 @@ function populateSelectors() {
   document.getElementById('pipeline-select').onchange = function() {
     selectedProject = this.value;
     syncSelectors(selectedProject);
-    renderPipeline();
+    renderMemoryComposition();
     renderCorrectionPrecision();
   };
   document.getElementById('palace-select').onchange = function() {
@@ -1080,7 +1081,7 @@ function renderProjectMap() {
         if (e.key === 'Enter' || e.key === ' ') {
           selectedProject = p.slug;
           syncSelectors(p.slug);
-          renderPipeline();
+          renderMemoryComposition();
           renderPalaceGraph();
           renderActivity();
           renderCorrectionPrecision();
@@ -1097,9 +1098,12 @@ function renderProjectMap() {
 }
 
 /* ============================================================
-   PANEL 2 — ACTIVE PIPELINE
+   PANEL 2 — MEMORY COMPOSITION
+   What AgentRecall actually remembers for the selected project. Replaces the
+   former Pipeline panel (the narrative/phase layer is not populated yet, so it
+   rendered empty for every project). All values come straight from the snapshot.
 ============================================================ */
-function renderPipeline() {
+function renderMemoryComposition() {
   var p    = getProject(selectedProject);
   var body = document.getElementById('pipeline-body');
   body.innerHTML = '';
@@ -1109,85 +1113,48 @@ function renderPipeline() {
     return;
   }
 
-  var pipeline = p.pipeline || {};
+  var rooms  = p.rooms || [];
+  var topics = rooms.reduce(function(s, r) { return s + safeNum(r.topic_count, 0); }, 0);
+  var corr   = safeNum(p.corrections && p.corrections.total, 0);
+  var p0     = safeNum(p.corrections && p.corrections.p0_active, 0);
+  var links  = (p.palace_edges || []).length;
 
-  if (!pipeline.total || pipeline.total === 0) {
-    /* Stats for the project even if no phases */
-    body.innerHTML = '<div class="empty-state">No phases yet · ' +
-      safeNum(p.total_sessions, 0) + ' sessions · ' +
-      safeNum(p.skills_count, 0) + ' skills</div>';
-    return;
-  }
+  var stats = [
+    { n: safeNum(p.total_sessions, 0), l: 'sessions' },
+    { n: rooms.length,                 l: 'rooms' },
+    { n: topics,                       l: 'topics' },
+    { n: safeNum(p.skills_count, 0),   l: 'skills' },
+    { n: corr,                         l: p0 > 0 ? 'corrections · ' + p0 + ' P0' : 'corrections' },
+    { n: links,                        l: 'links' }
+  ];
 
-  /* Pipeline stats */
-  var statsRow = document.createElement('div');
-  statsRow.className = 'pipeline-stats';
-  statsRow.innerHTML =
-    '<div class="pipeline-stat"><div class="pipeline-stat-n">' + safeNum(pipeline.total, 0) + '</div><div class="pipeline-stat-l">phases</div></div>' +
-    '<div class="pipeline-stat"><div class="pipeline-stat-n">' + safeNum(pipeline.closed, 0) + '</div><div class="pipeline-stat-l">closed</div></div>' +
-    '<div class="pipeline-stat"><div class="pipeline-stat-n">' + safeNum(pipeline.active, 0) + '</div><div class="pipeline-stat-l">active</div></div>';
-  body.appendChild(statsRow);
-
-  /* Spine phases */
-  var spine = (pipeline.spine || []).slice().reverse(); /* newest first */
-  /* Show active first, then recent closed (up to 3) */
-  var toShow = spine.filter(function(ph) { return ph.status === 'active'; })
-    .concat(spine.filter(function(ph) { return ph.status === 'closed'; }).slice(0, 3));
-
-  toShow.forEach(function(phase, idx) {
-    var card = document.createElement('div');
-    card.className = 'phase-card';
-    var isCurrent = phase.status === 'active';
-    card.innerHTML =
-      '<div class="phase-badge phase-badge--' + (isCurrent ? 'current' : 'closed') + '">' + esc(phase.order || String(idx + 1)) + '</div>' +
-      '<div class="phase-content">' +
-        '<div class="phase-name phase-name--' + (isCurrent ? 'current' : 'closed') + '">' + esc(phase.name || 'Phase') + '</div>' +
-        '<div class="phase-meta">Phase ' + esc(phase.order || idx + 1) +
-          (phase.days ? ' · ' + phase.days + 'd' : '') +
-          (isCurrent ? ' · open' : ' · closed') + '</div>' +
-        (isCurrent && pipeline.active_phase ? '<div class="phase-goal-lbl">Active</div><div class="phase-goal">' + esc(pipeline.active_phase) + '</div>' : '') +
-        (phase.synthesis ? '<div class="phase-synthesis">' + esc(phase.synthesis) + '</div>' : '') +
-      '</div>';
-    body.appendChild(card);
-
-    if (idx < toShow.length - 1) {
-      var conn = document.createElement('div');
-      conn.className = 'phase-connector';
-      body.appendChild(conn);
-    }
+  var grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:18px 8px;padding:6px 2px 2px;';
+  stats.forEach(function(s) {
+    var cell = document.createElement('div');
+    cell.className = 'pipeline-stat';
+    cell.innerHTML = '<div class="pipeline-stat-n">' + esc(String(s.n)) +
+      '</div><div class="pipeline-stat-l">' + esc(s.l) + '</div>';
+    grid.appendChild(cell);
   });
+  body.appendChild(grid);
 
-  /* Phase pacing timebar */
-  var closedPhases = (pipeline.spine || []).filter(function(ph) { return ph.days && ph.days > 0; });
-  if (closedPhases.length > 0) {
-    var totalDays = closedPhases.reduce(function(s,ph) { return s + (ph.days || 0); }, 0);
-    if (totalDays > 0) {
-      var tbWrap = document.createElement('div');
-      tbWrap.className = 'timebar-wrap';
-      var tbLabel = document.createElement('div');
-      tbLabel.className = 'timebar-label';
-      tbLabel.textContent = 'Phase pacing · ' + totalDays + 'd total';
-      var tbTrack = document.createElement('div');
-      tbTrack.className = 'timebar-track';
-      closedPhases.slice(-8).forEach(function(ph) {
-        var seg = document.createElement('div');
-        seg.className = 'tb-seg tb-seg--' + (ph.status === 'active' ? 'current' : 'closed');
-        seg.style.flex = String(ph.days || 1);
-        seg.innerHTML = esc(ph.order || '?') + '<span class="tb-d"> ' + (ph.days || '?') + 'd</span>';
-        tbTrack.appendChild(seg);
-      });
-      tbWrap.appendChild(tbLabel);
-      tbWrap.appendChild(tbTrack);
-      body.appendChild(tbWrap);
+  /* "Memory since" span line — real first→last session range. */
+  if (p.first_session || p.last_session) {
+    var span = document.createElement('div');
+    span.style.cssText = 'margin-top:18px;padding-top:12px;border-top:1px solid var(--rule);' +
+      'font-size:11px;color:var(--ink-soft);line-height:1.5;flex-shrink:0;';
+    var txt;
+    if (p.first_session && p.last_session) {
+      var d1 = new Date(p.first_session), d2 = new Date(p.last_session);
+      var rawDays = Math.round((d2.getTime() - d1.getTime()) / 86400000);
+      var days = (isNaN(rawDays) || rawDays < 1) ? 1 : rawDays;  // guard unparseable/"null" dates
+      txt = 'memory since ' + esc(p.first_session) + ' · ' + days + ' day' + (days === 1 ? '' : 's') + ' of history';
+    } else {
+      txt = 'last active ' + esc(p.last_session || p.first_session);
     }
-  }
-
-  /* Last synthesis note */
-  if (pipeline.last_synthesis) {
-    var noteEl = document.createElement('div');
-    noteEl.style.cssText = 'margin-top:8px;padding:6px 8px;background:var(--ok-dim);border:1px solid rgba(79,122,72,.2);border-radius:3px;font-size:10px;color:var(--ok);line-height:1.5;font-style:italic;flex-shrink:0;';
-    noteEl.textContent = '✓ ' + pipeline.last_synthesis;
-    body.appendChild(noteEl);
+    span.textContent = txt;
+    body.appendChild(span);
   }
 }
 
@@ -1423,52 +1390,22 @@ function renderCorrectionPrecision() {
     ]
   });
 
-  /* Sparkline — synthesized from corrections/alignment values (we don't have 30-save history in v1 schema) */
-  /* Build a synthetic sparkline from what we have */
+  /* Precision-over-time history is not in the v1 schema yet. Rather than draw a
+     synthetic/jittered line that LOOKS like real history, show an honest, subtle
+     placeholder. Wire a real series here once the exporter emits precision_history. */
+  if (sparkChart) { try { sparkChart.dispose(); } catch(e) {} sparkChart = null; }
   var sparkEl = document.getElementById('sparkline-chart');
-  if (sparkChart) { try { sparkChart.dispose(); } catch(e) {} }
-  sparkChart = echarts.init(sparkEl, null, { renderer: 'canvas' });
-
-  /* Use a flat sparkline at the precision value (honest — real trend data not in schema v1) */
-  var precVal = precision != null && !isNaN(precision) ? precision : 0;
-  var sData   = Array.from({length: 20}, function(_, i) {
-    /* stable artificial variation (no time-series in schema v1) */
-    var jitter = (Math.sin(i * 2.3 + p.slug.length) * 0.05);
-    return Math.max(0, Math.min(1, precVal + jitter));
-  });
-  /* Last point = actual value */
-  sData[sData.length - 1] = precVal;
-
-  var sMin = Math.min.apply(null, sData), sMax = Math.max.apply(null, sData);
-  sparkChart.setOption({
-    backgroundColor: 'transparent',
-    animation: !reduceMotion,
-    grid: { top: 3, right: 8, bottom: 3, left: 8 },
-    xAxis: { type: 'category', show: false, data: sData.map(function(_, i) { return i; }) },
-    yAxis: { type: 'value', show: false, min: Math.max(0, sMin - 0.05), max: Math.min(1, sMax + 0.05) },
-    series: [{
-      type: 'line', data: sData, smooth: 0.35, symbol: 'none',
-      lineStyle: { color: '#C9A56C', width: 1 },
-      areaStyle: {
-        color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [{ offset: 0, color: 'rgba(201,165,108,.22)' }, { offset: 1, color: 'transparent' }] }
-      },
-      markPoint: {
-        animation: false,
-        data: [
-          { type: 'max', symbol: 'circle', symbolSize: 5, itemStyle: { color: '#E8C07A' }, label: { show: false } },
-          { type: 'min', symbol: 'circle', symbolSize: 4, itemStyle: { color: '#6B5235' }, label: { show: false } }
-        ]
-      }
-    }]
-  });
+  if (sparkEl) {
+    sparkEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;'
+      + 'height:100%;font-size:10px;letter-spacing:.05em;text-transform:uppercase;'
+      + 'color:var(--ink-soft);opacity:.5;">precision trend · tracking from now</div>';
+  }
 
   /* Resize observer — single instance at module scope, disconnected at top of this fn */
   var panel = document.getElementById('panel-precision');
   if (typeof ResizeObserver !== 'undefined') {
     precisionResizeObserver = new ResizeObserver(function() {
       if (barChart) barChart.resize();
-      if (sparkChart) sparkChart.resize();
     });
     precisionResizeObserver.observe(panel);
   }
@@ -1685,7 +1622,7 @@ function renderAll() {
   renderHeader();
   populateSelectors();
   renderProjectMap();
-  renderPipeline();
+  renderMemoryComposition();
   renderDreamHealth();
   renderCorrectionPrecision();
   renderPalaceGraph();

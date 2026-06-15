@@ -235,8 +235,16 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
       // Local-TZ date matching (see session-start.ts guard comment).
       const todayStr = new Date().toLocaleDateString("sv");
       const nowISO = new Date().toISOString();
+      // 1/day guard (mirrors the `retrieved` guard in session-start): record at
+      // most ONE outcome per correction per day. Without this, multiple sessions
+      // in a day each fire another "heeded", pushing heeded_count past
+      // retrieved_count (which IS 1/day-guarded) → nonsensical "11/10 heeded".
       const todays = readCorrections(slug).filter(
-        (c) => c.last_retrieved && new Date(c.last_retrieved).toLocaleDateString("sv") === todayStr && c.active !== false
+        (c) =>
+          c.last_retrieved &&
+          new Date(c.last_retrieved).toLocaleDateString("sv") === todayStr &&
+          c.active !== false &&
+          !(c.last_outcome && new Date(c.last_outcome).toLocaleDateString("sv") === todayStr)
       );
       const recurrenceMarker = /\b(again|recurred|repeated|violat|broke the rule|same mistake)\b/i;
       const summaryLower = input.summary.toLowerCase();
