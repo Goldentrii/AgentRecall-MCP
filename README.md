@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/goldentrii-agentrecall-mcp-badge.png)](https://mseep.ai/app/goldentrii-agentrecall-mcp)
+
 <h1 align="center">AgentRecall</h1>
 
 <p align="center"><strong>Your agent doesn't just remember. It learns how you think.</strong></p>
