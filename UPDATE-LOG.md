@@ -230,6 +230,46 @@ When defined, any agent (Claude, GPT, Gemini) can read/write the same memory sto
 
 ---
 
+## Release — v3.4.25 (2026-06-18)
+
+**Memory quality + trust integrity release.** Two trust fixes (P0), one measurement framework (§5), two memory-quality features (P1). 919 lines added, 43 new benchmark assertions, 9 suites all green.
+
+### Published
+| Package | npm |
+|---|---|
+| `agent-recall-core` | 3.4.25 |
+| `agent-recall-mcp` | 3.4.25 |
+| `agent-recall-sdk` | 3.4.25 |
+| `agent-recall-cli` | 3.4.25 |
+
+### What ships under v3.4.25
+
+| Area | Change |
+|---|---|
+| P0-1 (investigated) | Incremental-write visibility — confirmed NOT broken in v3.4.24. 11/11 repro test committed as regression guard. |
+| P0-2 (fixed) | Archive reachability — `journalDirs()` now includes `journal/archive/` so recall + backlink resolution reach rollup-archived entries. Was 6/10, now 10/10. |
+| §5 benchmark | 4-metric replay scorecard (recall/precision/staleness/correction-correctness). Baseline: 100%/33%/100%/100%. Gates all P1 work. |
+| P1-2 keystone | Structural-position importance signal. Pipeline-cited rooms get `keystone: true` + salience floor 0.30, independent of access frequency. Prevents rich-get-richer bias where rare decisions sink below trivia. |
+| P1-1 compression | Dream-cycle dedup: keyword-overlap ≥0.6 clusters collapsed to canonical entries. Originals archived to `_archive/` (never destroyed). `compressTopic` / `compressRoom` / `compressProject` with dry-run support. |
+
+### New files
+- `packages/core/src/palace/keystone.ts` — keystone detection + marking
+- `packages/core/src/palace/compress.ts` — near-duplicate compression
+- `benchmark/p0-1-incremental-visibility.mjs` (11 assertions)
+- `benchmark/p0-2-archive-reachability.mjs` (10 assertions)
+- `benchmark/p1-2-keystone-importance.mjs` (10 assertions)
+- `benchmark/p1-1-compression.mjs` (12 assertions)
+- `benchmark/replay-benchmark.mjs` + `replay-results.json`
+
+### Migration
+Zero-break:
+- `RoomMeta.keystone` is optional (defaults to `undefined`/falsy for existing rooms)
+- `KEYSTONE_FLOOR` exported from `palace/salience.ts`
+- `compressTopic/compressRoom/compressProject` are additive exports
+- `journalDirs()` returning `archive/` is backward-compatible (readers already handle multiple dirs)
+
+---
+
 ## P1-1 — Dream-cycle compression pass (2026-06-18)
 
 - What:   Near-duplicate palace entries (keyword overlap ≥ 0.6) collapsed into canonical entries. Originals archived to `rooms/<room>/_archive/` (invariant: no raw memory destroyed). Canonical entries preserve the union of all source backlinks. Three granularity levels: `compressTopic`, `compressRoom`, `compressProject`. All support dry-run mode.
