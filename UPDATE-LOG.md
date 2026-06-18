@@ -230,6 +230,18 @@ When defined, any agent (Claude, GPT, Gemini) can read/write the same memory sto
 
 ---
 
+## P0-1 / P0-2 — Incremental visibility + archive reachability (2026-06-18)
+
+- What:   P0-1 (incremental-write visibility after smart_remember without session_end) — investigated and found NOT broken in v3.4.24. All 4 routes (palace_write, journal_capture, knowledge_write, awareness_update) write to surfaces session_start reads. 11/11 repro test passes. One false alarm: awareness insights rejected by quality gate when title < 3 words — a test artifact, not a visibility bug.
+          P0-2 (archive reachability after journal rollup) — CONFIRMED and FIXED. `journalDirs()` returned only the top-level `journal/` dir, never `journal/archive/`. After rollup, `readJournalFile` returned null for archived dates and `smartRecall` found 0 results for archived content. Fix: added `journal/archive/` to `journalDirs()` when the directory exists — single-point fix, all downstream readers (listJournalFiles, readJournalFile, readRecentCaptures, smartRecall via journalSearch) automatically traverse archived entries.
+- Why:    Trust integrity — memories moved by rollup must remain reachable by recall and backlink resolution. Invariant: no raw memory is ever invisible after archival.
+- Files:  `packages/core/src/storage/paths.ts` (3-line fix in journalDirs), `benchmark/p0-1-incremental-visibility.mjs` (new, 11 assertions), `benchmark/p0-2-archive-reachability.mjs` (new, 10 assertions)
+- Verify: build 0 errors · consistency 10/10 · funnel 18/18 · heeded-guard 5/5 · room-slug-guards 9/9 · p0-1 11/11 · p0-2 10/10 (was 6/10 before fix)
+- Risks:  `journalDirs` now returns archive dir as a peer of the primary dir — any consumer that assumes "all dirs are top-level" would need auditing (none found). Rollup's `updateIndex` already calls `listJournalFiles` which will now include archived entries in the index — this is correct behavior (archived entries should be indexed).
+- Status: local commit 89b00e3 on fix/p0-1-incremental-write-visibility
+
+---
+
 ## Release — v3.4.23 (2026-06-12)
 
 **Ships the entire V4 "Memory as Environment" execution** (perf-check P0s + Sprints 0-2)
