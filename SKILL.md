@@ -13,7 +13,7 @@ description: >-
   search — same API, semantic understanding. Gracefully degrades to local search
   if not configured.
 origin: community
-version: 3.4.26
+version: 3.4.27
 author: Goldentrii
 platform: clawhub
 install:

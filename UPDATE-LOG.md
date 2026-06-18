@@ -230,6 +230,67 @@ When defined, any agent (Claude, GPT, Gemini) can read/write the same memory sto
 
 ---
 
+## Release — v3.4.27 (2026-06-18) — reviewed naming + safety
+
+**Bundles v3.4.26 safety patches + naming system cleanup + reviewer MEDIUM fix.**
+Orchestrator (Opus) fresh-eyes reviewed both branches — APPROVE with 1 MEDIUM.
+This is the first release where the implementer did NOT push/publish; human runs the irreversibles after review.
+
+### What's new (vs v3.4.25 on npm)
+
+| Area | What changed | Why it matters |
+|------|-------------|----------------|
+| **Safety: session count** | `journalDirs(includeArchive)` — default `false` | v3.4.25 inflated session counts by including archived entries. Now only recall paths see archive. |
+| **Safety: archive clobber** | Collision-proof naming (`Date.now()` suffix) + idempotency guard (skip "consolidated" entries) | Running compress twice same day no longer overwrites the backup. Core safety promise restored. |
+| **Safety: path injection** | `sanitizeSlug()` + `assertInsideRoot()` at `compressTopic` entry | Blocks `../../evil` room/topic from escaping palace directory. |
+| **Naming: slug gate** | `isValidProjectSlug()` in `resolveProject()` | Rejects UUIDs, `.md` suffix, `_`/`.` prefix, denylist words, path traversal. Prevents new garbage projects. Existing dirs still readable. |
+| **Naming: palace rooms** | `_room.json` existence guard in `listRooms()` + dashboard | Stray files (like `health-baseline-*.md`) and dirs without meta no longer count as rooms. |
+| **Naming: journal format** | All write paths now pass `saveType` to produce new-format filenames | `journal_write` MCP, `ar write` CLI, `journal_capture` all produce `{date}--{type}--{sig}--{theme}--{slug}.md` instead of `{date}.md`. Old files still readable. |
+| **Naming: cleanup tool** | `scripts/clean-project-slugs.mjs` | Dry-run by default. `--apply` quarantines invalid slugs to `_quarantine/`. Idempotent. |
+| **Reviewer fix** | Dot-prefix check added to `isValidProjectSlug` | Cleanup script rejected `.DS_Store` but core didn't — inconsistency fixed. |
+
+### Orchestrator review findings
+
+| Severity | Finding | Status |
+|----------|---------|--------|
+| MEDIUM | `isValidProjectSlug` missing dot-prefix check (`.DS_Store`, `.aam` pass validation) | ✅ Fixed |
+| LOW | `consolidate.ts:107` — `route.room` unsanitized in `path.join` (pre-existing, not introduced here) | Noted for future |
+| LOW | Idempotency relies on "consolidated" string — manual edit removes the guard | Acceptable — manual edit = intentional override |
+
+### Process change (permanent)
+- Implementer stops at local commit. Push + publish = human-only after orchestrator review.
+- This release is the first to follow the new governance model.
+
+### Verification
+- Build: 0 errors
+- 9 suites: consistency 10/10, funnel 18/18, heeded-guard 5/5, room-slug-guards 9/9, p0-1 11/11, p0-2 10/10, p1-2 10/10, p1-1 12/12, replay 100/33/100/100
+- Total: 85 assertions, 0 failures
+
+### Files changed (vs v3.4.25)
+```
+packages/core/src/storage/paths.ts          — journalDirs includeArchive param
+packages/core/src/storage/project.ts        — isValidProjectSlug + resolveProject gate
+packages/core/src/palace/compress.ts        — 3 safety fixes (clobber, sanitize, skip _archive)
+packages/core/src/palace/rooms.ts           — _room.json guard
+packages/core/src/helpers/journal-files.ts  — listJournalFiles includeArchive, readJournalFile archive=true
+packages/core/src/tools-logic/journal-capture.ts   — smartname opts
+packages/core/src/tools-logic/journal-search.ts    — includeArchive=true
+packages/core/src/tools-logic/journal-read.ts      — includeArchive=true
+packages/core/src/tools-logic/context-synthesize.ts — includeArchive=true
+packages/core/src/tools-logic/dashboard-export.ts  — _room.json guard
+packages/core/src/types.ts                  — VERSION 3.4.27
+packages/core/src/index.ts                  — export isValidProjectSlug
+packages/mcp-server/src/tools/journal-write.ts — saveType: "arsave"
+packages/cli/src/index.ts                   — saveType: "arsave"
+SKILL.md                                    — version 3.4.27
+benchmark/replay-benchmark.mjs              — version stamp
+scripts/clean-project-slugs.mjs             — NEW: quarantine tool
+```
+
+- Status: local on main | NOT pushed | NOT published | awaiting tongwu
+
+---
+
 ## Release — v3.4.26 (2026-06-18) — post-review patch
 
 **Fixes 3 HIGH bugs found by fresh-eyes orchestrator review of v3.4.25.** This release validates the governance model: green suites ≠ correct; independent review catches what self-verification misses.
