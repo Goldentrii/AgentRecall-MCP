@@ -54,6 +54,9 @@ export function isValidProjectSlug(slug: string): boolean {
   // Reject _ prefix (internal/archive dirs)
   if (slug.startsWith("_")) return false;
 
+  // Reject . prefix (hidden dirs like .DS_Store, .aam)
+  if (slug.startsWith(".")) return false;
+
   // Reject deny-listed generic words
   if (SLUG_DENY_LIST.has(slug.toLowerCase())) return false;
 
