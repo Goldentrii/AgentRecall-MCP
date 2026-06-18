@@ -86,7 +86,16 @@ export {
   AUTO_ARCHIVE_THRESHOLD,
   CATEGORY_DECAY,
   URGENCY_WEIGHTS,
+  KEYSTONE_FLOOR,
 } from "./palace/salience.js";
+
+// Palace — keystone detection
+export {
+  scanKeystoneMemories,
+  isKeystone,
+  markKeystones,
+  type KeystoneMatch,
+} from "./palace/keystone.js";
 
 // Palace — insights index
 export {

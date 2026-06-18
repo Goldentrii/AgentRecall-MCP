@@ -241,6 +241,7 @@ export function recordAccess(project: string, roomSlug: string, importance: Impo
         lastUpdated: meta.updated,
         accessCount: meta.access_count + 1,
         connectionCount: connCount,
+        keystone: meta.keystone,
       });
   updateRoomMeta(project, roomSlug, {
     access_count: meta.access_count + 1,

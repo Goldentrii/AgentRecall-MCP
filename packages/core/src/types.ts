@@ -104,6 +104,13 @@ export interface RoomMeta {
   last_accessed: string;
   tags: string[];
   connections: string[];
+  /**
+   * Keystone memories occupy load-bearing structural positions — referenced
+   * from pipeline milestone "How solved" or "Synthesis" sections.
+   * When true, salience never drops below KEYSTONE_FLOOR regardless of
+   * access frequency. Set by markKeystones() during consolidation.
+   */
+  keystone?: boolean;
 }
 
 export interface PalaceIndex {
