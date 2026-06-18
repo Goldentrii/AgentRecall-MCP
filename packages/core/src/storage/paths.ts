@@ -57,6 +57,13 @@ export function journalDirs(project: string): string[] {
   const primary = journalDir(project);
   if (fs.existsSync(primary)) dirs.push(primary);
 
+  // Archive: journal/archive/ holds entries moved by journalRollup.
+  // Including it here makes all downstream readers (listJournalFiles,
+  // readJournalFile, readRecentCaptures, smartRecall) automatically
+  // traverse archived entries — no per-reader changes needed.
+  const archiveDir = path.join(primary, "archive");
+  if (fs.existsSync(archiveDir)) dirs.push(archiveDir);
+
   // Legacy: ~/.claude/projects/*/memory/journal/
   const legacyRoot = getLegacyRoot();
   if (fs.existsSync(legacyRoot)) {
