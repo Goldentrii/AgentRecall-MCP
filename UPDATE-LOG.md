@@ -230,6 +230,17 @@ When defined, any agent (Claude, GPT, Gemini) can read/write the same memory sto
 
 ---
 
+## §5 Replay benchmark — 4-metric scorecard (2026-06-18)
+
+- What:   Multi-session replay benchmark measuring recall, precision, staleness, and correction-correctness. 3 synthetic sessions (architecture decisions + correction + noise), then measurement queries at session 4.
+- Why:    Gates all P1 work. Changes must not lower recall or correction-correctness. Precision baseline (33%) quantifies the P1-1 compression target.
+- Files:  `benchmark/replay-benchmark.mjs` (new), `benchmark/replay-results.json` (baseline)
+- Verify: build 0 errors · consistency 10/10 · funnel 18/18 · heeded-guard 5/5 · room-slug-guards 9/9 · replay-benchmark: recall 100%, precision 33%, staleness 100%, correction 100%
+- Risks:  Precision metric depends on recall result ordering which is keyword-based (BM25) — may shift with vector backend enabled. Staleness metric has only 1 test case; expand when more supersession patterns emerge.
+- Status: local commit 4d6f472 on feat/replay-benchmark
+
+---
+
 ## P0-1 / P0-2 — Incremental visibility + archive reachability (2026-06-18)
 
 - What:   P0-1 (incremental-write visibility after smart_remember without session_end) — investigated and found NOT broken in v3.4.24. All 4 routes (palace_write, journal_capture, knowledge_write, awareness_update) write to surfaces session_start reads. 11/11 repro test passes. One false alarm: awareness insights rejected by quality gate when title < 3 words — a test artifact, not a visibility bug.
