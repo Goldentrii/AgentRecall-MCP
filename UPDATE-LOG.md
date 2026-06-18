@@ -230,6 +230,29 @@ When defined, any agent (Claude, GPT, Gemini) can read/write the same memory sto
 
 ---
 
+## Release — v3.4.26 (2026-06-18) — post-review patch
+
+**Fixes 3 HIGH bugs found by fresh-eyes orchestrator review of v3.4.25.** This release validates the governance model: green suites ≠ correct; independent review catches what self-verification misses.
+
+| # | Severity | Bug | Fix |
+|---|----------|-----|-----|
+| HIGH-1 | session count inflation | P0-2's `journalDirs()` fix included `archive/` unconditionally → `listJournalFiles` counted archived entries as sessions (30 archived + 10 active = 40 displayed) | `journalDirs(project, includeArchive)` param. Default `false` (counting paths). `true` only for recall, readJournalFile, journalSearch, contextSynthesize. |
+| HIGH-2 | archive clobber on 2nd run | `compressTopic` used `${topic}-${today}.md` → same-day re-run overwrites the only backup of originals | Collision-proof naming: `${topic}-${today}-${Date.now()}.md` + never-overwrite guard. Idempotency: `parseEntries` skips entries marked `(consolidated)`. |
+| HIGH-3 | unsanitized path.join | `compress.ts` passed raw `room`/`topic` to `path.join` without `sanitizeSlug()` → `../../evil` escapes palace dir | `sanitizeSlug()` at entry + `assertInsideRoot` defense-in-depth. |
+| MED | _archive traversal | `compressRoom`/`compressProject` could recurse into `_archive` dirs | Skip dirs/files starting with `_`. |
+
+### Version hygiene
+- `SKILL.md` 3.4.22 → 3.4.26 (was 3 releases stale)
+- `replay-benchmark.mjs` version stamp → 3.4.26
+- All 4 packages + `VERSION` constant → 3.4.26
+
+### Process change
+Implementer no longer runs `git push` or `npm publish`. Stops at "committed + logged, awaiting review." Human runs the irreversible commands after orchestrator review.
+
+- Status: local commit 4901ba6 on fix/v3.4.26-compression-safety | NOT pushed | NOT published
+
+---
+
 ## Release — v3.4.25 (2026-06-18)
 
 **Memory quality + trust integrity release.** Two trust fixes (P0), one measurement framework (§5), two memory-quality features (P1). 919 lines added, 43 new benchmark assertions, 9 suites all green.
