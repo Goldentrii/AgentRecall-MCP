@@ -515,4 +515,4 @@ Corollary: wire before write — a primitive without an automatic trigger will n
 - **Scoped filesystem access:** Reads/writes only to `~/.agent-recall/` (configurable via `--root` flag). Does not access files outside this directory unless the agent explicitly passes project-specific paths.
 - **No code execution:** The MCP server does not execute arbitrary code, run shell commands, or spawn child processes.
 - **Transparent storage:** All data is human-readable markdown and JSON. Inspect it anytime: `ls ~/.agent-recall/` or open it as an Obsidian vault.
-- **Open source:** Full source at [github.com/Goldentrii/AgentRecall](https://github.com/Goldentrii/AgentRecall). MIT license.
+- **Open source:** Full source at [github.com/Goldentrii/AgentRecall-MCP](https://github.com/Goldentrii/AgentRecall-MCP). MIT license.
