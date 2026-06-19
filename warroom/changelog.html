@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentRecall · Changelog</title>
+<link rel="stylesheet" href="static/fonts.css">
+<style>
+  :root{
+    --bg:#FAF7F0; --surface:#F1ECDD; --surface-2:#E8E1CC; --ink:#2B2520;
+    --ink-soft:#5A4E3F; --ink-faint:#8C7F6B; --rule:#DCD1B5; --rule-soft:#E6DFC8;
+    --accent:#8A6A3F; --accent-soft:#C9A56C; --accent-dim:rgba(138,106,63,.10);
+    --ok:#4F7A48; --warn:#BD7C2D; --bad:#B7472A;
+    --ok-dim:rgba(79,122,72,.12); --warn-dim:rgba(189,124,45,.12); --bad-dim:rgba(183,71,42,.10);
+    --canvas:#1A1814; --canvas-ink:#E8E0D0; --canvas-line:#3A332B;
+    --shadow:0 1px 2px rgba(43,37,32,.05),0 6px 20px rgba(43,37,32,.06);
+    --shadow-lift:0 4px 12px rgba(43,37,32,.10),0 20px 48px rgba(43,37,32,.14);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#15120E; --surface:#1E1A14; --surface-2:#28231B; --ink:#ECE3D2;
+      --ink-soft:#BBAE97; --ink-faint:#897C68; --rule:#322B21; --rule-soft:#261F18;
+      --accent:#C9A56C; --accent-soft:#E0C088; --accent-dim:rgba(201,165,108,.12);
+      --ok:#6FA565; --warn:#D9A23F; --bad:#D9684A;
+      --ok-dim:rgba(111,165,101,.14); --warn-dim:rgba(217,162,63,.14); --bad-dim:rgba(217,104,74,.12);
+      --canvas:#100E0B; --canvas-ink:#E8E0D0; --canvas-line:#2E2820;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35);
+      --shadow-lift:0 4px 12px rgba(0,0,0,.4),0 20px 48px rgba(0,0,0,.5);
+    }
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:'Nunito','Segoe UI',system-ui,sans-serif; font-size:15px; line-height:1.6;
+    -webkit-font-smoothing:antialiased; padding:48px 20px 80px;
+  }
+  .wrap{max-width:860px;margin:0 auto;}
+  .display{font-family:'Baloo 2','Nunito',sans-serif;font-weight:700;}
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace;}
+
+  /* header */
+  .top{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
+  .logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(140deg,var(--accent-soft),var(--accent));
+    display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Baloo 2';font-weight:800;font-size:24px;
+    box-shadow:var(--shadow);flex-shrink:0;}
+  h1.title{font-family:'Baloo 2';font-size:30px;color:var(--ink);line-height:1;}
+  .sub{font-size:14px;color:var(--ink-faint);margin:2px 0 0;}
+  .lede{font-size:14px;color:var(--ink-soft);max-width:620px;margin:18px 0 34px;line-height:1.6;}
+
+  /* hero / major release */
+  .hero{position:relative;border:1px solid var(--rule);border-radius:20px;overflow:hidden;
+    background:var(--surface);box-shadow:var(--shadow-lift);margin-bottom:40px;}
+  .hero::before{content:'';position:absolute;left:0;top:0;bottom:0;width:6px;
+    background:linear-gradient(180deg,var(--accent-soft),var(--accent));}
+  .hero-head{padding:26px 30px 20px 34px;border-bottom:1px solid var(--rule-soft);}
+  .tagrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+  .vbadge{font-family:'Baloo 2';font-weight:800;font-size:15px;color:#fff;
+    background:linear-gradient(140deg,var(--accent-soft),var(--accent));
+    padding:5px 14px;border-radius:999px;letter-spacing:.01em;box-shadow:var(--shadow);}
+  .major{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent);background:var(--accent-dim);padding:5px 11px;border-radius:999px;}
+  .date{font-size:12px;color:var(--ink-faint);font-weight:700;margin-left:auto;}
+  .mono.date{font-family:'JetBrains Mono';}
+  h2.hero-title{font-family:'Baloo 2';font-size:27px;color:var(--ink);line-height:1.12;margin-bottom:8px;}
+  .hero-lede-en{font-size:15px;color:var(--ink-soft);line-height:1.6;}
+  .hero-lede-zh{font-size:13.5px;color:var(--ink-faint);line-height:1.7;margin-top:6px;}
+
+  /* change cards */
+  .grid{padding:22px 30px 8px 34px;display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (max-width:680px){.grid{grid-template-columns:1fr;padding:20px 20px 6px 24px;}}
+  .card{background:var(--bg);border:1px solid var(--rule-soft);border-radius:14px;padding:15px 16px;}
+  .card.flag{border-color:var(--accent);background:var(--accent-dim);}
+  .card .ic{font-size:19px;line-height:1;margin-bottom:8px;display:block;}
+  .card h3{font-family:'Baloo 2';font-size:15px;color:var(--ink);margin-bottom:5px;font-weight:700;}
+  .card p{font-size:13px;color:var(--ink-soft);line-height:1.55;}
+  .card .why{font-size:12px;color:var(--ink-faint);margin-top:7px;line-height:1.5;}
+  .card .zh{font-size:12px;color:var(--ink-faint);margin-top:7px;line-height:1.6;border-top:1px dashed var(--rule);padding-top:7px;}
+  .card .why b,.card p b{color:var(--accent);font-weight:700;}
+  code{font-family:'JetBrains Mono';font-size:.86em;background:var(--surface-2);color:var(--accent);
+    padding:1px 5px;border-radius:5px;}
+
+  /* verification strip */
+  .verify{margin:6px 30px 26px 34px;padding:14px 16px;background:var(--canvas);border-radius:13px;
+    display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;}
+  .verify .vlabel{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-soft);margin-right:4px;}
+  .pill{font-family:'JetBrains Mono';font-size:11.5px;color:var(--canvas-ink);background:rgba(255,255,255,.06);
+    border:1px solid var(--canvas-line);border-radius:7px;padding:3px 9px;}
+  .pill.ok{color:#8FCF82;border-color:rgba(143,207,130,.3);}
+
+  .held{margin:0 30px 26px 34px;font-size:12.5px;color:var(--ink-faint);line-height:1.6;
+    background:var(--warn-dim);border:1px solid rgba(189,124,45,.25);border-radius:11px;padding:12px 15px;}
+  .held b{color:var(--warn);}
+
+  /* timeline */
+  .sech{font-family:'Baloo 2';font-size:13px;font-weight:800;letter-spacing:.04em;color:var(--ink-faint);
+    text-transform:uppercase;margin:6px 0 16px;}
+  .tl{border-left:2px solid var(--rule);margin-left:8px;padding-left:22px;}
+  .rel{position:relative;margin-bottom:18px;}
+  .rel::before{content:'';position:absolute;left:-29px;top:5px;width:11px;height:11px;border-radius:50%;
+    background:var(--surface);border:2px solid var(--accent-soft);}
+  .rel .rv{font-family:'JetBrains Mono';font-weight:700;font-size:13px;color:var(--accent);}
+  .rel .rd{font-size:11px;color:var(--ink-faint);margin-left:8px;}
+  .rel .rt{font-size:13.5px;color:var(--ink-soft);margin-top:2px;}
+
+  footer{margin-top:46px;padding-top:22px;border-top:1px solid var(--rule);
+    font-size:12.5px;color:var(--ink-faint);text-align:center;line-height:1.7;}
+  footer a{color:var(--accent);font-weight:700;text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div class="logo">A</div>
+    <div>
+      <h1 class="title">AgentRecall · Changelog</h1>
+      <p class="sub">Release history &amp; what changed · 版本历史与更新内容</p>
+    </div>
+  </div>
+  <p class="lede">Correction-first persistent memory for AI agents. Every release is reviewed before it ships. Below: the current major release in full, then the trail behind it.</p>
+
+  <!-- ===================== MAJOR: v3.4.30 ===================== -->
+  <section class="hero">
+    <div class="hero-head">
+      <div class="tagrow">
+        <span class="vbadge">v3.4.30</span>
+        <span class="major">★ Major release</span>
+        <span class="date mono">2026-06-19</span>
+      </div>
+      <h2 class="hero-title">Onboarding &amp; Distribution</h2>
+      <p class="hero-lede-en">The biggest non-code release yet — a ground-up rework of how people <b>discover, install, and run</b> AgentRecall, for humans and agents alike. Plus a real security fix folded in from the community.</p>
+      <p class="hero-lede-zh">迄今最大的"非代码"版本 —— 从头重做了人与 agent <b>发现、安装、运行</b> AgentRecall 的整条路径，并合入了一个来自社区的真实安全修复。</p>
+    </div>
+
+    <div class="grid">
+
+      <div class="card">
+        <span class="ic">📖</span>
+        <h3>README, rewritten</h3>
+        <p>Root README cut <b>579 → 198 lines</b> — a scannable English landing page. The full reference is preserved verbatim as <code>README.full.md</code>.</p>
+        <p class="why">Why: a landing page should convert in 30 seconds; the deep dive stays one click away.</p>
+        <p class="zh">中文：README 从 579 行精简到 198 行，做成可快速浏览的落地页；完整版原样保留为 <code>README.full.md</code>。</p>
+      </div>
+
+      <div class="card">
+        <span class="ic">🌐</span>
+        <h3>Bilingual docs</h3>
+        <p>New <code>README.zh-CN.md</code> mirror with a one-click <b>English · 中文</b> switch at the top of each file.</p>
+        <p class="why">Why: first-class Chinese onboarding, not an afterthought.</p>
+        <p class="zh">中文：新增 <code>README.zh-CN.md</code> 镜像，顶部一键切换中英文。</p>
+      </div>
+
+      <div class="card">
+        <span class="ic">🖥️</span>
+        <h3>War Room in the repo — fully offline</h3>
+        <p>The multi-page dashboard now lives at <code>warroom/</code>. ECharts, Cytoscape, 3 fonts and 8 brand icons are <b>vendored</b> — zero external requests.</p>
+        <p class="why">Why: download → unzip → <code>python3 -m http.server</code> → open. No Node, no internet.</p>
+        <p class="zh">中文：仪表盘进仓库 <code>warroom/</code>，图表库/字体/图标全部本地化，完全离线可跑。</p>
+      </div>
+
+      <div class="card">
+        <span class="ic">📦</span>
+        <h3>Release pipeline</h3>
+        <p><code>release.yml</code> zips <code>warroom/</code> on every <code>v*</code> tag and attaches <code>ar-warroom-vX.Y.Z.zip</code> to a GitHub Release (tag via env var, actions SHA-pinned).</p>
+        <p class="why">Why: a versioned, downloadable dashboard for every release — the recommended path for Hermes / OpenClaw / OpenCode.</p>
+        <p class="zh">中文：打 <code>v*</code> tag 自动打包仪表盘为 zip 并挂到 Release，给每个版本一个可下载的离线面板。</p>
+      </div>
+
+      <div class="card">
+        <span class="ic">🧹</span>
+        <h3>Repo tidy</h3>
+        <p>7 internal / QA folders (agent-prompts, eval, integrations, tests, wiki, workspace, scripts) consolidated under <code>meta/</code>.</p>
+        <p class="why">Why: the GitHub root now shows only meaningful folders — <code>.github · benchmark · commands · docs · packages · warroom · meta</code>.</p>
+        <p class="zh">中文：7 个内部/QA 目录收进 <code>meta/</code>，仓库根目录只剩有意义的文件夹。</p>
+      </div>
+
+      <div class="card">
+        <span class="ic">🔢</span>
+        <h3>Version sync</h3>
+        <p><b>3.4.27 → 3.4.30</b> everywhere: all 4 packages + internal deps + <code>types.ts</code> VERSION + SKILL.md + benchmark + codex-compat.</p>
+        <p class="why">Why: one consistent version, no drift between manifest, code, and docs.</p>
+        <p class="zh">中文：版本号在所有包、依赖、源码常量、SKILL、benchmark 中统一为 3.4.30。</p>
+      </div>
+
+      <div class="card flag">
+        <span class="ic">🔐</span>
+        <h3>Security fix — community PR #18</h3>
+        <p>Removed a <b>hardcoded Supabase URL + anon key</b> shipped as a default fallback in <code>awareness.ts</code>. It now gates on <code>readSupabaseConfig()</code> and returns nothing when unconfigured.</p>
+        <p class="why">Why: unconfigured users were silently reading from a baked-in backend. Thanks to <b>@leirt97</b>.</p>
+        <p class="zh">中文：删除 <code>awareness.ts</code> 里写死的 Supabase 地址与 anon key —— 未配置的用户不再悄悄连到内置后端。</p>
+      </div>
+
+      <div class="card">
+        <span class="ic">✅</span>
+        <h3>Reviewed before shipping</h3>
+        <p>A <b>5-agent round table</b> reviewed the diff and caught 7 defects — including a <b>shell-injection</b> in the release workflow — all fixed before push.</p>
+        <p class="why">Why: green CI ≠ correct. Independent review catches what self-verification misses.</p>
+        <p class="zh">中文：5 个 agent 圆桌评审，发现并修复 7 个问题（含 release 工作流的 shell 注入）后才推送。</p>
+      </div>
+
+    </div>
+
+    <div class="verify">
+      <span class="vlabel">Verified</span>
+      <span class="pill ok">build · 0 errors</span>
+      <span class="pill ok">consistency 10/10</span>
+      <span class="pill ok">funnel 18/18</span>
+      <span class="pill ok">heeded-guard 5/5</span>
+      <span class="pill ok">room-slug-guards 9/9</span>
+      <span class="pill ok">offline · 0 CDN refs</span>
+    </div>
+
+    <div class="held">
+      <b>Governance:</b> this release is staged on a pushed branch + PR. The irreversibles — <code>npm publish</code> ×4, the <code>v3.4.30</code> tag, and the merge to <code>main</code> — are run by a human after review. Until the tag is pushed, the README's <i>releases/latest</i> download link points to an earlier release.
+    </div>
+  </section>
+
+  <!-- ===================== TIMELINE ===================== -->
+  <div class="sech">Previous releases</div>
+  <div class="tl">
+    <div class="rel"><span class="rv">v3.4.27</span><span class="rd mono">2026-06-18</span>
+      <div class="rt">Reviewed naming + safety — slug validation, palace-room guards, new journal filename format; bundled the v3.4.26 safety patches.</div></div>
+    <div class="rel"><span class="rv">v3.4.26</span><span class="rd mono">2026-06-18</span>
+      <div class="rt">Post-review patch — 3 HIGH bugs caught by fresh-eyes review (session-count inflation, archive clobber, path injection in compress).</div></div>
+    <div class="rel"><span class="rv">v3.4.25</span><span class="rd mono">2026-06-18</span>
+      <div class="rt">Memory quality + trust integrity — incremental-write visibility regression guard (11/11).</div></div>
+    <div class="rel"><span class="rv">v3.4.24</span><span class="rd mono">2026-06-17</span>
+      <div class="rt">Orchestration docs + version bump.</div></div>
+    <div class="rel"><span class="rv">v3.4.23</span><span class="rd mono">2026-06-12</span>
+      <div class="rt">Patch release — published agent-recall-{core,mcp,sdk,cli}@3.4.23.</div></div>
+    <div class="rel"><span class="rv">v3.4.22 "Trust"</span><span class="rd mono">2026-06-11</span>
+      <div class="rt">Read/write consistency hardening across all stores.</div></div>
+    <div class="rel"><span class="rv">v3.4.21</span><span class="rd mono">2026-06-03</span>
+      <div class="rt">7-item real-usage feedback pass.</div></div>
+    <div class="rel"><span class="rv">v3.4.20</span><span class="rd mono">2026-06-01</span>
+      <div class="rt">Phase 6 foundation + arsaveall / bootstrap fixes; repo renamed to AgentRecall-MCP.</div></div>
+  </div>
+
+  <footer>
+    Part of the <a href="https://github.com/Goldentrii/AgentRecall-MCP">AgentRecall</a> project ·
+    full reasoning lives in <code>UPDATE-LOG.md</code> ·
+    <a href="https://github.com/Goldentrii/AgentRecall-MCP">AgentRecall</a> 项目的一部分
+  </footer>
+
+</div>
+</body>
+</html>
