@@ -173,4 +173,64 @@ describe("Awareness system — module integration", () => {
     assert.ok(compounds.length > 0, "Should detect 'deployment' compound");
     assert.ok(compounds[0].sourceInsights.length >= 3);
   });
+
+  it("fetchDashboardArchivedTitles skips network when Supabase is not configured", async () => {
+    const previousFetch = globalThis.fetch;
+    const previousEnv = {
+      AGENT_RECALL_SUPABASE_URL: process.env.AGENT_RECALL_SUPABASE_URL,
+      AGENT_RECALL_SUPABASE_KEY: process.env.AGENT_RECALL_SUPABASE_KEY,
+      SUPABASE_URL: process.env.SUPABASE_URL,
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+    };
+    delete process.env.AGENT_RECALL_SUPABASE_URL;
+    delete process.env.AGENT_RECALL_SUPABASE_KEY;
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_ANON_KEY;
+
+    let fetchCalls = 0;
+    globalThis.fetch = async () => {
+      fetchCalls += 1;
+      return { ok: true, json: async () => [{ title: "remote archived" }] };
+    };
+
+    try {
+      const archived = await awareness.fetchDashboardArchivedTitles();
+      assert.deepEqual(archived, []);
+      assert.equal(fetchCalls, 0);
+    } finally {
+      globalThis.fetch = previousFetch;
+      for (const [key, value] of Object.entries(previousEnv)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
+
+  it("fetchDashboardArchivedTitles uses AgentRecall Supabase config", async () => {
+    const previousFetch = globalThis.fetch;
+    fs.writeFileSync(path.join(TEST_ROOT, "config.json"), JSON.stringify({
+      supabase_url: "https://configured.supabase.co",
+      supabase_anon_key: "configured-key",
+      sync_enabled: true,
+    }));
+
+    let requestedUrl = "";
+    let requestedHeaders = {};
+    globalThis.fetch = async (url, options) => {
+      requestedUrl = String(url);
+      requestedHeaders = options.headers;
+      return { ok: true, json: async () => [{ title: "archived from config" }] };
+    };
+
+    try {
+      const archived = await awareness.fetchDashboardArchivedTitles();
+      assert.deepEqual(archived, ["archived from config"]);
+      assert.equal(requestedUrl, "https://configured.supabase.co/rest/v1/ar_awareness?select=title&is_active=eq.false");
+      assert.equal(requestedHeaders.apikey, "configured-key");
+      assert.equal(requestedHeaders.Authorization, "Bearer configured-key");
+    } finally {
+      globalThis.fetch = previousFetch;
+      fs.rmSync(path.join(TEST_ROOT, "config.json"), { force: true });
+    }
+  });
 });
