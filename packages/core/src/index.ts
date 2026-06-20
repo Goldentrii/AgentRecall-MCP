@@ -160,6 +160,8 @@ export { ensureDir, todayISO, readJsonSafe, writeJsonAtomic } from "./storage/fs
 // Storage — archive tier (Wave 2, lossless verbatim floor; local-only)
 export { archiveSession } from "./storage/archive-write.js";
 export type { ArchiveSessionInput, ArchiveSessionResult } from "./storage/archive-write.js";
+export { pruneRawArchive } from "./storage/archive-prune.js";
+export type { PruneRawArchiveOptions, PruneRawArchiveResult } from "./storage/archive-prune.js";
 export { enqueueConsolidation, drainConsolidationQueue } from "./storage/consolidation-queue.js";
 export type { ConsolidationJob, DrainReport } from "./storage/consolidation-queue.js";
 export { writeMemoryProtocol } from "./storage/memory-protocol.js";
