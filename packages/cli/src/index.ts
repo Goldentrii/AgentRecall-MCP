@@ -1869,6 +1869,8 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
           embedding_provider: embeddingProvider as "openai" | "voyage",
           embedding_api_key: embeddingKey.trim(),
           sync_enabled: true,
+          // Privacy boundary (Decision #6): personal data stays local by default.
+          sync_personal: false,
         });
 
         output("\nConfig saved to ~/.agent-recall/config.json");

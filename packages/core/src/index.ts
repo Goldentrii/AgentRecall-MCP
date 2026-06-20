@@ -143,6 +143,10 @@ export { appendToLog } from "./palace/log.js";
 export { consolidateJournalToPalace } from "./palace/consolidate.js";
 export type { ConsolidationResult } from "./palace/consolidate.js";
 
+// Storage — privacy classification (Wave 1, single source of truth)
+export { classifyStore, classifyPath, isPersonalProject, PERSONAL_STORES } from "./storage/classification.js";
+export type { Tier } from "./storage/classification.js";
+
 // Storage
 export { journalDir, journalDirs, palaceDir, roomDir, sanitizeSlug, sanitizeProject } from "./storage/paths.js";
 export { ensureDir, todayISO, readJsonSafe, writeJsonAtomic } from "./storage/fs-utils.js";
