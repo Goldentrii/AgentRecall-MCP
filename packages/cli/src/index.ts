@@ -661,21 +661,42 @@ async function main(): Promise<void> {
       // ---- MECHANICAL ARCHIVE — unconditional, zero dependence on captures ----
       try {
         const { readTranscriptByPath, readTodaySessions } = await import("./utils/transcript-reader.js");
-        // Prefer the explicit transcript_path; fall back to the proven
-        // readTodaySessions discovery if the Stop payload lacks it.
-        const src = transcriptPath
-          ? readTranscriptByPath(transcriptPath)
-          : (readTodaySessions()[0] ?? null);
-        if (src && "rawTail" in src && typeof (src as { rawTail?: unknown }).rawTail === "string") {
+        // Resolve the transcript for THIS session. Prefer the explicit path.
+        // Without it, identify the session by id — NEVER blindly take the newest:
+        // with multiple windows open that would archive another session's bytes
+        // under this key and corrupt the archive. Only use "newest" when it is
+        // unambiguous (exactly one session today); otherwise skip + log.
+        let resolvedPath: string | undefined = transcriptPath;
+        if (!resolvedPath) {
+          const today = readTodaySessions();
+          const wantId =
+            stopSessionId || process.env.CLAUDE_SESSION_ID || process.env.SESSION_ID || "";
+          const byId = wantId ? today.find((s) => s.sessionId === wantId) : undefined;
+          if (byId) {
+            resolvedPath = byId.file;
+          } else if (today.length === 1) {
+            resolvedPath = today[0].file; // unambiguous
+          } else if (today.length > 1) {
+            process.stderr.write(
+              `[AgentRecall hook-end] no transcript_path and ${today.length} sessions today with no id match — skipping archive to avoid archiving the wrong session\n`,
+            );
+          }
+        }
+        // Read the actual transcript file (gives a verbatim rawTail). Key the
+        // archive on the file's own UUID so content and key always agree.
+        const src = resolvedPath ? readTranscriptByPath(resolvedPath) : null;
+        if (src && resolvedPath && typeof src.rawTail === "string") {
+          // resolvedPath is narrowed to string here; its basename IS the session UUID.
+          const archiveSid = path.basename(resolvedPath, ".jsonl");
           const proj = project ?? src.projectGuess ?? "auto";
           core.archiveSession({
             project: proj,
-            sessionId: sid,
-            transcriptPath,
-            rawTranscript: (src as { rawTail: string }).rawTail,
+            sessionId: archiveSid,
+            transcriptPath: resolvedPath,
+            rawTranscript: src.rawTail,
             summary: src.firstUserMessage ?? undefined,
           });
-          core.enqueueConsolidation({ project: proj, sessionId: sid, reason: "hook-end archive" });
+          core.enqueueConsolidation({ project: proj, sessionId: archiveSid, reason: "hook-end archive" });
         }
       } catch (e) {
         // Archive must never break the Stop turn.

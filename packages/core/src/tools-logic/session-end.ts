@@ -294,7 +294,8 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
               : "no recurrence evidence in session summary (default-heeded — no real outcome today)",
           });
           // If this correction was predicted today and now recurred, it's a hit.
-          if (violated && firedToday && firedToday.has("predicted")) {
+          // Guard against double-counting (mirror the guard on the early-exit path).
+          if (violated && firedToday && firedToday.has("predicted") && !firedToday.has("predict_hit")) {
             recordOutcome({ correction_id: c.id, project: slug, kind: "predict_hit", at: nowISO, evidence: "predicted then recurred same day" });
           }
         } catch {

@@ -408,9 +408,15 @@ export function recordOutcome(outcome: CorrectionOutcome): void {
 
   // Wave 5: predict_precision = predict_hits / predicted_count, kept SEPARATE
   // from `precision`. Undefined until at least one prediction has fired.
+  // A predict_hit implies a prior prediction. If data is inconsistent (hits
+  // recorded without a matching predicted_count — e.g. migrated/corrupt records),
+  // floor the denominator at predict_hits so the metric stays VISIBLE and bounded
+  // rather than silently undefined while hits exist.
   const pc = updated.predicted_count ?? 0;
-  updated.predict_precision = pc > 0
-    ? Math.min(1, Number(((updated.predict_hits ?? 0) / pc).toFixed(3)))
+  const ph = updated.predict_hits ?? 0;
+  const predictDenom = Math.max(pc, ph);
+  updated.predict_precision = predictDenom > 0
+    ? Math.min(1, Number((ph / predictDenom).toFixed(3)))
     : undefined;
 
   // Re-write the JSON file atomically (tmp + rename — prevents truncation on SIGTERM).
