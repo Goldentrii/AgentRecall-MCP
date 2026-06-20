@@ -415,6 +415,56 @@ async function main(): Promise<void> {
       output(result);
       break;
     }
+    case "consolidate": {
+      // Wave 5: in-repo replacement for the external ~/.aam consolidation prompt.
+      // Surfaces the versioned consolidation prompt + decay report + crystallization
+      // candidates + DRAFT skill proposals. INVOCABLE ONLY — no cron created.
+      // runDecayPass defaults to --dry-run; pass --apply to actually flag archives.
+      const slug = await core.resolveProject(project);
+      const dryRun = !hasFlag("--apply", rest);
+      let decay = null;
+      try {
+        decay = core.runDecayPass(slug, { dryRun });
+      } catch {
+        decay = null;
+      }
+      const reflect = await core.sessionEndReflect({ project: slug });
+      const prompt = core.buildConsolidationPrompt(slug, reflect.bundle);
+      let candidates: import("agent-recall-core").CrystallizationCandidate[] = [];
+      try {
+        candidates = core.findCrystallizationCandidates();
+      } catch {
+        candidates = [];
+      }
+      let drafts: import("agent-recall-core").ProposedSkill[] = [];
+      try {
+        drafts = await core.proposeSkillsFromPhases(slug);
+      } catch {
+        drafts = [];
+      }
+      output({
+        project: slug,
+        dry_run: dryRun,
+        decay,
+        crystallization_candidates: candidates,
+        skill_drafts: drafts,
+        prompt,
+      });
+      break;
+    }
+    case "blind-spots": {
+      // Wave 5: read or recompute the corrections-derived behavioral profile.
+      // The profile lives in the PERSONAL tier (sync-excluded). INVOCABLE ONLY.
+      const slug = await core.resolveProject(project);
+      if (hasFlag("--recompute", rest)) {
+        const profile = core.recomputeBlindSpots(slug);
+        output(profile);
+      } else {
+        const profile = core.readBlindSpots(slug);
+        output(profile ?? "none yet — run `ar blind-spots --recompute` after corrections accumulate");
+      }
+      break;
+    }
     case "knowledge": {
       const sub = rest[0];
       const knRest = rest.slice(1);
@@ -1201,7 +1251,12 @@ async function main(): Promise<void> {
           });
 
           if (result.warning) {
-            // Compact format: header + top matches, max 6 lines total
+            // Compact format: header + top matches, max 6 lines total.
+            // Wave 5: a `blocked` verdict (authoritative P0 override, not noise)
+            // leads with the CONFLICT banner so the agent sees it first.
+            if (result.verdict === "blocked") {
+              warningLines.push(`[AgentRecall] ⛔ CONFLICT — a human correction OVERRIDES this plan. Reconcile first.`);
+            }
             warningLines.push(`[AgentRecall] ⚠️  Pre-action check: ${commandStr.slice(0, 80)}`);
 
             // Top correction (P0 first)

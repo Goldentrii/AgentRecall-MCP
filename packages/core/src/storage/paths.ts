@@ -166,6 +166,23 @@ export function archiveRawDir(project: string): string {
 }
 
 /**
+ * Resolve the personal-tier directory for a project (Wave 5).
+ *
+ * projects/<slug>/personal/ holds the corrections-derived behavioral profile
+ * (Blind Spots) — the highest-sensitivity artifact. It is registered in
+ * classification.ts (`/personal/` marker) as personal so it is EXCLUDED from
+ * Supabase sync and the future git mirror by default (Decision #6). Never
+ * scanned by autoBackfill (which only walks journal + palace/rooms).
+ */
+export function personalDir(project: string): string {
+  const safe = sanitizeProject(project);
+  const root = getRoot();
+  const resolved = path.join(root, "projects", safe, "personal");
+  assertInsideRoot(resolved, root, project);
+  return resolved;
+}
+
+/**
  * Resolve the global (cross-project) digest directory.
  */
 export function digestGlobalDir(): string {

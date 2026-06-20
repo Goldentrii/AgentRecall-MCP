@@ -453,8 +453,28 @@ export type { SkillListInput, SkillListResult, SkillListItem } from "./tools-log
 export {
   recordOutcome,
   getCorrectionKPIs,
+  readOutcomesForToday,
 } from "./storage/corrections.js";
 export type { CorrectionOutcome, CorrectionKPI } from "./storage/corrections.js";
+
+// Wave 5 — corrections-prediction (north-star) + compression remainder
+export { deriveBlindSpots } from "./helpers/blind-spots.js";
+export type { BlindSpot, BlindSpotProfile } from "./helpers/blind-spots.js";
+export { writeBlindSpots, readBlindSpots, recomputeBlindSpots } from "./storage/blind-spots-store.js";
+export { personalDir } from "./storage/paths.js";
+export { predictCorrection } from "./tools-logic/predict-correction.js";
+export type {
+  PredictCorrectionInput,
+  PredictCorrectionResult,
+  PredictedRisk,
+} from "./tools-logic/predict-correction.js";
+export { proposeSkillsFromPhases } from "./tools-logic/skill-propose.js";
+export type { ProposedSkill } from "./tools-logic/skill-propose.js";
+export {
+  buildConsolidationPrompt,
+  CONSOLIDATION_PROMPT_TEMPLATE,
+  CONSOLIDATION_PROMPT_VERSION,
+} from "./prompts/consolidation-prompt.js";
 
 // session_start lite (V6)
 export { sessionStartLite } from "./tools-logic/session-start-lite.js";
