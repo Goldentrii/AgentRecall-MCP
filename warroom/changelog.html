@@ -109,7 +109,66 @@
     <span style="font-size:20px;color:var(--accent);flex-shrink:0;">→</span>
   </a>
 
-  <!-- MAJOR: v3.4.30 -->
+  <!-- MAJOR: v3.4.32 -->
+  <section class="hero">
+    <div class="hero-head">
+      <div class="tagrow">
+        <span class="vbadge">v3.4.32</span>
+        <span class="major"><span class="en ">★ Major release</span><span class="zh ">★ 重大版本</span></span>
+        <span class="date mono">2026-06-20</span>
+      </div>
+      <h2 class="hero-title"><span class="en ">Memory → Understanding</span><span class="zh ">从记忆到理解</span></h2>
+      <p class="hero-lede"><span class="en ">The shift from a <b>memory</b> system (collect &amp; recall) to an <b>understanding</b> system (anticipate). Two structural moves: a <b>two-tier memory</b> (lossless archive under a compressed model, joined by a confidence bridge) and <b>predict-the-correction</b> — surfacing a warning <i>before</i> you have to give it. Five waves, each fact-checked against the live code, adversarially verified, and code-reviewed.</span><span class="zh ">从<b>记忆</b>系统（收集与召回）迈向<b>理解</b>系统（预判）。两招:<b>双层记忆</b>（无损档案层 + 压缩模型层,以置信度桥相连）与 <b>predict-the-correction</b> —— 在你开口纠正<i>之前</i>就把警告推出来。五个 Wave,每个都对照真实代码核实、对抗式验证并经 code-review。</span></p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <span class="ic">🧠</span>
+        <h3><span class="en ">Two-tier memory + bridge</span><span class="zh ">双层记忆 + 桥</span></h3>
+        <p><span class="en ">A lossless verbatim archive (<code>journal/archive/raw/</code>) written on every session end, under a lossy compressed model. When confidence is low, recall <b>drills down</b> to the verbatim source instead of bluffing.</span><span class="zh ">每次会话结束写入无损逐字档案（<code>journal/archive/raw/</code>），其上是有损的压缩模型。置信度低时,召回会<b>回钻</b>到原文,而不是硬编一个不确定的答案。</span></p>
+        <p class="why"><span class="en ">Why: a floor nothing falls through, plus a model that knows when to fall back.</span><span class="zh ">为什么:一个谁也漏不下去的地板,加上一个知道何时回退的模型。</span></p>
+      </div>
+      <div class="card flag">
+        <span class="ic">🔒</span>
+        <h3><span class="en ">Privacy sync gate</span><span class="zh ">隐私同步门控</span></h3>
+        <p><span class="en ">Plugged a <b>live</b> leak: the behavioral/awareness layer was syncing to Supabase on every write. New <code>classification.ts</code> (personal vs project) gates it; <code>sync_personal=false</code> by default.</span><span class="zh ">堵住一个<b>正在发生</b>的泄漏:行为/awareness 层此前每次写入都同步到 Supabase。新增 <code>classification.ts</code>(personal vs project)做门控,默认 <code>sync_personal=false</code>。</span></p>
+        <p class="why"><span class="en ">Why: your behavioral model must not leave the machine by default.</span><span class="zh ">为什么:你的行为模型默认不该出本机。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">♻️</span>
+        <h3><span class="en ">Compression that compounds</span><span class="zh ">会复利的压缩</span></h3>
+        <p><span class="en ">Revived the dormant FSRS reinforce-on-recall loop (throttled), added an in-repo decay pass, made the <code>archived</code> flag actually filter, and a crystallization-candidate detector.</span><span class="zh ">复活沉睡的 FSRS reinforce-on-recall 回路(带节流),新增仓内 decay pass,让 <code>archived</code> 标志真正生效过滤,并加入结晶候选检测。</span></p>
+        <p class="why"><span class="en ">Why: what you use survives; what you don't fades. Collect → compress into rules.</span><span class="zh ">为什么:用得多的留存,用不到的褪色。从堆积转向压缩成规则。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">🧭</span>
+        <h3><span class="en ">Predict-the-correction</span><span class="zh ">预测纠正</span></h3>
+        <p><span class="en ">An authoritative P0 correction now <b>overrides</b> a conflicting plan (<code>verdict:'blocked'</code>). A Blind-Spots profile is auto-derived from accumulated corrections (personal tier, sync-excluded); <code>predictCorrection</code> pushes it as an early prior.</span><span class="zh ">权威 P0 纠正现在会<b>压倒</b>冲突的计划(<code>verdict:'blocked'</code>)。从累积纠正自动推导 Blind-Spots 画像(personal 层,默认不同步);<code>predictCorrection</code> 把它作为提前先验注入。</span></p>
+        <p class="why"><span class="en ">Why: memory recalls the past; understanding anticipates the next correction.</span><span class="zh ">为什么:记忆调取过去,理解预判下一次纠正。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">🗜️</span>
+        <h3><span class="en ">Bounded growth</span><span class="zh ">有界增长</span></h3>
+        <p><span class="en "><code>pruneRawArchive</code> gzips or removes raw segments once they are both old AND consumed (<code>mtime ≤ .consumed.json lastConsumedAt</code>). A null marker prunes nothing — undistilled bytes are never discarded.</span><span class="zh "><code>pruneRawArchive</code> 在原始段「超期且已消费」(<code>mtime ≤ .consumed.json lastConsumedAt</code>)时 gzip 或删除。marker 为 null 时一律不剪 —— 未蒸馏的字节绝不丢弃。</span></p>
+        <p class="why"><span class="en ">Why: bound <code>~/.agent-recall</code> growth without ever losing the lossless floor.</span><span class="zh ">为什么:在不丢失无损地板的前提下,约束 <code>~/.agent-recall</code> 的体积增长。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">✅</span>
+        <h3><span class="en ">Fact-checked, then reviewed</span><span class="zh ">先核实,再评审</span></h3>
+        <p><span class="en ">A multi-agent workflow fact-checked every plan claim against the live tree before building; each wave passed a build/test gate, was re-verified against the plan, and code-reviewed (0 CRITICAL / 0 HIGH).</span><span class="zh ">多 agent 工作流在动工前把每条计划论断对照真实代码核实;每个 Wave 都过 build/test 闸门、对照计划复验,并经 code-review(0 CRITICAL / 0 HIGH)。</span></p>
+        <p class="why"><span class="en ">Why: green CI ≠ correct. The plan's own assumptions were the first thing tested.</span><span class="zh ">为什么:CI 全绿 ≠ 正确。计划自身的假设是第一个被检验的对象。</span></p>
+      </div>
+    </div>
+    <div class="verify">
+      <span class="vlabel"><span class="en ">Verified</span><span class="zh ">已验证</span></span>
+      <span class="pill">build · 0 errors</span>
+      <span class="pill">408 tests · 0 fail</span>
+      <span class="pill">review · 0 CRITICAL/HIGH</span>
+      <span class="pill">offline · 0 CDN</span>
+    </div>
+    <div class="shipped"><span class="en "><b>Shipped 2026-06-20:</b> merged to <code>main</code>; tag <code>v3.4.32</code> pushed → GitHub Release with <code>ar-warroom-v3.4.32.zip</code> attached for download. <i>npm publish + MCP-registry re-publish are tracked separately.</i></span><span class="zh "><b>2026-06-20 已发布：</b>合并入 <code>main</code>;推送 <code>v3.4.32</code> tag → GitHub Release 附带可下载的 <code>ar-warroom-v3.4.32.zip</code>。<i>npm 发布与 MCP registry 重新发布另行单独处理。</i></span></div>
+  </section>
+
+  <!-- v3.4.30 -->
   <section class="hero">
     <div class="hero-head">
       <div class="tagrow">

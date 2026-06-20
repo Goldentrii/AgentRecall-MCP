@@ -200,7 +200,7 @@ claude login
   <img src="warroom/static/preview.png" alt="AgentRecall War Room — 总览" width="900">
 </p>
 
-1. 从 [最新 GitHub Release](https://github.com/Goldentrii/AgentRecall/releases/latest) 下载 **`ar-warroom-v3.4.30.zip`**。
+1. 从 [最新 GitHub Release](https://github.com/Goldentrii/AgentRecall/releases/latest) 下载 **`ar-warroom-v3.4.32.zip`**。
 2. 解压后本地启动：
 
 ```bash

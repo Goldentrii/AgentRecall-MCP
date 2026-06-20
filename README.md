@@ -200,7 +200,7 @@ A **local-first visual dashboard** for your memory: an activity calendar, per-pr
   <img src="warroom/static/preview.png" alt="AgentRecall War Room — Overview" width="900">
 </p>
 
-1. Download **`ar-warroom-v3.4.30.zip`** from the [latest GitHub Release](https://github.com/Goldentrii/AgentRecall/releases/latest).
+1. Download **`ar-warroom-v3.4.32.zip`** from the [latest GitHub Release](https://github.com/Goldentrii/AgentRecall/releases/latest).
 2. Unzip it, then serve it locally:
 
 ```bash
