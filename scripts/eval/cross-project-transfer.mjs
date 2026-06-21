@@ -25,6 +25,15 @@
  *     'frontend'/'api' tags, so a tags-inclusive signature glues unrelated intents
  *     across projects into spurious "same-class" transfers. We therefore report
  *     TWO views and the RULE-ONLY view is the real headline.
+ *   - SYMMETRIC CAVEAT (the OTHER direction — do not read rule-only as a ceiling):
+ *     this matcher is fuzzy-LEXICAL (tokenize/overlap, NO semantics — established
+ *     in Loop 5 / scripts/eval/paraphrase-robustness.mjs). So a LOW rule-only hit
+ *     rate means "no LEXICAL transfer", NOT "no SEMANTIC transfer". Two corrections
+ *     with the same intent but disjoint vocabulary ("pin the lockfile version" vs
+ *     "lock the dependency versions") score MISS though they are the same class —
+ *     so rule-only may UNDERSTATE true cross-project semantic transfer. It is a
+ *     LOWER bound; only a learned representation can tell "no transferable intent"
+ *     apart from "transferable intent the words don't show".
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * METHOD (read-only over ~/.agent-recall; leave-one-PROJECT-out):
@@ -373,6 +382,10 @@ function renderReport(r) {
   lines.push("  The with-tags ↔ rule-only GAP is boilerplate-tag inflation (every project");
   lines.push("  shares 'correction'/'backend'/'deployment'/'frontend'/'api' tags), which the");
   lines.push("  rule-only view strips. Trust rule-only.");
+  lines.push("  BUT rule-only is a LOWER bound, not a ceiling: the matcher is fuzzy-LEXICAL,");
+  lines.push("  so a low rate = 'no LEXICAL transfer', NOT 'no transfer'. Same-intent");
+  lines.push("  corrections worded differently score MISS and are invisible here — true");
+  lines.push("  semantic transfer may be higher (needs a learned representation to see).");
   lines.push("══════════════════════════════════════════════════════════════");
   return lines.join("\n");
 }
