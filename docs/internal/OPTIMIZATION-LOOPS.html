@@ -1,48 +1,86 @@
 <title>AgentRecall · 自主优化 11 Loops</title>
 <style>
-  :root{--bg:#FAF7F0;--surface:#F1ECDD;--surface-2:#E8E1CC;--ink:#2B2520;--ink-soft:#5A4E3F;--ink-faint:#8C7F6B;--rule:#DCD1B5;--rule-soft:#E6DFC8;--accent:#8A6A3F;--accent-soft:#C9A56C;--accent-dim:rgba(138,106,63,.10);--good:#5C7A4A;--bad:#A6483C;--blue:#4E6E8E;--amber:#B07A2E;--shadow:0 1px 2px rgba(43,37,32,.05),0 6px 20px rgba(43,37,32,.07);}
-  @media (prefers-color-scheme:dark){:root{--bg:#15120E;--surface:#1E1A14;--surface-2:#28231B;--ink:#ECE3D2;--ink-soft:#BBAE97;--ink-faint:#897C68;--rule:#322B21;--rule-soft:#261F18;--accent:#C9A56C;--accent-soft:#E0C088;--accent-dim:rgba(201,165,108,.13);--good:#9DBE84;--bad:#D98A7C;--blue:#8FB0CE;--amber:#D9A85A;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.4);}}
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-  body{background:var(--bg);color:var(--ink);font-family:'Nunito','Baloo 2','Segoe UI Rounded','Hiragino Maru Gothic ProN','Yuanti SC','PingFang SC',system-ui,sans-serif;font-size:15px;line-height:1.62;-webkit-font-smoothing:antialiased;padding:0 0 80px;}
-  .wrap{max-width:1000px;margin:0 auto;padding:28px 18px 0;}
-  h1,h2,h3,.display{font-family:'Baloo 2','Nunito','Segoe UI Rounded',system-ui,sans-serif;font-weight:700;letter-spacing:-.01em;}
-  .mono,pre,code{font-family:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;}
-  code{font-size:.84em;background:var(--surface-2);color:var(--accent);padding:1.5px 6px;border-radius:6px;}
-  html[data-lang="en"] .zh{display:none;} html[data-lang="zh"] .en{display:none;}
-  .topbar{display:flex;align-items:center;gap:14px;margin-bottom:8px;}
-  .logo{width:46px;height:46px;border-radius:13px;background:linear-gradient(140deg,var(--accent-soft),var(--accent));display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:var(--shadow);flex-shrink:0;}
-  h1.title{font-size:27px;line-height:1.05;}
-  .sub{font-size:12.5px;color:var(--ink-faint);margin-top:3px;}
-  .lang{margin-left:auto;display:flex;border:1px solid var(--rule);border-radius:999px;overflow:hidden;background:var(--surface);align-self:flex-start;}
-  .lang button{font:inherit;font-weight:800;font-size:12.5px;border:0;background:transparent;color:var(--ink-faint);padding:7px 15px;cursor:pointer;}
-  .lang button.on{background:var(--accent);color:#fff;}
-  .card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:15px 18px;box-shadow:var(--shadow);margin:14px 0;}
-  .card.guard{border-left:4px solid var(--bad);} .card.decide{border-left:4px solid var(--amber);}
-  .card p{font-size:13.5px;color:var(--ink-soft);} .card p+p{margin-top:7px;} .card b{color:var(--ink);}
-  .sech{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:34px 0 12px;padding-bottom:7px;border-bottom:1.5px solid var(--rule);}
-  /* sticky nav */
-  .nav{position:sticky;top:0;z-index:10;background:var(--bg);padding:10px 0 8px;border-bottom:1px solid var(--rule);margin-bottom:6px;}
-  .navrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
-  .nav a{text-decoration:none;font-size:12px;font-weight:800;border:1px solid var(--rule);border-radius:8px;padding:5px 9px;color:var(--ink-soft);background:var(--surface);display:inline-flex;gap:5px;align-items:center;}
-  .nav a:hover{border-color:var(--accent);color:var(--accent);}
-  .nav a .g{font-size:10px;color:var(--ink-faint);}
-  .nav a.win{border-left:3px solid var(--good);} .nav a.part{border-left:3px solid var(--amber);} .nav a.neg{border-left:3px solid var(--blue);}
-  .nav a.final{background:var(--accent);color:#fff;border-color:var(--accent);}
-  table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--surface);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);}
-  .tableScroll{overflow-x:auto;}
-  th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--rule-soft);vertical-align:top;}
-  th{background:var(--surface-2);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);}
-  tr:last-child td{border-bottom:0;}
-  .grade{font-weight:800;font-family:'JetBrains Mono',monospace;}
-  .loop{scroll-margin-top:64px;margin:14px 0;}
-  .loop h2{font-size:18px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:2px;}
-  .loop .theme{font-size:12.5px;color:var(--ink-faint);margin-bottom:9px;}
-  .blk{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 16px;box-shadow:var(--shadow);}
-  .blk p{font-size:13px;color:var(--ink-soft);} .blk p+p{margin-top:6px;}
-  .blk.hi{border-left:4px solid var(--good);} .blk.lo{border-left:4px solid var(--bad);} .blk.se{border-left:4px solid var(--blue);}
-  .st{font-weight:800;font-size:10.5px;padding:2px 8px;border-radius:999px;display:inline-block;}
-  .st.win{background:rgba(92,122,74,.16);color:var(--good);} .st.part{background:rgba(176,122,46,.16);color:var(--amber);} .st.neg{background:rgba(78,110,142,.16);color:var(--blue);}
-  .foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--rule);font-size:12px;color:var(--ink-faint);text-align:center;}
+:root{--bg:#FAF7F0;--surface:#F1ECDD;--surface-2:#E8E1CC;--ink:#2B2520;--ink-soft:#5A4E3F;--ink-faint:#8C7F6B;--rule:#DCD1B5;--rule-soft:#E6DFC8;--accent:#8A6A3F;--accent-soft:#C9A56C;--accent-dim:rgba(138,106,63,.10);--good:#5C7A4A;--bad:#A6483C;--blue:#4E6E8E;--amber:#B07A2E;--shadow:0 1px 2px rgba(43,37,32,.05),0 6px 20px rgba(43,37,32,.07);}
+@media(prefers-color-scheme:dark){:root{--bg:#15120E;--surface:#1E1A14;--surface-2:#28231B;--ink:#ECE3D2;--ink-soft:#BBAE97;--ink-faint:#897C68;--rule:#322B21;--rule-soft:#261F18;--accent:#C9A56C;--accent-soft:#E0C088;--accent-dim:rgba(201,165,108,.13);--good:#9DBE84;--bad:#D98A7C;--blue:#8FB0CE;--amber:#D9A85A;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.4);}}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--ink);font-family:'Nunito','Segoe UI Rounded','Hiragino Maru Gothic ProN','PingFang SC',system-ui,sans-serif;font-size:15px;line-height:1.62;-webkit-font-smoothing:antialiased;padding:0 0 80px;}
+.wrap{max-width:1020px;margin:0 auto;padding:28px 18px 0;}
+h1,h2,h3{font-weight:700;letter-spacing:-.01em;}
+code{font-size:.83em;background:var(--surface-2);color:var(--accent);padding:2px 6px;border-radius:5px;font-family:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;}
+html[data-lang="en"] .zh{display:none;}
+html[data-lang="zh"] .en{display:none;}
+
+/* topbar */
+.topbar{display:flex;align-items:center;gap:14px;margin-bottom:10px;}
+.logo{width:48px;height:48px;border-radius:13px;background:linear-gradient(140deg,var(--accent-soft),var(--accent));display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:var(--shadow);flex-shrink:0;}
+h1.title{font-size:26px;line-height:1.1;}
+.sub{font-size:12px;color:var(--ink-faint);margin-top:3px;font-family:'JetBrains Mono',monospace;}
+.lang{margin-left:auto;display:flex;border:1px solid var(--rule);border-radius:999px;overflow:hidden;background:var(--surface);align-self:flex-start;}
+.lang button{font:inherit;font-weight:800;font-size:12.5px;border:0;background:transparent;color:var(--ink-faint);padding:7px 15px;cursor:pointer;transition:background .15s;}
+.lang button.on{background:var(--accent);color:#fff;}
+
+/* sticky nav */
+.nav{position:sticky;top:0;z-index:20;background:var(--bg);padding:9px 0 7px;border-bottom:1.5px solid var(--rule);}
+.navrow{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
+.nav a{text-decoration:none;font-size:11.5px;font-weight:800;border:1px solid var(--rule);border-radius:8px;padding:5px 9px;color:var(--ink-soft);background:var(--surface);display:inline-flex;flex-direction:column;align-items:center;line-height:1.2;cursor:pointer;transition:border-color .15s,color .15s;}
+.nav a:hover{border-color:var(--accent);color:var(--accent);}
+.nav a .num{font-size:13px;font-weight:900;}
+.nav a .lbl{font-size:9.5px;color:var(--ink-faint);font-weight:600;margin-top:1px;}
+.nav a .sc{font-size:9.5px;margin-top:1px;}
+.nav a.win{border-left:3px solid var(--good);}
+.nav a.part{border-left:3px solid var(--amber);}
+.nav a.neg{border-left:3px solid var(--blue);}
+.nav a.spec{background:var(--accent);color:#fff;border-color:var(--accent);}
+.nav a.spec .lbl,.nav a.spec .sc{color:rgba(255,255,255,.75);}
+.nav a.decide-chip{background:var(--amber);color:#fff;border-color:var(--amber);}
+.nav a.decide-chip .lbl{color:rgba(255,255,255,.8);}
+
+/* section headers */
+.sech{font-size:11.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:32px 0 12px;padding-bottom:7px;border-bottom:1.5px solid var(--rule);scroll-margin-top:80px;}
+
+/* summary cards */
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:16px 20px;box-shadow:var(--shadow);margin:12px 0;}
+.card.guard{border-left:4px solid var(--bad);}
+.card.decide{border-left:4px solid var(--amber);}
+.card p{font-size:13.5px;color:var(--ink-soft);}
+.card p+p{margin-top:8px;}
+.card b{color:var(--ink);}
+
+/* board table */
+table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--surface);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);}
+.tableScroll{overflow-x:auto;}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--rule-soft);vertical-align:top;}
+th{background:var(--surface-2);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);}
+tr:last-child td{border-bottom:0;}
+.grade{font-weight:800;font-family:'JetBrains Mono',monospace;}
+
+/* loop sections */
+.loop{scroll-margin-top:80px;margin:16px 0;}
+.loop-hdr{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:4px;}
+.loop h2{font-size:19px;flex:1;}
+.loop .meta{font-size:12px;color:var(--ink-faint);margin-bottom:10px;font-family:'JetBrains Mono',monospace;}
+.st{font-weight:800;font-size:11px;padding:3px 9px;border-radius:999px;display:inline-block;white-space:nowrap;}
+.st.win{background:rgba(92,122,74,.15);color:var(--good);}
+.st.part{background:rgba(176,122,46,.15);color:var(--amber);}
+.st.neg{background:rgba(78,110,142,.15);color:var(--blue);}
+
+/* sub-blocks inside a loop */
+.blks{display:flex;flex-direction:column;gap:8px;}
+.blk{background:var(--surface);border:1px solid var(--rule);border-radius:11px;padding:12px 15px;box-shadow:var(--shadow);}
+.blk.hi{border-left:3px solid var(--good);}
+.blk.lo{border-left:3px solid var(--bad);}
+.blk.se{border-left:3px solid var(--blue);}
+.blk.am{border-left:3px solid var(--amber);}
+.blk-label{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px;}
+.blk p{font-size:13px;color:var(--ink-soft);}
+.blk p+p{margin-top:5px;}
+.blk b{color:var(--ink);}
+.blk ul{margin:4px 0 0 16px;font-size:13px;color:var(--ink-soft);}
+.blk ul li+li{margin-top:3px;}
+.blk .num-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;}
+.blk .metric{background:var(--surface-2);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace;}
+
+.foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--rule);font-size:12px;color:var(--ink-faint);text-align:center;font-family:'JetBrains Mono',monospace;}
 </style>
 
 <div class="wrap">
@@ -50,158 +88,580 @@
     <div class="logo">🔁</div>
     <div>
       <h1 class="title"><span class="zh">自主优化 · 11 Loops</span><span class="en">Autonomous Optimization · 11 Loops</span></h1>
-      <div class="sub mono">AgentRecall · branch opt/autonomous-loops · 25 commits · NOT pushed · 2026-06-21</div>
+      <div class="sub">AgentRecall · opt/autonomous-loops · 25 commits · NOT pushed · 2026-06-21</div>
     </div>
-    <div class="lang"><button id="zhBtn" class="on" onclick="setLang('zh')">中文</button><button id="enBtn" onclick="setLang('en')">EN</button></div>
+    <div class="lang">
+      <button id="zhBtn" class="on" onclick="setLang('zh')">中文</button>
+      <button id="enBtn" onclick="setLang('en')">EN</button>
+    </div>
   </div>
 
   <!-- STICKY NAV -->
   <div class="nav">
     <div class="navrow">
-      <a href="#board" style="background:var(--surface-2)"><span class="zh">看板</span><span class="en">Board</span></a>
-      <a class="part" href="#loop-1">1<span class="g">6</span></a>
-      <a class="win" href="#loop-2">2<span class="g">9</span></a>
-      <a class="neg" href="#loop-3">3<span class="g">10</span></a>
-      <a class="win" href="#loop-4">4<span class="g">8</span></a>
-      <a class="win" href="#loop-5">5<span class="g">9</span></a>
-      <a class="win" href="#loop-6">6<span class="g">9</span></a>
-      <a class="win" href="#loop-7">7<span class="g">8</span></a>
-      <a class="part" href="#loop-8">8<span class="g">7.5</span></a>
-      <a class="win" href="#loop-9">🎨9<span class="g">9</span></a>
-      <a class="win" href="#loop-10">🎨10<span class="g">9.5</span></a>
-      <a class="win" href="#loop-11">🎨11<span class="g">9</span></a>
-      <a class="final" href="#final">★ <span class="zh">总评</span><span class="en">Final</span></a>
-      <a class="final" href="#decide" style="background:var(--amber)">⚑ <span class="zh">待你决定</span><span class="en">Your call</span></a>
+      <a data-target="board">
+        <span class="num"><span class="zh">看板</span><span class="en">Board</span></span>
+      </a>
+      <a class="part" data-target="loop-1">
+        <span class="num">① </span>
+        <span class="lbl"><span class="zh">诚实性</span><span class="en">Honesty</span></span>
+        <span class="sc">6/10</span>
+      </a>
+      <a class="win" data-target="loop-2">
+        <span class="num">② </span>
+        <span class="lbl"><span class="zh">自动整合</span><span class="en">Auto-consol</span></span>
+        <span class="sc">9/10</span>
+      </a>
+      <a class="neg" data-target="loop-3">
+        <span class="num">③ </span>
+        <span class="lbl"><span class="zh">预测评测</span><span class="en">Predict eval</span></span>
+        <span class="sc">10/10</span>
+      </a>
+      <a class="win" data-target="loop-4">
+        <span class="num">④ </span>
+        <span class="lbl"><span class="zh">实时识别</span><span class="en">Recognition</span></span>
+        <span class="sc">8/10</span>
+      </a>
+      <a class="win" data-target="loop-5">
+        <span class="num">⑤ </span>
+        <span class="lbl"><span class="zh">语义匹配</span><span class="en">Semantic</span></span>
+        <span class="sc">9/10</span>
+      </a>
+      <a class="win" data-target="loop-6">
+        <span class="num">⑥ </span>
+        <span class="lbl"><span class="zh">数学+Doctor</span><span class="en">Math+Doctor</span></span>
+        <span class="sc">9/10</span>
+      </a>
+      <a class="win" data-target="loop-7">
+        <span class="num">⑦ </span>
+        <span class="lbl"><span class="zh">门偏差量化</span><span class="en">Gate bias</span></span>
+        <span class="sc">8/10</span>
+      </a>
+      <a class="part" data-target="loop-8">
+        <span class="num">⑧ </span>
+        <span class="lbl"><span class="zh">全文门v3 ◑</span><span class="en">Full-gate ◑</span></span>
+        <span class="sc">7.5/10</span>
+      </a>
+      <a class="win" data-target="loop-9">
+        <span class="num">⑨ 🎨</span>
+        <span class="lbl"><span class="zh">镜子</span><span class="en">Mirror</span></span>
+        <span class="sc">9/10</span>
+      </a>
+      <a class="win" data-target="loop-10">
+        <span class="num">⑩ 🎨</span>
+        <span class="lbl"><span class="zh">意图收敛</span><span class="en">Intent-conv</span></span>
+        <span class="sc">9.5/10</span>
+      </a>
+      <a class="win" data-target="loop-11">
+        <span class="num">⑪ 🎨</span>
+        <span class="lbl"><span class="zh">跨项目</span><span class="en">Cross-proj</span></span>
+        <span class="sc">9/10</span>
+      </a>
+      <a class="spec" data-target="final">
+        <span class="num">★</span>
+        <span class="lbl"><span class="zh">总评</span><span class="en">Final</span></span>
+        <span class="sc">8.5/10</span>
+      </a>
+      <a class="decide-chip" data-target="decide">
+        <span class="num">⚑</span>
+        <span class="lbl"><span class="zh">待你决定</span><span class="en">Your call</span></span>
+      </a>
     </div>
   </div>
 
   <div class="card">
     <p><b><span class="zh">任务。</span><span class="en">Mandate.</span></b>
-      <span class="zh">你离开期间、不做决策——orchestrator(Claude)全权决策。跑 <b>11 个 loop</b>(1–6 基础 · 7–8 结构化 · <b>9–11 自由创新</b>),每个都是 <b>改进 → 验证 → round-table(真跑测试的 agent)→ 综合 → 设计下一轮</b>,朝三个北极星:<b>(1) 实时识别</b>(开局就知道你是谁/能做什么/项目到哪了/你是怎样的人)、<b>(2) 类脑的记忆保存/反思/理解</b>、<b>(3) 真正的数学层</b>。每个 loop 都如实记录。</span>
-      <span class="en">Operator away and not deciding — the orchestrator (Claude) holds all decisions. 11 loops (1–6 grounded · 7–8 structured · 9–11 freestyle), each: improve → verify → round-table that actually runs tests → synthesize → design next, toward three north-stars: real-time recognition, brain-like preservation/reflection/understanding, and a real math layer. Every loop recorded honestly.</span></p>
+    <span class="zh">你离开期间由 orchestrator (Claude) 全权决策,跑 <b>11 个 loop</b>(1–6 基础 · 7–8 结构化 · <b>9–11 自由创新</b>),每个都是 <b>改进 → 验证 → round-table → 综合 → 设计下一轮</b>,朝三个北极星:<b>① 实时识别</b>(开局就知道你是谁)、<b>② 类脑的记忆保存/反思/理解</b>、<b>③ 真正的数学层</b>。每个 loop 如实记录。</span>
+    <span class="en">Operator away — orchestrator (Claude) holds all decisions. 11 loops (1–6 grounded · 7–8 structured · 9–11 freestyle), each: improve → verify → round-table that actually runs tests → synthesize → design next. Three north-stars: real-time recognition, brain-like preservation/reflection/understanding, and a real math layer. Every loop recorded honestly.</span></p>
   </div>
 
   <div class="card guard">
-    <p><b style="color:var(--bad)"><span class="zh">红线(全程守住)</span><span class="en">Guardrails (held throughout)</span></b><br>
-      <span class="zh">全部在本地分支 <code>opt/autonomous-loops</code> · <b>从不</b> push / 发布 / 升版本 / 部署 / 建 cron · <b>从不</b>删系统或重要文件 · 每次代码改动都过 <code>npm run build &amp;&amp; npm test</code>(红就停)· 失败照实记录、不演戏。</span>
-      <span class="en">All on local branch <code>opt/autonomous-loops</code> · NEVER push/publish/version-bump/deploy/cron · NEVER delete important files · every change passes <code>npm run build &amp;&amp; npm test</code> (halt-on-red) · failures recorded verbatim.</span></p>
+    <p><b style="color:var(--bad)"><span class="zh">红线(全程守住)</span><span class="en">REDLINE (held throughout)</span></b><br>
+    <span class="zh">全部在本地分支 <code>opt/autonomous-loops</code> · <b>从不</b> push / 发布 / 升版本 / 部署 / 建 cron · <b>从不</b>删系统文件 · 每次代码改动都过 <code>npm run build &amp;&amp; npm test</code>(红就停)· 失败照实记录,不演戏。</span>
+    <span class="en">All on local branch <code>opt/autonomous-loops</code> · NEVER push / publish / version-bump / deploy / cron · NEVER delete system files · every change passes <code>npm run build &amp;&amp; npm test</code> (halt-on-red) · failures recorded verbatim — no theater.</span></p>
   </div>
 
   <!-- BOARD -->
   <div class="sech" id="board"><span class="zh">看板 · 11 Loops</span><span class="en">Status board · 11 loops</span></div>
   <div class="tableScroll"><table>
-    <tr><th>#</th><th><span class="zh">Loop</span><span class="en">Loop</span></th><th><span class="zh">诚实结果</span><span class="en">Honest outcome</span></th><th><span class="zh">评分</span><span class="en">Grade</span></th></tr>
-    <tr><td>1</td><td><span class="zh">诚实性修复</span><span class="en">Honesty fixes</span></td><td><span class="zh">改名修复落地;但我的 predict_hit 修复矫枉过正 → 被抓到、延到 L3</span><span class="en">relabels landed; my predict_hit fix over-corrected → caught, deferred</span></td><td class="grade">6</td></tr>
-    <tr><td>2</td><td><span class="zh">自动后台整合(你的 #1)</span><span class="en">Auto consolidation (#1)</span></td><td><span class="zh">免登录,用「删掉 API key」证明;手动保存照旧</span><span class="en">login-free, proven with API key unset; manual save intact</span></td><td class="grade">9</td></tr>
-    <tr><td>3</td><td><span class="zh">预测评测</span><span class="en">Predict eval</span></td><td><span class="zh">诚实 <b>0/13</b> —— 可证伪闸门,harness 经验证</span><span class="en">honest <b>0/13</b> — falsifiability gate, harness verified</span></td><td class="grade">10</td></tr>
-    <tr><td>4</td><td><span class="zh">实时识别</span><span class="en">Real-time recognition</span></td><td><span class="zh">~1ms,准确,不编造身份;1 个潜在 bug(L5 已修)</span><span class="en">~1ms, accurate, no fabricated identity; 1 latent bug (fixed L5)</span></td><td class="grade">8</td></tr>
-    <tr><td>5</td><td><span class="zh">本地语义匹配</span><span class="en">Local semantic matcher</span></td><td><span class="zh"><b>recall 0/13 → 2/13 @ 0% 误报</b>;诚实命名为「模糊词法」,非「理解」</span><span class="en"><b>0/13 → 2/13 @ 0% FP</b>; named fuzzy-lexical, not "understanding"</span></td><td class="grade">9</td></tr>
-    <tr><td>6</td><td><span class="zh">数学层 + store-doctor</span><span class="en">Math layer + store-doctor</span></td><td><span class="zh">MATH.md 诚实;doctor 在你真实库里发现 <b>3 个真问题</b></span><span class="en">MATH.md honest; doctor found <b>3 real</b> store problems</span></td><td class="grade">9</td></tr>
-    <tr><td>7</td><td><span class="zh">捕获门偏差</span><span class="en">Capture-gate bias</span></td><td><span class="zh">量化出 76% 丢弃 / 60% 误拒;轻微夸大,被抓到</span><span class="en">76% discard / 60% false-reject quantified; slight overclaim, caught</span></td><td class="grade">8</td></tr>
-    <tr><td>8</td><td><span class="zh">全文捕获门 v3</span><span class="en">Full-text gate (v3)</span></td><td><span class="zh">丢弃率 <b>76% → 46%</b>;round-table 被预算限制中断 → 仅自验证 ◑</span><span class="en">discard <b>76% → 46%</b>; round-table cut off by limit → self-verified only ◑</span></td><td class="grade">7.5</td></tr>
-    <tr><td>9</td><td><span class="zh">🎨 镜子</span><span class="en">🎨 The Mirror</span></td><td><span class="zh">可纠正的自我模型,零编造;thesis 微测 <b>0/25</b></span><span class="en">correctable self-model, zero fabrication; thesis test <b>0/25</b></span></td><td class="grade">9</td></tr>
-    <tr><td>10</td><td><span class="zh">🎨 意图收敛实验</span><span class="en">🎨 Intent-convergence</span></td><td><span class="zh">「冗余→意图」<b>无法测</b>(意图稀疏);拒绝造假</span><span class="en">"redundancy→intent" <b>UNTESTABLE</b> (intent-sparse); refused to fake it</span></td><td class="grade">9.5</td></tr>
-    <tr><td>11</td><td><span class="zh">🎨 零样本跨项目迁移</span><span class="en">🎨 Cross-project transfer</span></td><td><span class="zh">~27% 词法 / ~9% 实质 —— 作为「补救」被证伪</span><span class="en">~27% lexical / ~9% substantive — REFUTED as a rescue</span></td><td class="grade">9</td></tr>
-    <tr><td>+</td><td><span class="zh">2 个评测诚实性修复</span><span class="en">2 eval-honesty fixes</span></td><td><span class="zh">active_predictable 第二分母 · 词法↔语义对称提醒</span><span class="en">active_predictable denominator · symmetric lexical/semantic caveat</span></td><td class="grade">—</td></tr>
+    <tr><th>#</th><th><span class="zh">主题</span><span class="en">Theme</span></th><th><span class="zh">诚实结果</span><span class="en">Honest outcome</span></th><th><span class="zh">评分</span><span class="en">Grade</span></th></tr>
+    <tr><td>1</td><td><span class="zh">诚实性修复</span><span class="en">Honesty fixes</span></td><td><span class="zh">3 处重命名落地;predict_hit 修复矫枉过正 → 死代码,被 round-table 抓住</span><span class="en">3 relabels landed; predict_hit fix over-corrected → dead code, caught by round-table</span></td><td class="grade">6</td></tr>
+    <tr><td>2</td><td><span class="zh">自动后台整合</span><span class="en">Auto consolidation</span></td><td><span class="zh">免登录,用「删 API key 仍能跑」证明;手动保存接口完全不变</span><span class="en">Login-free, proven by running with API key deleted; manual save unchanged</span></td><td class="grade">9</td></tr>
+    <tr><td>3</td><td><span class="zh">预测评测(可证伪闸门)</span><span class="en">Predict eval (falsifiability gate)</span></td><td><span class="zh">真实 83 条纠正上 0 触发,recall <b>0/13</b>;harness 对抗式验证通过;L1 死代码真修</span><span class="en">0 fired on real 83 corrections, recall <b>0/13</b>; harness adversarially verified; L1 dead code fixed</span></td><td class="grade">10</td></tr>
+    <tr><td>4</td><td><span class="zh">实时识别</span><span class="en">Real-time recognition</span></td><td><span class="zh"><code>buildRecognition()</code> ~1ms 本地确定性;1 个 bootstrap bug(L5 修)</span><span class="en"><code>buildRecognition()</code> ~1ms local deterministic; 1 bootstrap bug (fixed L5)</span></td><td class="grade">8</td></tr>
+    <tr><td>5</td><td><span class="zh">本地语义匹配</span><span class="en">Local semantic matcher</span></td><td><span class="zh">recall <b>0/13 → 2/13 @ 0% FP</b>;改写鲁棒性 0/6 → 6/6;诚实命名「模糊词法」</span><span class="en">Recall <b>0/13 → 2/13 @ 0% FP</b>; paraphrase 0/6 → 6/6; honestly named fuzzy-lexical</span></td><td class="grade">9</td></tr>
+    <tr><td>6</td><td><span class="zh">数学层 + store-doctor</span><span class="en">Math layer + store-doctor</span></td><td><span class="zh">MATH.md 诚实;doctor 在真实库发现 <b>3 个真问题</b></span><span class="en">MATH.md honest; store-doctor found <b>3 real issues</b> in live store</span></td><td class="grade">9</td></tr>
+    <tr><td>7</td><td><span class="zh">捕获门幸存者偏差</span><span class="en">Capture-gate survivorship bias</span></td><td><span class="zh">76% 丢弃 / 60% 误拒 量化;round-table 抓到我轻微夸大</span><span class="en">76% discard / 60% false-reject quantified; round-table caught my slight overclaim</span></td><td class="grade">8</td></tr>
+    <tr><td>8</td><td><span class="zh">全文捕获门 v3</span><span class="en">Full-text gate v3</span></td><td><span class="zh">丢弃 <b>76% → 46%</b>;476 测试绿;round-table 被预算截断 → 仅自验证 ◑</span><span class="en">Discard <b>76% → 46%</b>; 476 tests green; round-table cut off by budget → self-verified only ◑</span></td><td class="grade">7.5</td></tr>
+    <tr><td>9</td><td><span class="zh">🎨 镜子</span><span class="en">🎨 The Mirror</span></td><td><span class="zh">可纠正自我模型,零编造,每行引用真实 id;thesis 微测 <b>0/25</b></span><span class="en">Correctable self-model, zero fabrication, every line cites real id; thesis test <b>0/25</b></span></td><td class="grade">9</td></tr>
+    <tr><td>10</td><td><span class="zh">🎨 意图收敛实验</span><span class="en">🎨 Intent-convergence</span></td><td><span class="zh">「冗余→意图」<b>UNTESTABLE</b>(0 个 N≥3 簇);第 3 次确认稀疏天花板</span><span class="en">"Redundancy→intent" <b>UNTESTABLE</b> (0 N≥3 clusters); 3rd confirmation of sparsity ceiling</span></td><td class="grade">9.5</td></tr>
+    <tr><td>11</td><td><span class="zh">🎨 零样本跨项目迁移</span><span class="en">🎨 Cross-project transfer</span></td><td><span class="zh">~27% 词法 / ~9% 实质;跨项目不能救稀疏天花板;第 4 次确认</span><span class="en">~27% lexical / ~9% substantive; cross-project cannot rescue sparsity ceiling; 4th confirmation</span></td><td class="grade">9</td></tr>
+    <tr><td>+</td><td><span class="zh">2 个评测诚实性补丁</span><span class="en">2 eval-honesty patches</span></td><td><span class="zh">active_predictable 第二分母 · 词法↔语义对称提醒(非 loop,补丁)</span><span class="en">active_predictable denominator · symmetric lexical/semantic caveat (patches, not loops)</span></td><td class="grade">—</td></tr>
   </table></div>
 
-  <!-- LOOP CARDS -->
-  <div class="sech"><span class="zh">逐个 Loop</span><span class="en">Per-loop records</span></div>
+  <!-- PER-LOOP RECORDS -->
+  <div class="sech"><span class="zh">逐个 Loop — 详细记录</span><span class="en">Per-loop records — full detail</span></div>
 
-  <section class="loop" id="loop-1"><h2>① <span class="zh">诚实性修复</span><span class="en">Honesty fixes</span> <span class="st part">6/10</span></h2>
-    <div class="theme zh">主题:测量可信度 · commit 7378e28 / 308be77</div><div class="theme en">Theme: measurement trust · commit 7378e28 / 308be77</div>
-    <div class="blk"><p><span class="zh">改名修复都落地了:dashboard 改成「surfaced, not contradicted」;README 的「Hopfield 检索」(死代码)和「零云」(其实开语义就调 OpenAI)都改诚实了。<b>但</b>我修自我确认指标 predict_hit 时矫枉过正成了死代码 —— round-table 的 skeptic 当场抓到,我标注后延到 L3 真修。</span>
-      <span class="en">All three honesty relabels landed (dashboard "surfaced, not contradicted"; README Hopfield-is-dead-code + zero-cloud caveat). BUT my predict_hit fix over-corrected into dead code — the round-table skeptic caught it; marked and deferred to L3.</span></p></div></section>
+  <!-- LOOP 1 -->
+  <section class="loop" id="loop-1">
+    <div class="loop-hdr">
+      <h2>① <span class="zh">诚实性修复</span><span class="en">Honesty fixes</span></h2>
+      <span class="st part">6 / 10</span>
+    </div>
+    <div class="meta">commits 7378e28 · 308be77 · <span class="zh">主题:测量可信度</span><span class="en">Theme: measurement trust</span></div>
+    <div class="blks">
+      <div class="blk">
+        <div class="blk-label"><span class="zh">问题</span><span class="en">Problem</span></div>
+        <p><span class="zh">代码和文档里有三处「夸大其词」:① dashboard 说「contradicted」而实际只是「surfaced」② README 说 Hopfield 驱动检索(实为死代码,零调用点)③ 「零云」徽章但 <code>embedding.ts</code> 会 POST 到 OpenAI。此外,<code>predict_hit</code> 指标有自我确认嫌疑 —— 记录成功预测的计数器。</span>
+        <span class="en">Three honesty issues in docs: ① dashboard claimed "contradicted" but only "surfaced" ② README called Hopfield the retrieval engine (dead code, zero call sites) ③ "zero-cloud" badge but <code>embedding.ts</code> POSTs to OpenAI. Also: <code>predict_hit</code> metric had suspected self-confirmation bias — a counter recording successful predictions.</span></p>
+      </div>
+      <div class="blk">
+        <div class="blk-label"><span class="zh">改了什么</span><span class="en">What was built</span></div>
+        <p><span class="zh">① 三处重命名/补充提醒全部落地(dashboard、README Hopfield 注释、零云免责)。② 尝试修 predict_hit:加了 <code>predictedOnEarlierDay(c)</code>守卫,要求 <code>last_predicted</code> 日期 &lt; 今天。</span>
+        <span class="en">① All three relabels landed (dashboard, README Hopfield dead-code comment, zero-cloud caveat). ② Attempted to fix predict_hit: added <code>predictedOnEarlierDay(c)</code> guard requiring <code>last_predicted</code> date &lt; today.</span></p>
+      </div>
+      <div class="blk lo">
+        <div class="blk-label"><span class="zh">结果 / 被抓到</span><span class="en">Result / caught</span></div>
+        <p><span class="zh"><b>重命名全好。但 predict_hit 修复矫枉过正。</b><code>firedToday.has("predicted")</code>(只当天)和 <code>predictedOnEarlierDay</code>(更早日期)互斥 —— 意味着 predict_hit 分支在结构上永远不可达。我把一个自我确认指标换成了另一个死代码。</span>
+        <span class="en"><b>Relabels all good. But predict_hit fix overcorrected.</b> <code>firedToday.has("predicted")</code> (today-only) and <code>predictedOnEarlierDay</code> (earlier-day) are mutually exclusive — the predict_hit branch is now structurally unreachable. I replaced a self-confirming metric with dead code.</span></p>
+      </div>
+      <div class="blk am">
+        <div class="blk-label"><span class="zh">Round-table 说</span><span class="en">Round-table verdict</span></div>
+        <p><span class="zh">Skeptic agent 立刻抓出死代码,说明两个条件为何互斥。我同意、加了 <code>// KNOWN-DEFECT</code> 注释,推迟到 L3 真修。评分打低不是因为重命名没用,而是因为我没发现自己制造的新问题。</span>
+        <span class="en">Skeptic agent immediately caught the dead code, explained why the two conditions are mutually exclusive. I agreed, added a <code>// KNOWN-DEFECT</code> comment, deferred to L3. Grade docked not because relabels were bad, but because I didn't notice the new problem I introduced.</span></p>
+      </div>
+      <div class="blk">
+        <div class="blk-label"><span class="zh">带走了什么</span><span class="en">Carried forward</span></div>
+        <p><span class="zh">需要一个跨日查询(查 <code>_outcomes.jsonl</code> 审计日志)来正确检测「之前日期预测过」。L3 专门修这个。</span>
+        <span class="en">Need a cross-day query (scan <code>_outcomes.jsonl</code> audit log) to correctly detect "predicted on an earlier day." L3 addresses this specifically.</span></p>
+      </div>
+    </div>
+  </section>
 
-  <section class="loop" id="loop-2"><h2>② <span class="zh">自动后台整合</span><span class="en">Auto consolidation</span> <span class="st win">9/10 · 你的 #1</span></h2>
-    <div class="theme zh">主题:实时 / 自动化 · commit 41f9a86</div><div class="theme en">Theme: real-time / automaticity · commit 41f9a86</div>
-    <div class="blk hi"><p><span class="zh">衰减 / 剪枝 / 觉知晋升现在<b>免登录</b>跑(在 session_end 或 <code>ar consolidate --safety</code>),不再依赖那个老挂的夜间登录 agent。用「删掉 OPENAI_API_KEY 仍能跑」来证明,不是嘴说。手动保存接口完全不变。这正是你说的「用户要自动、但保留手动」。</span>
-      <span class="en">Decay / prune / awareness-graduation now run <b>login-free</b> (at session_end or <code>ar consolidate --safety</code>) — no longer depend on the flaky overnight-login agent. Proven by running with OPENAI_API_KEY deleted. Manual save unchanged.</span></p></div></section>
+  <!-- LOOP 2 -->
+  <section class="loop" id="loop-2">
+    <div class="loop-hdr">
+      <h2>② <span class="zh">自动后台整合</span><span class="en">Auto background consolidation</span></h2>
+      <span class="st win">9 / 10</span>
+    </div>
+    <div class="meta">commit 41f9a86 · <span class="zh">主题:实时自动化 · 你的北极星 #1</span><span class="en">Theme: real-time automaticity · your north-star #1</span></div>
+    <div class="blks">
+      <div class="blk">
+        <div class="blk-label"><span class="zh">问题</span><span class="en">Problem</span></div>
+        <p><span class="zh">FSRS 衰减、旧归档剪枝、觉知晋升依赖一个夜间登录 agent —— 这个 agent 因 OAuth 过期和网络超时频繁挂起(已知问题,2026-05-09 起断断续续)。用户必须手动触发或坐等。这违背了「自动发生」的 promise。</span>
+        <span class="en">FSRS decay, archive pruning, and awareness-graduation depended on a nightly login agent — one that frequently hung due to OAuth expiry and network timeouts (known issue, intermittent since 2026-05-09). Users had to trigger manually or wait. This broke the "it just happens" promise.</span></p>
+      </div>
+      <div class="blk hi">
+        <div class="blk-label"><span class="zh">改了什么</span><span class="en">What was built</span></div>
+        <p><span class="zh">新建 <code>safety-consolidation.ts</code> → <code>runSafetyConsolidation(project, opts)</code>:三个 try/catch 独立步骤(衰减 / 剪枝 / 晋升),每步独立报错、互不阻断。无 LLM 调用,无 API key 需求。</span>
+        <span class="en">New file <code>safety-consolidation.ts</code> → <code>runSafetyConsolidation(project, opts)</code>: three isolated try/catch steps (decay / prune / graduate) — each fails independently, none blocks the others. No LLM calls, no API key required.</span></p>
+        <ul class="blk ul">
+          <li><span class="zh">接入 <code>session-end.ts</code> 两条路径(正常关 + 强制关)</span><span class="en">Wired into both <code>session-end.ts</code> paths (graceful + forced)</span></li>
+          <li><span class="zh">也可通过 <code>ar consolidate --safety</code> 手动触发</span><span class="en">Also manually triggerable via <code>ar consolidate --safety</code></span></li>
+          <li><span class="zh">保留配置:retention 天数、最低确认次数</span><span class="en">Config-driven: retention days, min confirmations</span></li>
+        </ul>
+      </div>
+      <div class="blk hi">
+        <div class="blk-label"><span class="zh">结果 · 用删 key 来证明</span><span class="en">Result · proof by key-deletion</span></div>
+        <p><span class="zh">删掉 <code>OPENAI_API_KEY</code> 环境变量后跑 → 三步全完成,零 API 调用。这不是嘴说,是工程证明。手动保存接口完全不变。</span>
+        <span class="en">Deleted <code>OPENAI_API_KEY</code> env var, ran → all three steps completed, zero API calls. Engineering proof, not verbal claim. Manual save interface untouched.</span></p>
+        <div class="num-row">
+          <span class="metric">3 steps isolated</span>
+          <span class="metric">0 API calls</span>
+          <span class="metric">key-free ✓</span>
+        </div>
+      </div>
+      <div class="blk">
+        <div class="blk-label"><span class="zh">Round-table 说</span><span class="en">Round-table verdict</span></div>
+        <p><span class="zh">全员一致通过。特别表扬「用删 API key 来证明」的工程纪律 —— 这比断言「我相信它不会调」更有说服力。</span>
+        <span class="en">Unanimous pass. Special praise for "proof by key-deletion" as the right engineering discipline — more convincing than asserting "I believe it doesn't call."</span></p>
+      </div>
+    </div>
+  </section>
 
-  <section class="loop" id="loop-3"><h2>③ <span class="zh">预测评测(可证伪闸门)</span><span class="en">Predict eval (falsifiability gate)</span> <span class="st neg">10/10 诚实</span></h2>
-    <div class="theme zh">主题:理解验证 · commit d47a215 —— 全程最重要的一个 loop</div><div class="theme en">Theme: understanding validation · commit d47a215 — the most important loop</div>
-    <div class="blk se"><p><span class="zh">在你<b>真实的 83 条纠正</b>上做留一法预测评测,结果是<b>诚实的负数</b>:0 次触发、recall <b>0/13</b>。harness 经对抗式验证(留一切口干净、不自我确认、不泄漏规则)。这是闸门该有的样子——它能返回 FALSE,而且真的返回了。同时把 L1 的 predict_hit 死代码真修了。</span>
-      <span class="en">Leave-one-out eval on your <b>real 83 corrections</b> → an <b>honest negative</b>: 0 fired, recall <b>0/13</b>. Harness adversarially verified (clean LOO cut, no self-confirm, no rule leak). A gate that CAN come back FALSE — and did. Also fixed L1's predict_hit dead code.</span></p></div></section>
+  <!-- LOOP 3 -->
+  <section class="loop" id="loop-3">
+    <div class="loop-hdr">
+      <h2>③ <span class="zh">预测评测(可证伪闸门)</span><span class="en">Predict eval — falsifiability gate</span></h2>
+      <span class="st neg">10 / 10 · <span class="zh">诚实负数</span><span class="en">honest negative</span></span>
+    </div>
+    <div class="meta">commit d47a215 · <span class="zh">主题:理解验证 — 全程最重要的一个 loop</span><span class="en">Theme: understanding validation — the most important loop</span></div>
+    <div class="blks">
+      <div class="blk">
+        <div class="blk-label"><span class="zh">问题</span><span class="en">Problem</span></div>
+        <p><span class="zh">predict_hit 的自我确认问题(L1 遗留):当天保护 + 当天触发互斥,让计数器结构上不可达。更深层:从没有人在真实语料上测过预测准确率。所有声称都是假设,没有可证伪的测量。</span>
+        <span class="en">predict_hit self-confirmation issue (L1 leftover): today-guard + today-trigger are mutually exclusive, making the counter structurally unreachable. Deeper issue: prediction accuracy had never been measured on real corpus. All claims were assumptions — no falsifiable measurement existed.</span></p>
+      </div>
+      <div class="blk hi">
+        <div class="blk-label"><span class="zh">改了什么</span><span class="en">What was built</span></div>
+        <p><span class="zh">① <b>LOO harness</b> (<code>predict-loo.mjs</code>):在你真实的 83 条纠正上做留一法评测。对每条 C,藏掉 C,用其余纠正建画像,看能否预测 C。反自我确认守卫:预测必须锚定比 C <b>更早日期</b> 的 sibling。</span>
+        <span class="en">① <b>LOO harness</b> (<code>predict-loo.mjs</code>): leave-one-out on your real 83 corrections. For each C, hide C, build a profile from the rest, check if C would be predicted. Anti-self-confirm guard: prediction must anchor to a sibling with an <b>earlier date</b> than C.</span></p>
+        <p><span class="zh">② <b>真修 L1 死代码</b>:用 <code>readOutcomesBefore(slug, nowISO)</code> 替换互斥守卫 —— 查 <code>_outcomes.jsonl</code> 审计日志里「此 ISO 时间之前预测过」,真正做到跨日检测。</span>
+        <span class="en">② <b>Real fix for L1 dead code</b>: replaced the mutually exclusive guard with <code>readOutcomesBefore(slug, nowISO)</code> — queries the <code>_outcomes.jsonl</code> audit log for a 'predicted' event on a strictly earlier timestamp. Genuine cross-day detection.</span></p>
+      </div>
+      <div class="blk se">
+        <div class="blk-label"><span class="zh">结果 · 诚实的 0/13</span><span class="en">Result · honest 0/13</span></div>
+        <p><span class="zh"><b>0 次触发,0/13 recall。</b>83 条真实纠正里,13 条理论上可预测(有更早的同簇 sibling),但 0 条被预测到。harness 经对抗式验证通过(切口干净,规则不泄漏,不能自我确认)。这正是一个好测量该有的样子:它 <b>能</b>返回 FALSE,而且真的返回了。</span>
+        <span class="en"><b>0 fired, recall 0/13.</b> Of 83 real corrections, 13 were theoretically predictable (had earlier same-cluster siblings), but 0 were predicted. Harness adversarially verified (clean LOO cut, no rule leak, no self-confirm). This is what a good measurement looks like: it <b>can</b> come back FALSE — and it did.</span></p>
+        <div class="num-row">
+          <span class="metric">corpus: 83</span>
+          <span class="metric">predictable: 13</span>
+          <span class="metric">fired: 0</span>
+          <span class="metric">recall: 0/13</span>
+        </div>
+      </div>
+      <div class="blk">
+        <div class="blk-label"><span class="zh">Round-table 说</span><span class="en">Round-table verdict</span></div>
+        <p><span class="zh">「这是全程最重要的一个 loop。一个能返回 FALSE 的测量比十个正面的假阳性测量更有价值。」这个 LOO harness 成了后续所有改进的记分牌。</span>
+        <span class="en">"This is the most important loop in the entire run. A measurement that can come back FALSE is worth more than ten positive measurements that can't be falsified." This LOO harness became the scoreboard for all subsequent improvements.</span></p>
+      </div>
+    </div>
+  </section>
 
-  <section class="loop" id="loop-4"><h2>④ <span class="zh">实时识别</span><span class="en">Real-time recognition</span> <span class="st win">8/10</span></h2>
-    <div class="theme zh">主题:实时识别(北极星)· commit 9fe2cdb</div><div class="theme en">Theme: real-time recognition · commit 9fe2cdb</div>
-    <div class="blk"><p><span class="zh"><code>buildRecognition()</code>:开局 <b>~1ms</b>、纯本地、确定性,拼出四块——你是谁 / 能做什么 / 项目+进度 / 你是怎样的人(带低置信度提醒)。三个真实项目上四块都准。身份不明时输出 <code>unknown</code>,绝不编人设。1 个潜在 bug(bootstrap 卡误判为 known),L5 用真 fixture 修掉了。</span>
-      <span class="en"><code>buildRecognition()</code>: ~1ms, local-only, deterministic — who / can-do / project+progress / what-kind-of-person (low-confidence caveat). Accurate on 3 real projects; emits <code>unknown</code> rather than fabricating. 1 latent bug fixed in L5 with a real fixture.</span></p></div></section>
+  <!-- LOOP 4 -->
+  <section class="loop" id="loop-4">
+    <div class="loop-hdr">
+      <h2>④ <span class="zh">实时识别</span><span class="en">Real-time recognition</span></h2>
+      <span class="st win">8 / 10</span>
+    </div>
+    <div class="meta">commit 9fe2cdb · <span class="zh">主题:实时识别(北极星)</span><span class="en">Theme: real-time recognition (north-star)</span></div>
+    <div class="blks">
+      <div class="blk">
+        <div class="blk-label"><span class="zh">问题</span><span class="en">Problem</span></div>
+        <p><span class="zh">AgentRecall 没有一个「开局 1ms 内就知道你是谁」的接口。每次 session 开始需要读大量文件才能拼出用户画像。北极星要求:开局就知道 ① 你是谁 ② 你能做什么 ③ 你的项目到哪了 ④ 你是怎样的人,并且不编造。</span>
+        <span class="en">AgentRecall had no "know who you are within 1ms of session start" interface. Each session start required reading many files to assemble a user profile. North-star requirement: know at open ① who you are ② what you can do ③ where your project is ④ what kind of person you are — and fabricate nothing.</span></p>
+      </div>
+      <div class="blk hi">
+        <div class="blk-label"><span class="zh">改了什么</span><span class="en">What was built</span></div>
+        <p><span class="zh">新建 <code>recognition.ts</code> → <code>buildRecognition(project, opts?)</code>。确定性、同步、零网络调用。四块:</span>
+        <span class="en">New file <code>recognition.ts</code> → <code>buildRecognition(project, opts?)</code>. Deterministic, synchronous, zero-network. Four fields:</span></p>
+        <ul class="blk ul">
+          <li><b>WHO</b> — <span class="zh">从 palace <code>_who.md</code> 读名字,未知时明确输出 <code>unknown: true</code></span><span class="en">reads name from palace <code>_who.md</code>, explicitly <code>unknown: true</code> when not set</span></li>
+          <li><b>CAN-DO</b> — <span class="zh">从高权重纠正提炼能力标签</span><span class="en">distills capability tags from high-weight corrections</span></li>
+          <li><b>PROJECT+PROGRESS</b> — <span class="zh">从 palace 结构推断当前项目和进度</span><span class="en">infers current project and progress from palace structure</span></li>
+          <li><b>WHAT-KIND-OF-PERSON</b> — <span class="zh">带 <code>PERSON_LOW_CONFIDENCE_CAVEAT</code>(引用 L3 的 0/13)</span><span class="en">with <code>PERSON_LOW_CONFIDENCE_CAVEAT</code> citing L3's 0/13</span></li>
+        </ul>
+        <div class="num-row"><span class="metric">~1ms</span><span class="metric">0 network</span><span class="metric">deterministic</span></div>
+      </div>
+      <div class="blk lo">
+        <div class="blk-label"><span class="zh">潜在 Bug(L5 修)</span><span class="en">Latent bug (fixed in L5)</span></div>
+        <p><span class="zh">WHO 在 bootstrap 时返回 <code>unknown: false</code>,因为 <code>readWho()</code> 接受了 <code>ensurePalaceInitialized</code> 写入的 <code># &lt;slug&gt;</code> 标题行,把它当成已知名字。测试用 <code># \n</code>(空标题)掩盖了这个 bug —— round-table skeptic 发现测试本身是假的。</span>
+        <span class="en">WHO returned <code>unknown: false</code> on bootstrap because <code>readWho()</code> accepted the <code># &lt;slug&gt;</code> heading written by <code>ensurePalaceInitialized</code> as a known name. Test used <code># \n</code> (empty heading) which masked the bug — the round-table skeptic noticed the test itself was fake.</span></p>
+      </div>
+    </div>
+  </section>
 
-  <section class="loop" id="loop-5"><h2>⑤ <span class="zh">本地语义匹配</span><span class="en">Local semantic matcher</span> <span class="st win">9/10</span></h2>
-    <div class="theme zh">主题:理解研究(词法 vs 语义)· commit fb44824</div><div class="theme en">Theme: understanding research · commit fb44824</div>
-    <div class="blk hi"><p><span class="zh">在<b>同一个诚实 harness</b> 上:recall <b>0/13 → 2/13,误报 0%</b>;改写鲁棒性 <b>0/6 → 6/6</b>。免 key、断网都能跑(真本地)。但 chair 拒绝吹:它是<b>模糊词法 + 手工词典,不是「理解」</b>,实质 recall ~1.5/13,样本薄。真进步 + 不演戏。</span>
-      <span class="en">On the <b>same honest harness</b>: recall <b>0/13 → 2/13 @ 0% FP</b>; paraphrase <b>0/6 → 6/6</b>. Runs key-unset, fetch-blocked (truly local). But named honestly: <b>fuzzy-lexical + a hand dictionary, NOT understanding</b>; ~1.5/13 substantive, thin sample.</span></p></div></section>
+  <!-- LOOP 5 -->
+  <section class="loop" id="loop-5">
+    <div class="loop-hdr">
+      <h2>⑤ <span class="zh">本地语义匹配</span><span class="en">Local semantic matcher</span></h2>
+      <span class="st win">9 / 10</span>
+    </div>
+    <div class="meta">commit fb44824 · <span class="zh">主题:理解研究(词法 vs 语义)</span><span class="en">Theme: understanding research — lexical vs semantic</span></div>
+    <div class="blks">
+      <div class="blk">
+        <div class="blk-label"><span class="zh">问题</span><span class="en">Problem</span></div>
+        <p><span class="zh">L3 的 0/13 说明:在改写/同义词层面词袋匹配就掉链子。用「deploy to staging first」的纠正,能否识别出「you pushed directly to prod again」是同一个问题?纯词法做不到。但不能引入外部 embedding API(「零云」承诺 + 本地优先)。</span>
+        <span class="en">L3's 0/13 showed: bag-of-tokens breaks at the paraphrase/synonym layer. Given a correction "deploy to staging first," can we recognize "you pushed directly to prod again" as the same issue? Pure lexical can't. But can't introduce external embedding API ("zero-cloud" promise + local-first).</span></p>
+      </div>
+      <div class="blk hi">
+        <div class="blk-label"><span class="zh">改了什么</span><span class="en">What was built</span></div>
+        <p><span class="zh">新建 <code>semantic-match.ts</code>:本地零 key 语义匹配器。三层:</span>
+        <span class="en">New file <code>semantic-match.ts</code>: local zero-key semantic matcher. Three layers:</span></p>
+        <ul class="blk ul">
+          <li><b>Porter stem</b> — <span class="zh">词干化减少形态变异</span><span class="en">stemming to reduce morphological variation</span></li>
+          <li><b>Char-trigram cosine</b> — <span class="zh">字符级 3-gram 向量余弦相似度</span><span class="en">character-level 3-gram vector cosine similarity</span></li>
+          <li><b>概念组 / Concept groups</b> — <span class="zh">13 个手工词典(deploy↔release↔push,staging↔pre-prod,等)</span><span class="en">13 hand-mapped groups (deploy↔release↔push, staging↔pre-prod, etc.)</span></li>
+        </ul>
+        <p><span class="zh">也修了 L4 的 WHO bootstrap bug:加了 frontmatter-skip + <code>hasAuthoredBody</code> 检查 + <code>isBootstrapStub</code> 守卫;测试改用真实的 <code>ensurePalaceInitialized</code> fixture。</span>
+        <span class="en">Also fixed L4's WHO bootstrap bug: added frontmatter-skip + <code>hasAuthoredBody</code> check + <code>isBootstrapStub</code> guard; test now calls the real <code>ensurePalaceInitialized</code> fixture.</span></p>
+      </div>
+      <div class="blk hi">
+        <div class="blk-label"><span class="zh">结果</span><span class="en">Result</span></div>
+        <p><span class="zh">在 <b>同一个诚实 LOO harness</b>(L3)上测:</span><span class="en">Tested on the <b>same honest LOO harness</b> (L3):</span></p>
+        <div class="num-row">
+          <span class="metric">recall: 0/13 → 2/13</span>
+          <span class="metric">FP: 0%</span>
+          <span class="metric">paraphrase: 0/6 → 6/6</span>
+          <span class="metric">threshold: 0.20</span>
+        </div>
+        <p style="margin-top:8px;"><span class="zh">chair 拒绝夸大:它是<b>模糊词法 + 手工词典,不是「理解」</b>。实质 recall ~1.5/13(部分分),样本薄。真进步 + 诚实命名。</span>
+        <span class="en">Chair refused to oversell: it is <b>fuzzy-lexical + a hand dictionary, NOT "understanding."</b> Substantive recall ~1.5/13 (partial credit), thin sample. Real progress + honest naming.</span></p>
+      </div>
+      <div class="blk">
+        <div class="blk-label"><span class="zh">带走了什么</span><span class="en">Carried forward</span></div>
+        <p><span class="zh"><code>semantic-match.ts</code> 成了基线 —— 任何「学得的语义表示」必须在这个 harness 上打败它。</span>
+        <span class="en"><code>semantic-match.ts</code> is now the baseline — any "learned semantic representation" must beat it on this harness.</span></p>
+      </div>
+    </div>
+  </section>
 
-  <section class="loop" id="loop-6"><h2>⑥ <span class="zh">数学层 + 完整性 doctor</span><span class="en">Math layer + store-doctor</span> <span class="st win">9/10</span></h2>
-    <div class="theme zh">主题:数学 / 完整性 · commit e75ee04</div><div class="theme en">Theme: math / integrity · commit e75ee04</div>
-    <div class="blk hi"><p><span class="zh"><b>MATH.md</b> 诚实回答你的「数学到底帮了什么」:FSRS 常数是手调的、Hopfield 没接线、<b>「冗余重建意图」目前是 aspirational</b>(只有聚类+衰减+集合余弦,没有后验/生成模型)+ 一个可证伪的 Loop-10 草图。<b>store-doctor</b>(只读)在你真实库里当场发现 3 个真问题(见下「待你决定」)。</span>
-      <span class="en"><b>MATH.md</b> answers "how does math help" honestly: FSRS constants hand-tuned, Hopfield unwired, <b>"redundancy reconstructs intent" is aspirational today</b> (clustering+decay+set-cosine, no posterior/generative model) + a falsifiable Loop-10 sketch. The read-only <b>store-doctor</b> found 3 real problems in your live store (see "Your call").</span></p></div></section>
+  <!-- LOOP 6 -->
+  <section class="loop" id="loop-6">
+    <div class="loop-hdr">
+      <h2>⑥ <span class="zh">数学层 + 完整性 doctor</span><span class="en">Math layer + store-doctor</span></h2>
+      <span class="st win">9 / 10</span>
+    </div>
+    <div class="meta">commit e75ee04 · <span class="zh">主题:数学诚实性 + 完整性检查</span><span class="en">Theme: math honesty + integrity check</span></div>
+    <div class="blks">
+      <div class="blk">
+        <div class="blk-label"><span class="zh">问题</span><span class="en">Problem</span></div>
+        <p><span class="zh">两个问题:① 没有文档诚实回答「数学到底帮了什么」(FSRS 常数从哪来?Hopfield 接线了吗?「冗余→意图」只是个比喻还是有数学支撑?)② 没有工具能在不写操作的情况下检查真实 store 的健康度。</span>
+        <span class="en">Two problems: ① no document honestly answering "what does the math actually do" (where do FSRS constants come from? Is Hopfield wired? Is "redundancy→intent" a metaphor or mathematically grounded?) ② no tool to check live store health without write operations.</span></p>
+      </div>
+      <div class="blk hi">
+        <div class="blk-label"><span class="zh">改了什么(MATH.md)</span><span class="en">What was built — MATH.md</span></div>
+        <ul class="blk ul">
+          <li><span class="zh">FSRS-lite:<code>R = exp(−days/S)</code>,常数<b>标注手调</b>,没有从用户数据拟合</span><span class="en">FSRS-lite: <code>R = exp(−days/S)</code>, constants <b>labeled hand-tuned</b>, not fitted from user data</span></li>
+          <li><span class="zh">RRF:<code>Σ 1/(k+rank)</code> k=60,来源有据可查</span><span class="en">RRF: <code>Σ 1/(k+rank)</code> k=60, sourced and grounded</span></li>
+          <li><span class="zh">setCosine:基于字符 3-gram 的二值词集余弦,已形式化</span><span class="en">setCosine: binary-term set cosine over char-trigrams, formalized</span></li>
+          <li><span class="zh">Hopfield:<b>明确标注没有接线</b>(零调用点)</span><span class="en">Hopfield: <b>explicitly marked unwired</b> (zero call sites)</span></li>
+          <li><span class="zh">「冗余→意图」:<b>标注为 ASPIRATIONAL</b>,附 L10 可证伪草图</span><span class="en">"Redundancy→intent": <b>labeled ASPIRATIONAL</b> with falsifiable L10 sketch</span></li>
+        </ul>
+      </div>
+      <div class="blk lo">
+        <div class="blk-label"><span class="zh">改了什么(store-doctor)— 在真实库发现真问题</span><span class="en">What was built — store-doctor · found real issues in live store</span></div>
+        <p><span class="zh">新建 <code>store-doctor.ts</code> → <code>runStoreDoctor()</code>:只读、永不抛出、4 项检查。在你<b>真实的 store</b> 上当场发现:</span>
+        <span class="en">New <code>store-doctor.ts</code> → <code>runStoreDoctor()</code>: read-only, never throws, 4 checks. Found in your <b>live store</b>:</span></p>
+        <ul class="blk ul">
+          <li><span class="zh"><b>16 个 room 的 vector-index 漂移</b>(如 aam/goals: index=4 实际=24)</span><span class="en"><b>16 rooms with vector-index drift</b> (e.g., aam/goals: index=4, actual=24)</span></li>
+          <li><span class="zh"><b>22 天的废锁</b>(某个进程崩溃留下的)</span><span class="en"><b>22-day stale lock</b> (left behind by a crashed process)</span></li>
+          <li><span class="zh"><b>dreaming agent 从没 consume 过任何 entry</b></span><span class="en"><b>Dreaming agent never consumed any entry</b></span></li>
+        </ul>
+        <p><span class="zh">这些问题需要写操作才能修,等待授权。Doctor 只报告,没动。</span>
+        <span class="en">Fixing these requires write operations — awaiting your authorization. Doctor only reports, never writes.</span></p>
+      </div>
+    </div>
+  </section>
 
-  <section class="loop" id="loop-7"><h2>⑦ <span class="zh">捕获门幸存者偏差</span><span class="en">Capture-gate survivorship bias</span> <span class="st win">8/10</span></h2>
-    <div class="theme zh">主题:thesis 完整性(结构化)· commit 5c661fe</div><div class="theme en">Theme: thesis integrity · commit 5c661fe</div>
-    <div class="blk"><p><span class="zh">量化出捕获门的偏差:<b>76% 丢弃下限 · 60% 误拒</b>(被丢的多是真·软纠正,如「again you made it full width, i told you inline」)。「冗余重建意图」被喂了偏样本。根因精确:门只评<b>截断的第一句</b>。仅测量、不改门(避免污染基线)。<b>round-table 还抓到我自己的轻微夸大</b>(commit 说明把样本写得比实际更干净)。</span>
-      <span class="en">Quantified the gate bias: <b>76% discard floor · 60% false-reject</b> (dropped items are real soft corrections). Root cause precise: the gate scores only the <b>truncated first sentence</b>. Measure-only (gate untouched). The round-table also caught <b>my own slight overclaim</b> in the commit note.</span></p></div></section>
+  <!-- LOOP 7 -->
+  <section class="loop" id="loop-7">
+    <div class="loop-hdr">
+      <h2>⑦ <span class="zh">捕获门幸存者偏差</span><span class="en">Capture-gate survivorship bias</span></h2>
+      <span class="st win">8 / 10</span>
+    </div>
+    <div class="meta">commit 5c661fe · <span class="zh">主题:thesis 完整性(结构化 loop)</span><span class="en">Theme: thesis integrity (structured loop)</span></div>
+    <div class="blks">
+      <div class="blk">
+        <div class="blk-label"><span class="zh">问题</span><span class="en">Problem</span></div>
+        <p><span class="zh">「冗余重建意图」假设建立在一个有偏样本上:只有通过 <code>isLikelyRealCorrection</code> 门的纠正才进入 palace。软纠正(「again you made it full width, i told you inline」)很可能被丢掉了 —— 但这些恰好是最能体现「意图」的。被喂了偏样本,任何关于意图重建的测量都会失真。</span>
+        <span class="en">"Redundancy reconstructs intent" hypothesis was built on a biased sample: only corrections that pass <code>isLikelyRealCorrection</code> enter the palace. Soft corrections ("again you made it full width, i told you inline") are likely being discarded — but these are exactly the ones that embody "intent." Any measurement of intent reconstruction on a pre-filtered sample is contaminated.</span></p>
+      </div>
+      <div class="blk">
+        <div class="blk-label"><span class="zh">改了什么</span><span class="en">What was built</span></div>
+        <p><span class="zh">新增 <code>logRejectedCorrection()</code> + <code>readRejectedCorrections()</code> + <code>getRejectedStats()</code>,加了 <code>GATE_VERSION = "v3-2026-06-21"</code> 和 <code>REJECTED_LOG_CAP = 2000</code>。在一个回填样本池上跑门统计。</span>
+        <span class="en">Added <code>logRejectedCorrection()</code> + <code>readRejectedCorrections()</code> + <code>getRejectedStats()</code>, <code>GATE_VERSION = "v3-2026-06-21"</code>, <code>REJECTED_LOG_CAP = 2000</code>. Ran gate stats on a backfill sample pool.</span></p>
+      </div>
+      <div class="blk am">
+        <div class="blk-label"><span class="zh">结果 + 被抓到轻微夸大</span><span class="en">Result + caught slight overclaim</span></div>
+        <p><span class="zh">量化:76% 丢弃下限,60% 误拒(被丢的大多是真·软纠正)。根因精确:<b>门只评截断的第一句话</b>(前 100 字符),命令性措辞在第二句的纠正全被误判为非纠正。</span>
+        <span class="en">Quantified: 76% discard floor, 60% false-reject rate (discarded items are mostly real soft corrections). Root cause precise: <b>gate scored only the truncated first sentence</b> (first 100 chars) — corrections with imperative in the second sentence were all misclassified.</span></p>
+        <p><span class="zh">Round-table 还抓到我自己的轻微夸大:commit 说明把样本说成「均一预过滤」,但实际是混合池(不是所有写入者都有预过滤)。数字方向上没问题,但措辞太强了。</span>
+        <span class="en">Round-table also caught my own slight overclaim: commit note called the pool "uniformly pre-filtered" but it was mixed — not all writers are pre-filtered. Numbers directionally right, but wording too strong.</span></p>
+        <div class="num-row">
+          <span class="metric">discard: 76%</span>
+          <span class="metric">false-reject: 60%</span>
+          <span class="metric">root cause: first-sentence only</span>
+        </div>
+      </div>
+    </div>
+  </section>
 
-  <section class="loop" id="loop-8"><h2>⑧ <span class="zh">全文捕获门 v3</span><span class="en">Full-text capture gate (v3)</span> <span class="st part">7.5/10 ◑</span></h2>
-    <div class="theme zh">主题:结构化修复 · commit 3b875a8</div><div class="theme en">Theme: structured fix · commit 3b875a8</div>
-    <div class="blk"><p><span class="zh">修根因:评<b>全文</b>而非第一句,修小数点分句,保留全部噪声过滤。丢弃率 <b>76% → 46%</b>(软纠正被找回,噪声桶守住),476 测试绿。<b>诚实标记 ◑:</b>代码在预算耗尽前提交,但 round-table 复验被 session 限制打断 —— <b>只有我自验证,没经独立 round-table</b>。这是最该补一次复验的一个。</span>
-      <span class="en">Root-cause fix: score <b>full text</b> not the first sentence, decimal-safe split, all noise filters kept. Discard <b>76% → 46%</b> (soft corrections recovered, noise held), 476 tests green. <b>Honestly ◑:</b> code committed before the budget ran out, but the round-table re-verify was cut off by the session limit — <b>self-verified only, not round-table-verified.</b> The one to re-check.</span></p></div></section>
+  <!-- LOOP 8 -->
+  <section class="loop" id="loop-8">
+    <div class="loop-hdr">
+      <h2>⑧ <span class="zh">全文捕获门 v3 ◑</span><span class="en">Full-text capture gate v3 ◑</span></h2>
+      <span class="st part">7.5 / 10 · ◑ <span class="zh">自验证</span><span class="en">self-verified</span></span>
+    </div>
+    <div class="meta">commit 3b875a8 · <span class="zh">主题:结构化修复</span><span class="en">Theme: structured fix</span></div>
+    <div class="blks">
+      <div class="blk hi">
+        <div class="blk-label"><span class="zh">改了什么</span><span class="en">What was built</span></div>
+        <p><span class="zh">修根因:① <code>isLikelyRealCorrection</code> 现在评<b>全文</b>所有句子片段,不只第一句。② 修小数点分句 bug(「Opus 4.7」之前会在 <code>.</code> 断开,丢掉「7」)用 <code>/(?&lt;!\d)\.(?!\d)/</code>。③ 所有噪声过滤器保留。④ 新增 <code>ar corrections rejected --stats</code> CLI。⑤ <code>GATE_VERSION</code> 升到 <code>v3</code>。</span>
+        <span class="en">Root-cause fix: ① <code>isLikelyRealCorrection</code> now scores <b>all sentence fragments of the full text</b>, not just the first. ② Fixed decimal-splitting bug ("Opus 4.7" used to split at <code>.</code>, losing "7") using <code>/(?&lt;!\d)\.(?!\d)/</code>. ③ All noise filters kept. ④ New <code>ar corrections rejected --stats</code> CLI. ⑤ <code>GATE_VERSION</code> bumped to <code>v3</code>.</span></p>
+        <div class="num-row">
+          <span class="metric">discard: 76% → 46%</span>
+          <span class="metric">tests: 476 green</span>
+          <span class="metric">noise held</span>
+        </div>
+      </div>
+      <div class="blk lo">
+        <div class="blk-label"><span class="zh">诚实标记 ◑ — 需要补做 round-table</span><span class="en">Honest flag ◑ — needs round-table re-verify</span></div>
+        <p><span class="zh">代码在预算耗尽前提交,但 round-table 复验被 session 限制打断 —— <b>只有我自验证,没经独立 round-table</b>。这是整个 11 loop 里最该补一次验证的地方。其它 loop 都经历了至少一次独立 reviewer 的质疑。这个没有。</span>
+        <span class="en">Code committed before budget ran out, but the round-table re-verify was cut off by the session limit — <b>self-verified only, no independent round-table.</b> This is the single place in the entire 11-loop run that most needs an independent verification pass. Every other loop faced at least one skeptic. This one didn't.</span></p>
+      </div>
+    </div>
+  </section>
 
-  <section class="loop" id="loop-9"><h2>⑨ 🎨 <span class="zh">镜子(可纠正的自我模型)</span><span class="en">The Mirror</span> <span class="st win">9/10 freestyle</span></h2>
-    <div class="theme zh">主题:创意 · commit 233b171</div><div class="theme en">Theme: creative · commit 233b171</div>
-    <div class="blk hi"><p><span class="zh">agent 用你<b>真实的纠正</b>拼出一份第一人称「我以为我学到了你怎么想」,<b>每一行都引用真实纠正/洞见的 id</b>,带 L3 的 0/13 可错提醒,空库则诚实空白(不编人设)—— 把「托勒密式单用户模型」变成「你可纠正的协作模型」。还有一个 thesis 微测:被丢的软纠正能否从幸存的冗余里重建?<b>0/25</b> —— 不能(它们词法上独一无二),<b>所以写入时就捕获(L8)是必要的</b>。</span>
-      <span class="en">The agent builds a first-person "what I think I've learned about how you think" from your <b>real corrections</b> — <b>every line cited to a real id</b>, with the L3 0/13 caveat, honest-empty on an empty store. Turns the Ptolemaic single-user model into a correctable, collaborative one. Thesis micro-test: can dropped soft corrections be reconstructed from surviving redundancy? <b>0/25</b> — no (lexically novel) → write-time capture (L8) is necessary.</span></p></div></section>
+  <!-- LOOP 9 -->
+  <section class="loop" id="loop-9">
+    <div class="loop-hdr">
+      <h2>⑨ 🎨 <span class="zh">镜子 — 可纠正的自我模型</span><span class="en">The Mirror — correctable self-model</span></h2>
+      <span class="st win">9 / 10 · freestyle</span>
+    </div>
+    <div class="meta">commit 233b171 · <span class="zh">主题:创意</span><span class="en">Theme: creative</span></div>
+    <div class="blks">
+      <div class="blk">
+        <div class="blk-label"><span class="zh">问题</span><span class="en">Problem</span></div>
+        <p><span class="zh">AgentRecall 建了一个关于你的模型,但这个模型对你是不透明的 —— 你看不到它,也无法纠正它。典型的「托勒密式单用户模型」:agent 假设自己理解你,你无从验证。</span>
+        <span class="en">AgentRecall builds a model about you, but that model is opaque to you — you can't see it or correct it. Classic "Ptolemaic single-user model": the agent assumes it understands you, and you have no way to verify.</span></p>
+      </div>
+      <div class="blk hi">
+        <div class="blk-label"><span class="zh">改了什么</span><span class="en">What was built</span></div>
+        <p><span class="zh">新建 <code>mirror.ts</code> → <code>buildMirror(project?, readers?)</code>:用你<b>真实的纠正和洞见</b>拼出第一人称自我模型。<b>两个铁律:</b></span>
+        <span class="en">New <code>mirror.ts</code> → <code>buildMirror(project?, readers?)</code>: first-person self-model built from your <b>real corrections and insights.</b> <b>Two hard rules:</b></span></p>
+        <ul class="blk ul">
+          <li><span class="zh"><b>每一行都引用真实 id</b>(不能无引用断言)</span><span class="en"><b>every line cites a real id</b> (no unanchored assertions)</span></li>
+          <li><span class="zh"><b>空库 → 诚实空白</b>(不编人设)</span><span class="en"><b>empty store → honest empty mirror</b> (no fabricated persona)</span></li>
+        </ul>
+        <p><span class="zh">附明确可错声明:「L3 测出这个画像的预测精度为 0/13」。</span>
+        <span class="en">Includes explicit fallibility caveat: "L3 measured this profile's predictive precision at 0/13."</span></p>
+      </div>
+      <div class="blk se">
+        <div class="blk-label"><span class="zh">Thesis 微测 · 0/25</span><span class="en">Thesis micro-test · 0/25</span></div>
+        <p><span class="zh">附加实验:被门丢掉的软纠正,能从幸存的冗余里重建吗?取 25 条被丢的软纠正,看 palace 里有没有词法上相似的幸存 sibling。<b>0/25 —— 全部词法独特,没有可重建的。</b>结论:<b>写入时就捕获(L8)是必要的</b>,不能指望事后重建。</span>
+        <span class="en">Bonus experiment: can dropped soft corrections be reconstructed from surviving redundancy? Took 25 dropped soft corrections, checked if palace had a lexically similar surviving sibling. <b>0/25 — all lexically novel, none reconstructable.</b> Conclusion: <b>write-time capture (L8) is necessary</b> — reconstruction post-hoc is not a fallback.</span></p>
+        <div class="num-row"><span class="metric">tested: 25</span><span class="metric">reconstructable: 0</span></div>
+      </div>
+      <div class="blk">
+        <div class="blk-label"><span class="zh">Round-table 说</span><span class="en">Round-table verdict</span></div>
+        <p><span class="zh">「可纠正 vs 托勒密式」是正确的框架。这是 L3 的逆面:L3 是测量有没有效果,L9 是把有效果的部分变得透明和可纠正。</span>
+        <span class="en">"Correctable vs Ptolemaic is exactly the right frame." This is the flip side of L3: L3 measures whether it works, L9 makes what works transparent and correctable.</span></p>
+      </div>
+    </div>
+  </section>
 
-  <section class="loop" id="loop-10"><h2>⑩ 🎨 <span class="zh">意图收敛实验(数学)</span><span class="en">Intent-convergence experiment</span> <span class="st win">9.5/10</span></h2>
-    <div class="theme zh">主题:创意 · 数学 · commit 5e38609</div><div class="theme en">Theme: creative · math · commit 5e38609</div>
-    <div class="blk hi"><p><span class="zh">把 MATH.md 那句「冗余重建意图」做成可证伪的测量(把重复纠正当作同一潜在意图的带噪样本,看 N 增大时方差是否收敛)。真实库结论:<b>无法测</b> —— active 纠正里 <b>0 个</b> N≥3 的同意图簇(库太稀疏,你对每件事大多只纠正一次)。唯一的 N≥3 簇是标签假象,可测之处反而<b>证伪</b>。<b>这是同一天花板的第 3 次独立确认</b>(L3 0/13 · L9 0/25 · L10 无法测)。<b>瓶颈是数据密度,不是算法。</b></span>
-      <span class="en">Turned "redundancy reconstructs intent" into a falsifiable measurement (repeated corrections as noisy samples of one latent intent; does variance shrink as N grows?). Real corpus: <b>UNTESTABLE</b> — <b>0</b> active same-intent clusters with N≥3 (corpus is intent-sparse). The only N≥3 clusters are tag artifacts; where measurable, REFUTED. <b>3rd independent confirmation of one ceiling</b> (L3/L9/L10). <b>The bottleneck is data density, not the algorithm.</b></span></p></div></section>
+  <!-- LOOP 10 -->
+  <section class="loop" id="loop-10">
+    <div class="loop-hdr">
+      <h2>⑩ 🎨 <span class="zh">意图收敛实验</span><span class="en">Intent-convergence experiment</span></h2>
+      <span class="st win">9.5 / 10</span>
+    </div>
+    <div class="meta">commit 5e38609 · <span class="zh">主题:创意 · 数学</span><span class="en">Theme: creative · math</span></div>
+    <div class="blks">
+      <div class="blk">
+        <div class="blk-label"><span class="zh">问题</span><span class="en">Problem</span></div>
+        <p><span class="zh">MATH.md 把「冗余重建意图」标注为 ASPIRATIONAL —— 但这只是标注,还没测量。把它变成可证伪的实验:把同簇的多次重复纠正当作同一潜在意图的带噪样本,看 N 增大时词汇方差是否收敛。如果收敛,就有数学支撑;如果不能测,诚实说不能测。</span>
+        <span class="en">MATH.md labeled "redundancy reconstructs intent" as ASPIRATIONAL — but that was just a label, not a measurement. Make it falsifiable: treat repeated corrections in the same cluster as noisy samples of one latent intent, measure whether vocabulary variance shrinks as N grows. If it converges, math is grounded; if untestable, say so honestly.</span></p>
+      </div>
+      <div class="blk hi">
+        <div class="blk-label"><span class="zh">改了什么</span><span class="en">What was built</span></div>
+        <p><span class="zh">新建 <code>scripts/eval/intent-convergence.mjs</code>:量化三个收敛信号 —— Jaccard 稳定性高原、边际新词率趋近零、共识词 SNR 上升。</span>
+        <span class="en">New <code>scripts/eval/intent-convergence.mjs</code>: quantifies three convergence signals — Jaccard stability plateau, marginal-novelty→0, consensus-SNR rise.</span></p>
+      </div>
+      <div class="blk se">
+        <div class="blk-label"><span class="zh">结果 · UNTESTABLE · 第 3 次确认稀疏天花板</span><span class="en">Result · UNTESTABLE · 3rd confirmation of sparsity ceiling</span></div>
+        <p><span class="zh"><b>无法测试。</b>真实语料里 active 纠正中 <b>0 个</b> N≥3 的同意图簇。唯一的 N≥3 簇是标签假象(多个纠正带同一个 tag,但语义完全不同)。可以测量的地方,反而<b>证伪</b>了「冗余→意图」。</span>
+        <span class="en"><b>Untestable.</b> In the real corpus, <b>0</b> active same-intent clusters with N≥3. The only N≥3 clusters are tag artifacts (multiple corrections sharing a tag but semantically unrelated). Where measurable at all, the result <b>refuted</b> "redundancy→intent."</span></p>
+        <p><span class="zh"><b>这是同一天花板的第 3 次独立确认。</b>L3:0/13 recall(词袋预测)· L9:0/25(无法从冗余重建)· L10:UNTESTABLE(语料本身太稀疏)。</span>
+        <span class="en"><b>3rd independent confirmation of the same ceiling.</b> L3: 0/13 recall (bag-of-tokens prediction) · L9: 0/25 (cannot reconstruct from redundancy) · L10: UNTESTABLE (corpus is itself too sparse).</span></p>
+        <p><span class="zh"><b>结论:瓶颈是数据密度,不是算法。</b></span>
+        <span class="en"><b>Conclusion: the bottleneck is data density, not the algorithm.</b></span></p>
+      </div>
+      <div class="blk">
+        <div class="blk-label"><span class="zh">Round-table 说</span><span class="en">Round-table verdict</span></div>
+        <p><span class="zh">「拒绝在语料不支持时造假结果,是整个 run 里最诚实的一步。9.5 而不是 10 是因为我们希望它能测出来 —— 但没测出来这个结论本身就很有价值。」</span>
+        <span class="en">"Refusing to fake a result when the corpus doesn't support it is the most honest step in the entire run. 9.5 rather than 10 because we wanted it to be testable — but the negative result is itself informative."</span></p>
+      </div>
+    </div>
+  </section>
 
-  <section class="loop" id="loop-11"><h2>⑪ 🎨 <span class="zh">零样本跨项目迁移</span><span class="en">Zero-shot cross-project transfer</span> <span class="st win">9/10 · FINAL</span></h2>
-    <div class="theme zh">主题:创意 · commit d5cb7f6 —— 最后一个 loop</div><div class="theme en">Theme: creative · commit d5cb7f6 — the final loop</div>
-    <div class="blk"><p><span class="zh">L10 证明项目<b>内</b>太稀疏 —— 那冗余只可能跨项目积累。留一项目法:藏掉项目 B,用其它项目建 blind-spot 画像,看能否冷启动预测 B 的纠正。结果:rule-only <b>~27% 词法</b>,但细看只有 <b>1 条</b>是真跨项目类(「别往人类记忆上套」AgentRecall↔aam),实质 <b>~9%</b>;with-tags 的 77% 是已确认的标签假象。结论:跨项目信号<b>真实但很薄,救不了</b> L10 的稀疏天花板。(诚实补丁:低 rule-only = 没有<b>词法</b>迁移,不等于没有语义迁移 —— 这正是要上「学得的表示」的理由。)</span>
-      <span class="en">L10 proved within-project is too sparse → redundancy can only accumulate across projects. Leave-one-project-out: hide B, build a profile from the others, predict B cold. Result: rule-only <b>~27% lexical</b>, but only <b>1</b> is a genuine cross-project class → ~9% substantive; the 77% with-tags is a confirmed artifact. Cross-project signal is <b>real but thin — it does NOT rescue</b> L10's ceiling. (Honest patch: low rule-only = no <b>lexical</b> transfer, not "no transfer" — the case for a learned representation.)</span></p></div></section>
+  <!-- LOOP 11 -->
+  <section class="loop" id="loop-11">
+    <div class="loop-hdr">
+      <h2>⑪ 🎨 <span class="zh">零样本跨项目迁移</span><span class="en">Zero-shot cross-project transfer</span></h2>
+      <span class="st win">9 / 10 · <span class="zh">最后一个</span><span class="en">FINAL loop</span></span>
+    </div>
+    <div class="meta">commits d5cb7f6 · 0a36b49 · <span class="zh">主题:创意</span><span class="en">Theme: creative</span></div>
+    <div class="blks">
+      <div class="blk">
+        <div class="blk-label"><span class="zh">问题</span><span class="en">Problem</span></div>
+        <p><span class="zh">L10 证明:单项目内太稀疏,冗余无法积累。那换个角度:如果冗余只可能跨项目积累,能否通过「跨项目 blind-spot 画像」冷启动预测新项目?</span>
+        <span class="en">L10 proved within-project is too sparse for redundancy to accumulate. Different angle: if redundancy can only accumulate across projects, can a "cross-project blind-spot profile" cold-start predictions for a new project?</span></p>
+      </div>
+      <div class="blk">
+        <div class="blk-label"><span class="zh">改了什么</span><span class="en">What was built</span></div>
+        <p><span class="zh">新建 <code>scripts/eval/cross-project-transfer.mjs</code>:留一项目法 —— 藏掉项目 B,用其它项目建 blind-spot 画像,看有多少 B 的纠正能被预测到。评测三个层次:rule-only(词法)、rule+tags(标签)、rule+tags+context(全文)。</span>
+        <span class="en">New <code>scripts/eval/cross-project-transfer.mjs</code>: leave-one-project-out — hide project B, build a profile from all others, measure how many of B's corrections are predicted. Three match layers: rule-only (lexical), rule+tags, rule+tags+context.</span></p>
+      </div>
+      <div class="blk se">
+        <div class="blk-label"><span class="zh">结果 + 诚实补丁</span><span class="en">Result + honest patch</span></div>
+        <p><span class="zh">rule-only:<b>~27% 词法匹配率</b>。但细看:只有 <b>1 条</b>是真跨项目类(「别往人类记忆上套」AgentRecall↔aam)。其余全是泛泛的流程词汇。实质:<b>~9%</b>。with-tags 的 77% 是已确认的标签假象。<b>跨项目信号真实但很薄,救不了 L10 的稀疏天花板。</b></span>
+        <span class="en">Rule-only: <b>~27% lexical match rate</b>. But on inspection: only <b>1</b> genuine cross-project class ("don't map onto human memory" AgentRecall↔aam). The rest are generic process vocabulary. Substantive: <b>~9%</b>. The 77% with-tags is a confirmed artifact. <b>Cross-project signal is real but thin — it does NOT rescue L10's sparsity ceiling.</b></span></p>
+        <p><span class="zh">诚实补丁(commit 0a36b49):低 rule-only ≠「没有任何迁移」—— 只能说「没有<b>词法</b>迁移」。真正的语义迁移需要学得的表示才能检测。这正是「下一步赌注」的理由。</span>
+        <span class="en">Honest patch (commit 0a36b49): low rule-only ≠ "no transfer" — it only says "no <b>lexical</b> transfer." True semantic transfer requires a learned representation to detect. This is exactly the case for the "next bet."</span></p>
+        <div class="num-row">
+          <span class="metric">lexical: ~27%</span>
+          <span class="metric">substantive: ~9%</span>
+          <span class="metric">4th ceiling confirmation</span>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- FINAL -->
   <div class="sech" id="final" style="border-color:var(--accent);">★ <span class="zh">总评 —— 11 个 loop 全部完成</span><span class="en">Final self-evaluation — all 11 loops complete</span></div>
   <div class="card">
-    <p><b><span class="zh">11/11 完成。全程 build 绿(最后 499 测试)。分支 opt/autonomous-loops,25 个 commit,<u>从未 push、未升版本、未删文件 —— 红线全程守住</u>。</span><span class="en">11/11 done. Build green throughout (499 tests). Branch opt/autonomous-loops, 25 commits, NOTHING pushed, no version bump, no deletes — REDLINE held the entire run.</span></b></p>
-    <p style="margin-top:10px;"><b><span class="zh">这次跑出来的唯一诚实结论:</span><span class="en">The one honest conclusion the run earned:</span></b>
-      <span class="zh">AgentRecall 是个<b>真正不错的记忆系统</b> —— 它落地了真实、可验证的成果(免登录整合、实时识别、抓到真问题的 store-doctor、把 recall 拉离零的语义匹配),而且现在<b>会测量自己有没有用,而不是假设有用</b>。但「理解」撞上了<b>同一道天花板,四种独立方式都确认</b>(L3 0/13 · L9 0/25 · L10 无法测 · L11 ~9%):语料<b>意图稀疏</b>,而词袋匹配器<b>分不清「没有共同意图」和「有共同意图、只是换了词」</b>。</span>
-      <span class="en">AgentRecall is a <b>genuinely good memory system</b> — real verified wins, and it now <b>measures whether it works instead of assuming it</b>. But "understanding" hit <b>one ceiling, confirmed four independent ways</b> (L3/L9/L10/L11): the corpus is <b>intent-sparse</b>, and a bag-of-tokens matcher <b>cannot tell "no shared intent" from "shared intent, different words."</b></span></p>
-    <p style="margin-top:10px;"><b><span class="zh">单个最高杠杆的下一步赌注:</span><span class="en">Single highest-leverage next bet:</span></b>
-      <span class="zh">把词重叠换成<b>学得的语义表示</b>(对纠正文本做 sentence-embedding,用这次跑出的词法 HIT/MISS 标签校准阈值)。这是<b>唯一</b>能区分「真·数据稀疏墙」和「只是工具假象」的改动 —— 而下游一切(全局 blind-spots、predict-the-correction)都卡在这个二义性上。这次建的诚实 harness(LOO/改写/意图收敛/跨项目)就是任何新表示必须打败的记分牌。</span>
-      <span class="en">Replace token-overlap with a <b>learned semantic representation</b> (sentence embeddings over correction text, calibrated against this run's lexical HIT/MISS labels). It is the <i>only</i> change that can tell a real data-sparsity wall apart from an instrument artifact — and everything downstream is blocked on resolving that ambiguity. The honest harnesses built this run are the scoreboard any new representation must beat.</span></p>
-    <p style="margin-top:12px;"><b><span class="zh">Orchestrator 自评:8.5/10。</span><span class="en">Orchestrator self-grade: 8.5/10.</span></b></p>
-    <p><span class="zh"><b>做对的:</b>诚实、可验证、不演戏的进步;红线全程守住;round-table <b>三次</b>抓到我自己的错(L1 死代码、L4 一个掩盖 bug 的测试、L7 夸大的数字),我每次都照实记下而不是埋掉 —— 一个会犯错、但被不与它共享盲点的 reviewer 检查着的 orchestrator。</span>
-      <span class="en"><b>Right:</b> honest, verified, no-theater progress; REDLINE held; the round-table caught my own errors <b>three times</b> (L1 dead-code, L4 a bug-masking test, L7 overclaimed numbers) and I recorded each plainly.</span></p>
-    <p><span class="zh"><b>该改的(−1.5):</b>早期 loop 我开成 5-agent 大扇出,跑到一半把 session 预算耗光,导致 <b>Loop 8 只有自验证、没经 round-table</b>;一开始就该控制开销(后面精简的 4-agent 自由 loop 一样好)。另外有两次让夸大的措辞进了 commit 说明,是 reviewer 而不是我先抓到的。</span>
-      <span class="en"><b>Differently (−1.5):</b> early 5-agent fan-outs exhausted the budget mid-run and left Loop 8 self-verified, not round-table-verified — I should have paced the spend from the start. And twice an overclaim reached a commit note that a reviewer, not I, caught first.</span></p>
+    <p><b><span class="zh">11/11 完成。全程 build 绿(最后 499 测试)。分支 opt/autonomous-loops,25 个 commit,从未 push、未升版本、未删文件 —— 红线全程守住。</span>
+    <span class="en">11/11 done. Build green throughout (499 tests). Branch opt/autonomous-loops, 25 commits — nothing pushed, no version bump, no deletes. REDLINE held the entire run.</span></b></p>
+
+    <p style="margin-top:12px;"><b><span class="zh">这次跑出来的唯一诚实结论:</span><span class="en">The one honest conclusion the run earned:</span></b></p>
+    <p><span class="zh">AgentRecall 是个<b>真正不错的记忆系统</b>,落地了真实、可验证的成果(免登录整合、~1ms 实时识别、发现真问题的 store-doctor、把 recall 拉离零的语义匹配),并且现在<b>会测量自己有没有用,而不是假设有用</b>。但「理解」撞上了<b>同一道天花板,四种独立方式都确认</b>:语料意图稀疏,词袋匹配器分不清「没有共同意图」和「有共同意图、只是换了词」。</span>
+    <span class="en">AgentRecall is a <b>genuinely good memory system</b> — real verified wins (login-free consolidation, ~1ms real-time recognition, store-doctor that found real bugs, semantic matcher that moved recall off zero) — and it now <b>measures whether it works instead of assuming it does</b>. But "understanding" hit <b>one ceiling, confirmed four independent ways</b>: the corpus is intent-sparse, and a bag-of-tokens matcher cannot tell "no shared intent" from "shared intent, different words."</span></p>
+
+    <p style="margin-top:10px;"><b><span class="zh">单个最高杠杆的下一步赌注:</span><span class="en">Single highest-leverage next bet:</span></b></p>
+    <p><span class="zh">把词重叠换成<b>学得的语义表示</b>(sentence embedding + 用这次 LOO harness 的 HIT/MISS 标签校准阈值)。这是<b>唯一</b>能区分「真·数据稀疏墙」和「只是工具假象」的改动。这次建的 harness(LOO / 改写测试 / 意图收敛 / 跨项目)就是任何新表示必须打败的记分牌。</span>
+    <span class="en">Replace token-overlap with a <b>learned semantic representation</b> (sentence embeddings, calibrated against this run's LOO HIT/MISS labels). It is the <i>only</i> change that can tell a real data-sparsity wall apart from an instrument artifact. The harnesses built this run (LOO / paraphrase / intent-convergence / cross-project) are the scoreboard any new representation must beat.</span></p>
+
+    <p style="margin-top:12px;"><b><span class="zh">Orchestrator 自评:8.5 / 10。</span><span class="en">Orchestrator self-grade: 8.5 / 10.</span></b></p>
+    <p><span class="zh"><b>做对的:</b>诚实可验证的进步;红线全程守住;round-table 三次抓到我自己的错(L1 死代码 · L4 掩盖 bug 的测试 · L7 夸大数字),每次我都照实记下而不是掩盖。</span>
+    <span class="en"><b>Right:</b> honest, verified, no-theater progress; REDLINE held; round-table caught my own errors three times (L1 dead-code · L4 bug-masking test · L7 overclaimed number) and I recorded each plainly instead of burying it.</span></p>
+    <p><span class="zh"><b>该改的(−1.5):</b>早期 5-agent 大扇出耗光了 session 预算,导致 Loop 8 只有自验证;应该从一开始就控制开销。另外有两次让夸大的措辞进了 commit 说明,是 reviewer 先抓到的。</span>
+    <span class="en"><b>Differently (−1.5):</b> early 5-agent fan-outs exhausted the budget and left Loop 8 self-verified — I should have paced spend from the start. Twice an overclaim reached a commit note that a reviewer, not I, caught first.</span></p>
   </div>
 
   <!-- DECISIONS -->
-  <div class="sech" id="decide" style="border-color:var(--amber);">⚑ <span class="zh">待你决定(3 件)</span><span class="en">Your call (3 decisions)</span></div>
+  <div class="sech" id="decide" style="border-color:var(--amber);">⚑ <span class="zh">待你决定(3 件)</span><span class="en">Your call — 3 decisions</span></div>
   <div class="card decide">
-    <p><b>1 · <span class="zh">合并 / 推送?</span><span class="en">Merge / push?</span></b>
-      <span class="zh">「合并到 main」= 把 25 个 commit 合进<b>本地</b> main(可逆、不碰 GitHub)。「push 到 GitHub」是<b>另一步、红线、要你明确同意</b>。现在<b>两件都没做</b>,全在 <code>opt/autonomous-loops</code>。选项:① 什么都不动,你慢慢看;② 只本地合并;③ 合并 + push(要你点头)。我的建议:先 review + 给 Loop 8 补一次 round-table 复验,<b>再</b>决定。</span>
-      <span class="en">"Merge to main" = merge the 25 commits into your <b>local</b> main (reversible, doesn't touch GitHub). "Push to GitHub" is a <b>separate, REDLINE step needing your explicit yes</b>. Both are currently undone — all on <code>opt/autonomous-loops</code>. My rec: review + re-verify Loop 8 with a round-table first, then decide.</span></p>
-    <p style="margin-top:9px;"><b>2 · <span class="zh">下一个赌注:学得的语义表示?</span><span class="en">Next bet: learned semantic representation?</span></b>
-      <span class="zh">就是上面那条 —— 唯一能解开「理解」二义性的改动。要不要做。</span>
-      <span class="en">The single change above — the only one that resolves the "understanding" ambiguity. Do it?</span></p>
-    <p style="margin-top:9px;"><b>3 · <span class="zh">修 store-doctor 发现的 3 个真问题?</span><span class="en">Fix the 3 real store-doctor findings?</span></b>
-      <span class="zh">你真实库里:<b>16 个 room 的 index 漂移</b>(如 aam/goals index=4 实际=24)、<b>一个 22 天的废锁</b>、<b>dreaming 从没 consume 过</b>。修它们要做 reindex / 清锁(<b>写操作</b>),等你授权 —— doctor 只读,只报告,没动。</span>
-      <span class="en">In your live store: <b>vector-index drift in 16 rooms</b>, a <b>22-day stale lock</b>, <b>dreaming never consumed anything</b>. Fixing needs reindex / lock-cleanup (<b>write ops</b>) — awaiting your authorization (the doctor is read-only, it only reported).</span></p>
+    <p><b>1 · <span class="zh">合并 / 推送?</span><span class="en">Merge / push?</span></b></p>
+    <p><span class="zh">「合并到 main」= 把 25 个 commit 合进<b>本地电脑上的</b> main 分支(可逆,完全不碰 GitHub)。「push 到 GitHub」是<b>另一步</b>,属于红线范畴,需要你明确说「可以 push」。现在<b>两件都没做</b>,全在 <code>opt/autonomous-loops</code>。建议:先 review + 给 Loop 8 补一次 round-table 复验,再决定。</span>
+    <span class="en">"Merge to main" = merge the 25 commits into your <b>local machine's</b> main branch (reversible, doesn't touch GitHub at all). "Push to GitHub" is a <b>separate step</b>, REDLINE territory, requires your explicit "yes, push." <b>Both are currently undone</b> — all on <code>opt/autonomous-loops</code>. My rec: review + re-verify Loop 8 with an independent round-table first, then decide.</span></p>
+
+    <p style="margin-top:10px;"><b>2 · <span class="zh">下一个赌注:学得的语义表示?</span><span class="en">Next bet: learned semantic representation?</span></b></p>
+    <p><span class="zh">四次独立测量都撞上同一道天花板。「学得的语义表示」是<b>唯一</b>能解开「真·数据稀疏 vs 工具假象」二义性的改动。下游的全局 blind-spots、predict-the-correction 都卡在这里。要不要做?</span>
+    <span class="en">Four independent measurements hit the same ceiling. A learned semantic representation is the <b>only</b> change that resolves the "real data-sparsity vs instrument artifact" ambiguity. Global blind-spots and predict-the-correction downstream are both blocked on this. Do it?</span></p>
+
+    <p style="margin-top:10px;"><b>3 · <span class="zh">修 store-doctor 发现的 3 个真问题?</span><span class="en">Fix the 3 real store-doctor findings?</span></b></p>
+    <p><span class="zh">你真实 store 里:① <b>16 个 room 的 vector-index 漂移</b>(如 aam/goals: index=4 但实际=24,检索会出错)② <b>22 天的废锁</b>(某进程崩溃留下,阻碍写操作)③ <b>dreaming agent 从没 consume 过任何 entry</b>(可能是夜间登录挂起导致的死循环)。修它们需要 reindex / 清锁(<b>写操作</b>)。Doctor 只读,只报告,没动过。等你授权。</span>
+    <span class="en">In your live store: ① <b>vector-index drift in 16 rooms</b> (e.g., aam/goals: index=4 actual=24 → retrieval errors) ② <b>22-day stale lock</b> (left by a crashed process, blocks writes) ③ <b>dreaming agent never consumed any entry</b> (likely caused by the nightly-login hang creating a dead cycle). Fixing requires reindex / lock-cleanup (<b>write ops</b>). The doctor is read-only — it only reported, never wrote. Awaiting your authorization.</span></p>
   </div>
 
-  <div class="foot mono"><span class="zh">11 个 loop 全部完成 · 分支 opt/autonomous-loops · 未 push(红线守住）· 全程 build 绿(499 测试)· 2026-06-21</span><span class="en">All 11 loops complete · branch opt/autonomous-loops · NOT pushed · build green (499 tests) · 2026-06-21</span></div>
+  <div class="foot">11 loops complete · opt/autonomous-loops · NOT pushed · build green 499 tests · 2026-06-21</div>
 </div>
 
 <script>
-  function setLang(l){
-    document.documentElement.setAttribute('data-lang', l);
-    document.getElementById('zhBtn').classList.toggle('on', l==='zh');
-    document.getElementById('enBtn').classList.toggle('on', l==='en');
-  }
-  setLang('zh');
+function setLang(l) {
+  document.documentElement.setAttribute('data-lang', l);
+  document.getElementById('zhBtn').classList.toggle('on', l === 'zh');
+  document.getElementById('enBtn').classList.toggle('on', l === 'en');
+}
+setLang('zh');
+
+// Reliable anchor navigation that accounts for the sticky nav height
+function scrollToTarget(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var nav = document.querySelector('.nav');
+  var navH = nav ? nav.getBoundingClientRect().height : 0;
+  var top = el.getBoundingClientRect().top + window.pageYOffset - navH - 14;
+  window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+}
+
+// Wire up nav chips (data-target attribute)
+document.querySelectorAll('.nav a[data-target]').forEach(function(a) {
+  a.addEventListener('click', function(e) {
+    e.preventDefault();
+    scrollToTarget(a.getAttribute('data-target'));
+  });
+});
 </script>
