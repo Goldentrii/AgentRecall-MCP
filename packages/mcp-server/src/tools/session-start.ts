@@ -21,6 +21,13 @@ function formatTerse(result: SessionStartResult): string {
     lines.push("");
   }
 
+  // ── Store-doctor health line (only on warn/red; silent on a healthy store) ─
+  // READ-ONLY integrity signal. Never blocks recall — it is a one-line banner.
+  if (result.store_doctor) {
+    lines.push(result.store_doctor);
+    lines.push("");
+  }
+
   // ── North-star alignment metric ────────────────────────────────────────
   // Rendered only when real outcome data exists (retrieved > 0).
   // No fake claims: absent when precision cannot be computed.

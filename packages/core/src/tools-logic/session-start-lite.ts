@@ -15,6 +15,7 @@ import { listJournalFiles } from "../helpers/journal-files.js";
 import { readActiveCorrections } from "../storage/corrections.js";
 import { listMilestones } from "../palace/pipeline.js";
 import { listSkills } from "../palace/skills.js";
+import { runStoreDoctor, storeDoctorBanner } from "./store-doctor.js";
 
 export interface SessionStartLiteInput {
   project?: string;
@@ -29,6 +30,8 @@ export interface SessionStartLiteResult {
   open_corrections_p0_count: number;
   total_sessions: number;
   total_skills: number;
+  /** Store-integrity one-liner; null (and silent) when the store is healthy. */
+  store_doctor: string | null;
   hint: string;
 }
 
@@ -53,6 +56,14 @@ export async function sessionStartLite(input: SessionStartLiteInput): Promise<Se
 
   const skills = listSkills(slug);
 
+  // Store-integrity one-liner; null & silent on a healthy store. Best-effort.
+  let storeDoctorLine: string | null = null;
+  try {
+    storeDoctorLine = storeDoctorBanner(runStoreDoctor());
+  } catch {
+    storeDoctorLine = null;
+  }
+
   return {
     project: slug,
     identity_oneliner: identityLine,
@@ -62,6 +73,7 @@ export async function sessionStartLite(input: SessionStartLiteInput): Promise<Se
     open_corrections_p0_count: p0,
     total_sessions: journals.length,
     total_skills: skills.length,
+    store_doctor: storeDoctorLine,
     hint:
       "Lite mode. Call recall(query) for memories, memory_query({file_path}) for file-scoped, " +
       "skill_recall({intent}) for procedural how-tos, pipeline_show for narrative spine. " +

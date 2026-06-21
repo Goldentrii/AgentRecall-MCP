@@ -207,7 +207,7 @@ export type {
 } from "./tools-logic/check-action.js";
 export { getSessionId, journalFileName, captureLogFileName, resetOwnedFiles, resetSessionState } from "./storage/session.js";
 export type { SaveType, SmartNameOpts } from "./storage/session.js";
-export { acquireLock, withLock } from "./storage/filelock.js";
+export { acquireLock, withLock, STALE_LOCK_MS } from "./storage/filelock.js";
 
 // Storage — corrections
 export {
@@ -292,6 +292,17 @@ export { palaceRead, type PalaceReadInput, type PalaceReadResult } from "./tools
 export { palaceWrite, type PalaceWriteInput, type PalaceWriteResult } from "./tools-logic/palace-write.js";
 export { palaceWalk, roomSummary, readRoomContent, type PalaceWalkInput, type PalaceWalkResult } from "./tools-logic/palace-walk.js";
 export { palaceLint, type PalaceLintInput, type PalaceLintResult, type LintIssue } from "./tools-logic/palace-lint.js";
+export {
+  runStoreDoctor,
+  storeDoctorBanner,
+  INDEX_DRIFT_TOLERANCE,
+  LOCK_RED_MS,
+  DREAM_RED_MS,
+  type StoreDoctorResult,
+  type DoctorCheck,
+  type DoctorLevel,
+  type DoctorStatus,
+} from "./tools-logic/store-doctor.js";
 export { palaceSearch, type PalaceSearchInput, type PalaceSearchResult } from "./tools-logic/palace-search.js";
 export { awarenessUpdate, type AwarenessUpdateInput, type AwarenessUpdateResult } from "./tools-logic/awareness-update.js";
 export { recallInsight, type RecallInsightInput, type RecallInsightResult } from "./tools-logic/recall-insight.js";

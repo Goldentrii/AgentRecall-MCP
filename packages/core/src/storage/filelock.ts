@@ -13,7 +13,12 @@ import { getRoot } from "../types.js";
 import { ensureDir } from "./fs-utils.js";
 
 const LOCK_TIMEOUT_MS = 5000;
-const STALE_LOCK_MS = 30000;
+/**
+ * A lock dir older than this (by mtime) is considered stale and force-broken on
+ * the next acquire. Exported so the read-only store-doctor scans `.lock-*` dirs
+ * against the SAME threshold the locker uses (single source of truth — no drift).
+ */
+export const STALE_LOCK_MS = 30000;
 
 function lockDir(name: string): string {
   return path.join(getRoot(), `.lock-${name}`);

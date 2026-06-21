@@ -479,6 +479,26 @@ async function main(): Promise<void> {
       }
       break;
     }
+    case "doctor": {
+      // READ-ONLY store integrity diagnostics (sibling to `palace lint`).
+      // Never mutates, never acquires a lock. `--json` for the full payload.
+      const result = core.runStoreDoctor();
+      if (hasFlag("--json", rest)) {
+        output(result);
+      } else {
+        const icon = result.status === "red" ? "⛔" : result.status === "warn" ? "⚠" : "✓";
+        const lines: string[] = [`${icon} store-doctor: ${result.status.toUpperCase()}`];
+        for (const c of result.checks) {
+          const mark = c.level === "red" ? "⛔" : c.level === "warn" ? "⚠" : "·";
+          lines.push(`  ${mark} ${c.name} [${c.level}] — ${c.detail}`);
+          if (c.level !== "ok" && c.fix_hint) lines.push(`      fix: ${c.fix_hint}`);
+        }
+        output(lines.join("\n"));
+      }
+      // Non-zero exit on red so scripts/CI can gate on it; warn/ok exit 0.
+      if (result.status === "red") process.exitCode = 1;
+      break;
+    }
     case "knowledge": {
       const sub = rest[0];
       const knRest = rest.slice(1);

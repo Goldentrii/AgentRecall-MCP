@@ -30,6 +30,7 @@ import { listMilestones } from "../palace/pipeline.js";
 import { getDreamHealth, type DreamHealth } from "../storage/dream-health.js";
 import { readBehaviorPolicies, recordPolicyLoad, type BehaviorRule } from "../storage/behavior-policies.js";
 import { buildRecognition, type RecognitionPayload } from "./recognition.js";
+import { runStoreDoctor, storeDoctorBanner } from "./store-doctor.js";
 
 /** Slice text at the nearest word boundary, avoiding mid-word truncation. */
 function sliceAtWord(text: string, maxLen: number): string {
@@ -94,6 +95,13 @@ export interface SessionStartResult {
    * awareness backfill is broken instead of finding out days later.
    */
   dream_health: DreamHealth | null;
+  /**
+   * READ-ONLY store-integrity one-liner from the store-doctor. `null` when the
+   * store is healthy (status === 'ok') so a healthy session_start stays SILENT
+   * about it — the line ONLY appears on warn/red. Never blocks recall: the
+   * doctor is lock-free and best-effort (a failure here leaves this null).
+   */
+  store_doctor: string | null;
   /**
    * Project narrative spine summary. Null when no pipeline files exist.
    * Shape: { active_phase, closed_count, last_synthesis, stale_days }
@@ -444,6 +452,16 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
   const dreamHealthRaw = getDreamHealth();
   const dreamHealth: DreamHealth | null = dreamHealthRaw.banner ? dreamHealthRaw : null;
 
+  // Store-doctor health line — ONE line, ONLY on warn/red, silent on ok.
+  // Best-effort and lock-free: any failure leaves the line null and never
+  // blocks orientation/recall.
+  let storeDoctorLine: string | null = null;
+  try {
+    storeDoctorLine = storeDoctorBanner(runStoreDoctor());
+  } catch {
+    storeDoctorLine = null;
+  }
+
   // Pipeline narrative spine summary — null if no pipeline files exist for project
   const pipelineMilestones = listMilestones(slug);
   let pipeline: SessionStartResult["pipeline"] = null;
@@ -536,6 +554,7 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
     resume,
     behavior_rules: behaviorRules,
     dream_health: dreamHealth,
+    store_doctor: storeDoctorLine,
     pipeline,
     alignment,
     blind_spots: blindSpots,
