@@ -309,6 +309,16 @@ export { buildPriors, type PriorCorrection } from "./tools-logic/prior-builder.j
 
 // Tool logic — v3.4 composite tools (5-tool surface)
 export { sessionStart, type SessionStartInput, type SessionStartResult } from "./tools-logic/session-start.js";
+export {
+  buildRecognition,
+  PERSON_LOW_CONFIDENCE_CAVEAT,
+  type RecognitionPayload,
+  type RecognitionWho,
+  type RecognitionCapabilities,
+  type RecognitionProject,
+  type RecognitionPerson,
+  type BuildRecognitionOptions,
+} from "./tools-logic/recognition.js";
 export { sessionEnd, checkInsightQuality, type SessionEndInput, type SessionEndResult, type InsightQualityWarning, type MergeSuggestion } from "./tools-logic/session-end.js";
 export { promoteConfirmedInsights, type PromotionResult } from "./tools-logic/insight-promotion.js";
 export { check, type CheckInput, type CheckResult, type WatchFor, type PastDelta } from "./tools-logic/check.js";

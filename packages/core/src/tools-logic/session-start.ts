@@ -29,6 +29,7 @@ import { backfill } from "../supabase/sync.js";
 import { listMilestones } from "../palace/pipeline.js";
 import { getDreamHealth, type DreamHealth } from "../storage/dream-health.js";
 import { readBehaviorPolicies, recordPolicyLoad, type BehaviorRule } from "../storage/behavior-policies.js";
+import { buildRecognition, type RecognitionPayload } from "./recognition.js";
 
 /** Slice text at the nearest word boundary, avoiding mid-word truncation. */
 function sliceAtWord(text: string, maxLen: number): string {
@@ -127,6 +128,15 @@ export interface SessionStartResult {
    * trajectory (top 2 risks). Empty when likelihood is low or no profile exists.
    */
   predicted_risks: Array<{ tendency: string; likelihood: "high" | "medium" | "low"; matched: string[] }>;
+  /**
+   * Loop 4 — real-time RECOGNITION. A compact, deterministically-ordered
+   * snapshot of WHO / WHAT-THEY-CAN-DO / PROJECT+PROGRESS / WHAT-KIND-OF-PERSON,
+   * assembled from LOCAL stores only (zero network, no LLM on the hot path).
+   * Always present. WHO is `'unknown'` when no identity card exists (never
+   * fabricated); the person profile always carries an explicit low-confidence
+   * caveat.
+   */
+  recognition: RecognitionPayload;
   empty_state?: string;
 }
 
@@ -494,6 +504,21 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
     predictedRisks = [];
   }
 
+  // Loop 4 — real-time recognition snapshot. Pure-local assembler over the
+  // already-resolved slug (no re-detection ⇒ no git shell-out on the hot path).
+  // Best-effort: a degraded recognition must never break orientation.
+  let recognition: RecognitionPayload;
+  try {
+    recognition = buildRecognition(slug);
+  } catch {
+    recognition = {
+      who: { name: "unknown", role: null, owner: null, unknown: true },
+      can_do: { skills: [], permissions: [] },
+      project: { slug, last_journal_date: null, status: "empty", trajectory: null, rooms: [] },
+      person: { tendencies: [], caveat: "" },
+    };
+  }
+
   return {
     project: slug,
     identity,
@@ -515,6 +540,7 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
     alignment,
     blind_spots: blindSpots,
     predicted_risks: predictedRisks,
+    recognition,
     empty_state: isEmpty ? "No memory found for this project. Try: bootstrap_scan() to import existing projects, or start working and use remember() to save decisions." : undefined,
   };
 }
