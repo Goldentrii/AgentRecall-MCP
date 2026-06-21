@@ -12,7 +12,7 @@ import { getRoot } from "../types.js";
 import { ensureDir, todayISO } from "../storage/fs-utils.js";
 import { extractKeywords, generateSlug } from "../helpers/auto-name.js";
 import { generateTags } from "../helpers/tag-generator.js";
-import { writeCorrection } from "../storage/corrections.js";
+import { writeCorrection, splitSentences } from "../storage/corrections.js";
 import {
   readAlignmentLog as readLog,
   extractWatchPatterns,
@@ -122,7 +122,11 @@ export async function check(input: CheckInput): Promise<CheckResult> {
       const corrText = input.human_correction;
       const corrTags = generateTags(corrText);
       const corrDate = todayISO();
-      const corrRule = corrText.split(/[.\n]/)[0]?.trim().slice(0, 100) ?? corrText.slice(0, 100);
+      // v3 (Loop 8): derive the rule TITLE with the decimal-safe splitter so a
+      // version/model token ("Opus 4.7", "v3.4.32") is not chopped mid-token.
+      // This is only the human-readable title; the capture GATE in
+      // writeCorrection now scores the full `context`, not this slice.
+      const corrRule = (splitSentences(corrText)[0] ?? corrText).slice(0, 100);
       // Auto-detect severity based on correction language.
       // "no" alone is NOT a P0 trigger — it's too broad ("no, use the blue button" ≠ rule).
       // P0 requires explicit prohibition/mandate language.

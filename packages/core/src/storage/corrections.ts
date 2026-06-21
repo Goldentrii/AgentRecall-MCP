@@ -137,9 +137,16 @@ function rejectedPath(project: string): string {
 /**
  * Gate version stamp — bump whenever isLikelyRealCorrection's accept criteria
  * change so a rejected-log analysis can attribute discard rates to a specific
- * gate revision. Kept in lock-step with the v2 (2026-06-12) classifier above.
+ * gate revision. Kept in lock-step with the classifier below.
+ *
+ * v3 (2026-06-21, Loop 8): the gate now scans the FULL correction text (and its
+ * decimal-safe sentence fragments) for an actionable marker instead of only the
+ * truncated first sentence. Loop 7 proved the first-sentence-slice discarded
+ * ~60% of genuine soft corrections whose directive lived in sentence 2. The
+ * NOISE filters (system-fragment / too-short / pure-acknowledgment / doc-header)
+ * are unchanged and still run FIRST so the precision floor holds.
  */
-export const GATE_VERSION = "v2-2026-06-12";
+export const GATE_VERSION = "v3-2026-06-21";
 
 /**
  * Cap for _rejected.jsonl — keep the most-recent N rows so a survivorship-bias
@@ -191,50 +198,107 @@ function applyCorrectionDefaults(record: CorrectionRecord, holderDefault: string
 // ---------------------------------------------------------------------------
 
 /**
+ * Decimal-safe sentence splitter. Splits on sentence-ending punctuation
+ * (`.`, `!`, `?`, or a newline) ONLY when followed by whitespace or end-of-text
+ * — NOT on a bare `.` that sits between digits/word chars. This protects
+ * version/model tokens like "Opus 4.7", "v3.4.32", "novada-search" and URLs
+ * from being chopped mid-fragment (the exact Loop-7 mis-split that hid the
+ * imperative in "Show BOTH Opus 4.7 and 4.8" behind the slice "Show BOTH Opus 4").
+ *
+ * Returns the FULL text as a single fragment when no sentence boundary is found.
+ * Empty fragments are dropped. This is a classifier helper, not a linguistic
+ * tokenizer — it deliberately errs toward NOT splitting.
+ */
+export function splitSentences(text: string): string[] {
+  // Boundary = one of . ! ? OR a newline, that is followed by whitespace or EOT.
+  // A `.` wedged between two non-space chars (4.7, file.md, e.g.) is NOT a boundary.
+  const out: string[] = [];
+  let buf = "";
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    buf += ch;
+    const next = text[i + 1];
+    const isPunct = ch === "." || ch === "!" || ch === "?";
+    const isNewline = ch === "\n" || ch === "\r";
+    // Sentence boundary: terminal punctuation at end OR followed by whitespace;
+    // newline is always a boundary. A `.` between non-whitespace chars is NOT
+    // a boundary (next is defined and not whitespace) — keeps decimals intact.
+    const atBoundary =
+      isNewline ||
+      (isPunct && (next === undefined || /\s/.test(next)));
+    if (atBoundary) {
+      const frag = buf.trim();
+      if (frag) out.push(frag);
+      buf = "";
+    }
+  }
+  const tail = buf.trim();
+  if (tail) out.push(tail);
+  return out.length > 0 ? out : [text.trim()].filter(Boolean);
+}
+
+// Imperative/modal marker — directive verbs and mandates. Scanned per-fragment
+// (Loop 8) so a directive in sentence 2+ is seen. Deliberately TIGHT: only
+// markers that signal a behavioral instruction, NOT generic prose verbs (those
+// were the false-accept vector — see the dropped v2 "verbIsh anywhere" path).
+const IMPERATIVE_PATTERN =
+  /\b(never|always|don'?t|do not|must\s+not|must|should\s+not|should|needs?\s+(to|those|the|a|an|more|all)\b|use|using|stop|avoid|prefer|instead|make\s+sure|remember\s+to|remove\s+all|replace\s+with|default\s+to|keep\s+the|keep\s+\w|show\s+(both|all|the|only))\b/i;
+
+// Preference / corrective-fact statement. Includes user-preference verbs (CJK
+// equivalents) AND the "X not Y" / "wrong … not" corrective-fact shape that
+// carries real intent without an imperative verb (e.g. "Product names are
+// novada-search (not novada-mcp)"). Scanned per-fragment.
+const PREFERENCE_PATTERN =
+  /(\buser\s+(wants?|prefers?|likes?|needs?|agreed|tested|chose|wanted)\b|\bthe\s+user\s+is\b|偏好|喜欢|要求|\bwrong\b[\s\S]{0,60}\bnot\b|\(not\s+[^)]+\)|\bnot\s+\w[\w-]*[,.]?\s+(it'?s|its|use|the\s+\w))/i;
+
+/**
  * Capture-quality gate — rejects context-free fragments, pure acknowledgments,
  * and text that carries no actionable signal.
  *
- * v2 (2026-06-12): classifies on the RULE field only (context param reserved for
- * future use but never classified on — prevents long context from bypassing the
- * acknowledgment gate).
+ * v3 (2026-06-21, Loop 8): the ACTIONABLE-signal scan now runs over the FULL
+ * text AND each decimal-safe sentence fragment — accepting if ANY fragment
+ * carries an imperative/modal/preference marker. This fixes the Loop-7 root
+ * cause where the gate only ever saw the truncated first sentence
+ * (`text.split(/[.\n]/)[0].slice(0,100)`), discarding ~60% of genuine soft
+ * corrections whose directive lived in sentence 2 (e.g. "No, that's wrong.
+ * Don't use dark backgrounds.") or whose first sentence was chopped by a
+ * decimal ("Show BOTH Opus 4.7 and 4.8" → "Show BOTH Opus 4").
  *
- * Gates (in order):
- *  1. Must be >= 12 chars after trim.
- *  2. Must NOT be a pure acknowledgment/fragment — applied unconditionally (no
- *     length cap — v1 60-char cap allowed long-context bypass).
- *  3. Reject system/tool fragments: starts with '<', is a pure number, or is a
- *     bare file path (no spaces, contains path separator, no verb-ish content).
- *  4. PASS if any of:
- *     a) imperative/modal marker present
- *     b) preference statement ("user wants/prefers/likes/needs", CJK equiv.)
- *     c) substantive rule: len >= 40 AND >= 2 words of >= 5 chars AND verb-ish
- *  5. else reject: "no actionable signal"
+ * PRECISION FLOOR: the HARD noise gates run FIRST, on the WHOLE text — these can
+ * never be rescued by the actionable scan:
+ *  1. too-short (< 12 chars).
+ *  2. system/tool fragment: starts with '<', pure number, bare file path.
+ *  3. doc/report/transcript header (starts with '#', a report/mission title,
+ *     or a file:// URL) — pasted artifacts, never a behavioral rule.
  *
- * Returns { ok: true } when the text passes all gates, or { ok: false, reason }
- * explaining which gate fired. Callers may surface the reason in a warning.
+ * Then the ACTIONABLE-signal scan runs over the FULL text + each fragment. A
+ * text that OPENS like an acknowledgment ("No, that's wrong …") is RESCUED only
+ * if a fragment carries a genuine directive (the Loop-7 leak: "No, that's wrong.
+ * Don't use dark backgrounds." → fragment 2 "Don't use …" is a real rule).
+ *
+ * Finally the SOFT acknowledgment gate rejects pure acks that the actionable
+ * scan did NOT rescue (bare "ok sure", "no that's not what I meant"). Because it
+ * runs AFTER the actionable scan, it can no longer eat a genuine correction that
+ * merely opens with "no" — but a content-free ack still has no directive to
+ * rescue it, so it is still dropped. The marker set is TIGHT (dropped the v2
+ * loose "verb-ish anywhere" path) so a long prose blob with no real directive
+ * is NOT re-admitted just because it contains a generic verb.
+ *
+ * Returns { ok: true } when the text passes, or { ok: false, reason } explaining
+ * which gate fired. Callers may surface the reason in a warning.
  */
 export function isLikelyRealCorrection(rule: string, _context?: string): { ok: boolean; reason?: string } {
   // NOTE: _context is accepted for forward-compat but NEVER classified on.
   const r = rule.trim();
+
+  // ── HARD NOISE GATES (precision floor) — un-rescuable, run on WHOLE text ───
 
   // Gate 1 — minimum length
   if (r.length < 12) {
     return { ok: false, reason: "too short" };
   }
 
-  // Gate 2 — pure acknowledgment / fragment patterns (NO length cap — applied always).
-  // Matches strings that start with an acknowledgment word and trail with only filler content
-  // up to 80 extra chars. The 80-char trailing budget covers e.g.
-  // "Ok good, then we don't change anything. let's focus on novada-mcp" (67 total)
-  // without catching real rules that happen to open with "ok" or "yes" (those tend to be
-  // much longer and/or contain definitive nouns + verbs checked in gate 4).
-  const acknowledgmentPattern =
-    /^(no[,.]?\s*(that'?s\s+wrong[.!]?)?|ok(ay)?\b|good\b|great\b|nice\b|yes\b|yeah\b|right\b|wait\b|hmm+\b|sure\b|thanks?\b)[\s\S]{0,80}$/i;
-  if (acknowledgmentPattern.test(r)) {
-    return { ok: false, reason: "pure acknowledgment or fragment — no rule content" };
-  }
-
-  // Gate 3 — system/tool fragments
+  // Gate 2 — system/tool fragments
   if (r.startsWith("<")) {
     return { ok: false, reason: "system/tool fragment (starts with '<')" };
   }
@@ -246,30 +310,46 @@ export function isLikelyRealCorrection(rule: string, _context?: string): { ok: b
     return { ok: false, reason: "looks like a bare file path — no rule content" };
   }
 
-  // Gate 4 — must carry actionable signal (pass if ANY of a/b/c)
+  // Gate 3 — doc / report / transcript header (pasted artifact, not a rule).
+  // Loop-7 true-noise "doc/report headers": markdown headers, report/mission
+  // titles, file:// URL pastes, and the agent's own "⏺ …" transcript echo.
+  // Anchored at the START so a real rule that merely mentions "report"
+  // mid-sentence is unaffected. This is what stops the full-text scan from
+  // re-admitting a long pasted doc just because its body contains a verb.
+  const firstLine = r.split(/\r?\n/, 1)[0]?.trim() ?? "";
+  const docHeaderPattern =
+    /^(#{1,6}\s|file:\/\/|⏺|.*\b(test\s+report|status\s+report|local\s+test|mission|protocol|语言风格指南)\b\s*[—\-:])/i;
+  if (docHeaderPattern.test(firstLine)) {
+    return { ok: false, reason: "doc/report/transcript header — pasted artifact, no rule content" };
+  }
 
-  // (a) imperative/modal marker
-  const imperativePattern =
-    /\b(never|always|don'?t|do not|must|should|use|stop|avoid|prefer|instead|make sure|remember to)\b/i;
-  if (imperativePattern.test(r)) {
+  // ── ACTIONABLE-SIGNAL SCAN (v3) — FULL text + each sentence fragment ───────
+  // Loop 8 root-cause fix: accept if the FULL text OR ANY decimal-safe fragment
+  // carries a directive marker. Fragments come from the WHOLE text (never a
+  // truncated slice), so a directive in sentence 2+ is now seen and can RESCUE
+  // a text that opens with an acknowledgment.
+  const fragments = [r, ...splitSentences(r)];
+
+  // (a) imperative / modal marker in any fragment
+  if (fragments.some((f) => IMPERATIVE_PATTERN.test(f))) {
     return { ok: true };
   }
 
-  // (b) preference statement
-  const preferencePattern =
-    /\b(user\s+(wants?|prefers?|likes?|needs?)|the\s+user\s+is|偏好|喜欢|要求)\b/i;
-  if (preferencePattern.test(r)) {
+  // (b) preference / corrective-fact statement in any fragment
+  if (fragments.some((f) => PREFERENCE_PATTERN.test(f))) {
     return { ok: true };
   }
 
-  // (c) substantive rule: len >= 40, >= 2 words of >= 5 alphanum chars, has verb-ish token
-  if (r.length >= 40) {
-    const longWords = (r.match(/\b[a-zA-Z0-9]{5,}\b/g) ?? []).length;
-    const verbIsh =
-      /\b(bump|consolidate|release|phase|version|publish|push|format|palette|font|round|warm|side.by.side|bilingual|batch|clean|parse|build|compile|deploy|migrate|export|import|store|handle|return|check|verify|ensure)\b/i;
-    if (longWords >= 2 && verbIsh.test(r)) {
-      return { ok: true };
-    }
+  // ── SOFT ACKNOWLEDGMENT GATE — runs AFTER the actionable scan ──────────────
+  // Pure acknowledgment / fragment: opens with an ack word and trails with only
+  // filler (<=80 extra chars). By this point the actionable scan has already
+  // found NO directive, so anything matching here is a genuine content-free ack
+  // ("ok sure", "no that's not what I meant", "confirmed"). NO length cap on the
+  // anchor — only the trailing budget — matching the v2 behavior for true acks.
+  const acknowledgmentPattern =
+    /^(no[,.]?\s*(that'?s\s+wrong[.!]?)?|ok(ay)?\b|good\b|great\b|nice\b|yes\b|yeah\b|right\b|wait\b|hmm+\b|sure\b|thanks?\b|confirmed\b|fair\s+point\b)[\s\S]{0,80}$/i;
+  if (acknowledgmentPattern.test(r)) {
+    return { ok: false, reason: "pure acknowledgment or fragment — no rule content" };
   }
 
   return { ok: false, reason: "no actionable signal — rule lacks imperative/modal marker, preference statement, or substantive content" };
@@ -291,13 +371,29 @@ export interface WriteCorrectionResult {
  */
 export function writeCorrection(project: string, correction: CorrectionRecord): WriteCorrectionResult {
   // Capture-quality gate — reject noise before touching disk.
-  // v2: classify on rule field only (context is for future use, never gate-input).
-  const gate = isLikelyRealCorrection(correction.rule ?? "");
+  // v3 (Loop 8): classify on the FULL correction text, not the truncated rule.
+  // `rule` is a first-sentence title slice (set by check.ts) that hid the
+  // directive when it lived in sentence 2 or after a decimal. The full text
+  // lives in `context`. ACCEPT if EITHER the rule OR the context carries a
+  // directive — a directive anywhere in the correction is genuine signal. The
+  // gate's own HARD noise gates (system-fragment / doc-header / too-short) run
+  // on each candidate, so this can't re-admit a long noise blob: a blob that
+  // matched a hard gate is rejected regardless of which field it came from.
+  const ruleText = (correction.rule ?? "").trim();
+  const contextText = (correction.context ?? "").trim();
+  const ruleGate = ruleText ? isLikelyRealCorrection(ruleText) : { ok: false, reason: "empty rule" };
+  // Only consult context when it adds NEW text (production: context ⊇ rule).
+  const contextGate =
+    contextText && contextText !== ruleText
+      ? isLikelyRealCorrection(contextText)
+      : { ok: false as const };
+  const gate = ruleGate.ok || contextGate.ok ? { ok: true } : ruleGate;
   if (!gate.ok) {
     // Survivorship-bias probe — record the discarded candidate (FULL rejected
     // text + reason) so soft corrections the palace silently drops become
     // measurable. Best-effort: logRejectedCorrection can NEVER throw here.
-    logRejectedCorrection(project, correction.rule ?? "", gate.reason ?? "rejected");
+    const rejectedText = contextText.length > ruleText.length ? contextText : ruleText;
+    logRejectedCorrection(project, rejectedText, gate.reason ?? "rejected");
     return { written: false, reason: gate.reason };
   }
 

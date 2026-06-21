@@ -15,21 +15,31 @@
  *      alignment-log.json files under ~/.agent-recall/projects/*. These are the
  *      actual human_correction texts that flowed through tools-logic/check.ts —
  *      i.e. the genuine candidate-correction stream, NOT synthetic.
- *   2. DERIVE the gated `rule` the SAME way check.ts does before calling the
- *      gate:   rule = text.split(/[.\n]/)[0].trim().slice(0,100)   (see
- *      check.ts ~line 125). Replaying the raw text would NOT match production —
- *      the gate only ever sees this first-sentence slice.
- *   3. RUN isLikelyRealCorrection(rule) — the unmodified production gate.
+ *   2. GATE the candidate the SAME way production now does. v2 (Loop 7) gated
+ *      only the truncated first-sentence slice (text.split(/[.\n]/)[0].slice
+ *      (0,100)) — THAT was the root cause. v3 (Loop 8) gates the FULL correction
+ *      text (writeCorrection consults the full `context`, which IS this text).
+ *      So the backfill now passes the FULL text to the gate to match production.
+ *   3. RUN isLikelyRealCorrection(text) — the unmodified production gate (v3).
  *   4. REPORT accepted vs rejected, the discard RATE, and a per-reason
  *      breakdown. Buckets by project too.
  *
  * HONESTY — this is an ESTIMATE, and a conservative one. Limitations (printed in
  * the report so they are never hidden):
- *   - alignment-log only retains corrections that ALREADY reached check() with a
- *     human_correction set. Truly soft signals that never triggered the
- *     correction-detection hook (CORRECTION_PATTERNS in cli hook-correction)
- *     never made it into this log at all — so the TRUE discard rate is almost
- *     certainly HIGHER than measured here. This number is a FLOOR.
+ *   - The replayed pool is MIXED, NOT a uniformly pre-filtered human-correction
+ *     population. At least one writer is NOT pre-filtered by the hook's
+ *     CORRECTION_PATTERNS: the `ar correct` subcommand and the MCP `check` path
+ *     both write a raw `human_correction` straight into alignment-log without
+ *     that hook. (Loop 7's commit note OVERCLAIMED uniform pre-filtering — caught
+ *     on round-table review, corrected here.) So the discard rate is a FLOOR for
+ *     "soft intent lost", not an unbiased estimate of the true correction stream.
+ *   - AGENT-PARAPHRASE CAVEAT: some logged `corrections[]` are the agent's own
+ *     restatement/paraphrase of the user's words, not the user's verbatim
+ *     utterance. The gate's markers may therefore differ from what the human
+ *     actually said — recall measured here is recall on the paraphrase, which may
+ *     over- or under-state recall on the original utterance.
+ *   - Truly soft signals that never triggered correction-detection at all never
+ *     made it into this log — the TRUE discard rate is almost certainly HIGHER.
  *   - The log is capped at the last 50 records per project (check.ts trims), so
  *     older candidates are not represented.
  *   - We replay only the `rule` derivation; we do not re-run severity/tagging.
@@ -60,9 +70,11 @@ const corpusRoot =
     ? argv[rootIdx + 1]
     : path.join(os.homedir(), ".agent-recall", "projects");
 
-// ── derive the gated rule EXACTLY like tools-logic/check.ts (~line 125) ──────
+// ── gate the FULL correction text — matches v3 production (writeCorrection
+// consults the full `context`, not the truncated first-sentence slice). The
+// old v2 first-sentence derivation WAS the root cause Loop 8 fixed. ───────────
 function deriveRule(corrText) {
-  return corrText.split(/[.\n]/)[0]?.trim().slice(0, 100) ?? corrText.slice(0, 100);
+  return corrText;
 }
 
 // ── collect the real candidate-correction stream from alignment logs ─────────
@@ -161,11 +173,12 @@ function run() {
   return {
     source: "alignment-log.json corrections[] under ~/.agent-recall/projects/*",
     corpus_root: corpusRoot,
-    gate: "isLikelyRealCorrection (production, unmodified) on check.ts-derived rule",
-    rule_derivation: "text.split(/[.\\n]/)[0].trim().slice(0,100)",
+    gate: "isLikelyRealCorrection (production v3) on the FULL correction text",
+    gate_version: "v3-2026-06-21",
+    rule_derivation: "FULL text (v3 gates the whole context; v2's first-sentence slice was the root cause)",
     is_estimate: true,
     estimate_note:
-      "FLOOR, not ceiling — alignment-log only holds candidates that already reached check() with human_correction set; truly soft signals filtered out earlier by the hook's CORRECTION_PATTERNS never appear here. True discard rate is almost certainly higher.",
+      "MIXED pool (NOT uniformly pre-filtered): the `ar correct` subcommand + MCP `check` path write raw human_correction without the hook's CORRECTION_PATTERNS pre-filter, so this is a FLOOR for soft-intent-lost, not an unbiased estimate. AGENT-PARAPHRASE CAVEAT: some corrections[] are the agent's restatement, not the user's verbatim words. True discard rate is almost certainly higher.",
     sample_size: total,
     accepted,
     rejected,
@@ -182,7 +195,7 @@ if (asJson) {
   process.stdout.write(JSON.stringify(report, null, 2) + "\n");
 } else {
   const L = [];
-  L.push("═══ capture-gate discard backfill (Loop 7) ═══");
+  L.push("═══ capture-gate discard backfill (v3 gate — Loop 8) ═══");
   L.push(`source        : ${report.source}`);
   L.push(`corpus root   : ${report.corpus_root}`);
   L.push(`gate          : ${report.gate}`);
