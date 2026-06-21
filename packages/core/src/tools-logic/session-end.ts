@@ -268,6 +268,17 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
       // measures lexical self-consistency, not predictive accuracy. Only count a
       // hit when the prediction was recorded on an EARLIER day than today's
       // recurrence (a genuine ahead-of-time prediction that later came true).
+      //
+      // KNOWN DEFECT (loop1 round-table, deferred to Loop 3): this correctly kills
+      // the same-session self-confirming path, but ALSO makes predict_hit currently
+      // UNREACHABLE — `firedToday.has("predicted")` is today-only (readOutcomesForToday
+      // filters day===today) while `predictedOnEarlierDay` requires last_predicted<today,
+      // and `last_predicted` is a single overwritten scalar, so the two conditions are
+      // mutually exclusive. predict_precision therefore pins at 0 (internal field; NOT
+      // shown on the dashboard). The correct fix is a per-day prediction ledger
+      // (readOutcomesBefore/onDate over _outcomes.jsonl) + a unit test, built together
+      // with Loop 3's counterfactual eval. Until then predict_hit intentionally never
+      // fires rather than fire dishonestly.
       const predictedOnEarlierDay = (c: { last_predicted?: string }): boolean =>
         !!c.last_predicted &&
         new Date(c.last_predicted).toLocaleDateString("sv") < todayStr;
