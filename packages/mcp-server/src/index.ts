@@ -97,7 +97,7 @@ Default tools (5):
   session_start          Load project context at session start — corrections, insights, warnings
   session_end            Save journal, insights, trajectory — compounds memory over time
   remember               Write a memory — auto-routes to the right store
-  recall                 Search all memory — BM25 + vector + RRF fusion + Hopfield rerank
+  recall                 Search all memory — BM25/keyword + RRF fusion + optional vector (OpenAI key)
   check                  Record understanding; anticipates the likely correction before you make it
 
 Full-mode additions (--full):

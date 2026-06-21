@@ -263,16 +263,25 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
       );
       const recurrenceMarker = /\b(again|recurred|repeated|violat|broke the rule|same mistake)\b/i;
       const summaryLower = input.summary.toLowerCase();
+      // Honesty guard (loop1): a same-day predicted+recurred pair is judged by the
+      // SAME keyword matcher in the SAME pass — granting predict_hit there only
+      // measures lexical self-consistency, not predictive accuracy. Only count a
+      // hit when the prediction was recorded on an EARLIER day than today's
+      // recurrence (a genuine ahead-of-time prediction that later came true).
+      const predictedOnEarlierDay = (c: { last_predicted?: string }): boolean =>
+        !!c.last_predicted &&
+        new Date(c.last_predicted).toLocaleDateString("sv") < todayStr;
       for (const c of todays) {
         try {
           const firedToday = todayOut.get(c.id);
           // A REAL outcome already exists today → never overwrite it with a
           // default heuristic. This is the heart of the honesty fix.
           if (firedToday && (firedToday.has("heeded") || firedToday.has("recurred"))) {
-            // Close the predict-the-correction loop: a prediction that fired and
-            // then actually recurred is a `predict_hit`.
-            if (firedToday.has("predicted") && firedToday.has("recurred") && !firedToday.has("predict_hit")) {
-              recordOutcome({ correction_id: c.id, project: slug, kind: "predict_hit", at: nowISO, evidence: "predicted then recurred same day" });
+            // Close the predict-the-correction loop: a prediction recorded on an
+            // EARLIER day that has now actually recurred is a genuine `predict_hit`.
+            // Same-day predicted+recurred is NOT a hit (self-confirming metric).
+            if (firedToday.has("predicted") && firedToday.has("recurred") && !firedToday.has("predict_hit") && predictedOnEarlierDay(c)) {
+              recordOutcome({ correction_id: c.id, project: slug, kind: "predict_hit", at: nowISO, evidence: "earlier-day prediction recurred today" });
             }
             continue;
           }
@@ -293,10 +302,12 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
               ? "recurrence markers in session summary"
               : "no recurrence evidence in session summary (default-heeded — no real outcome today)",
           });
-          // If this correction was predicted today and now recurred, it's a hit.
-          // Guard against double-counting (mirror the guard on the early-exit path).
-          if (violated && firedToday && firedToday.has("predicted") && !firedToday.has("predict_hit")) {
-            recordOutcome({ correction_id: c.id, project: slug, kind: "predict_hit", at: nowISO, evidence: "predicted then recurred same day" });
+          // If a correction predicted on an EARLIER day has now recurred, it's a
+          // genuine hit. Same-day predicted+recurred is NOT a hit (the prediction
+          // and the recurrence are judged by the same matcher in the same pass —
+          // self-confirming). Guard against double-counting too.
+          if (violated && firedToday && firedToday.has("predicted") && !firedToday.has("predict_hit") && predictedOnEarlierDay(c)) {
+            recordOutcome({ correction_id: c.id, project: slug, kind: "predict_hit", at: nowISO, evidence: "earlier-day prediction recurred today" });
           }
         } catch {
           // Per-correction errors are swallowed — don't abort the loop

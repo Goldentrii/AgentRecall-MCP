@@ -14,9 +14,9 @@
   <a href="https://github.com/Goldentrii/AgentRecall/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen?style=flat-square" alt="License"></a>
   <img src="https://img.shields.io/badge/MCP-5_tools_default-orange?style=flat-square" alt="Tools">
   <img src="https://img.shields.io/badge/memory_layers-5-7C3AED?style=flat-square" alt="5 layers">
-  <img src="https://img.shields.io/badge/cloud-zero-blue?style=flat-square" alt="Zero Cloud">
+  <img src="https://img.shields.io/badge/cloud-zero_by_default-blue?style=flat-square" alt="Zero cloud by default">
   <img src="https://img.shields.io/badge/decay-FSRS--lite-3B82F6?style=flat-square" alt="FSRS-lite decay">
-  <img src="https://img.shields.io/badge/retrieval-Hopfield_%2B_RRF-8B5CF6?style=flat-square" alt="Hopfield retrieval">
+  <img src="https://img.shields.io/badge/retrieval-keyword_%2B_RRF-8B5CF6?style=flat-square" alt="Keyword + RRF retrieval">
   <img src="https://img.shields.io/badge/feedback-precision_KPI-F59E0B?style=flat-square" alt="Precision KPI">
 </p>
 
@@ -62,8 +62,8 @@ At the end of a session, call session_end to compound what you learned.
 - **Correction-first.** When you say "no, that's wrong", we log a `CorrectionRecord` with severity, holder, and evidence. After N confirmations across sessions it auto-promotes to a cross-project insight.
 - **Measurable learning loop.** Every correction tracks `retrieved_count`, `heeded_count`, `recurrence_count`, `precision`. The KPI that matters: *did the same bug recur after we warned about it?*
 - **Five memory types.** Episodic, semantic, procedural, narrative, correction — mapped to the canonical cognitive-psychology taxonomy (Squire 2004, Tulving 1972).
-- **Local markdown only.** Everything lives in `~/.agent-recall/`. Open it in Obsidian, grep it in the terminal, version it in git. No cloud, no API keys, no lock-in.
-- **Backed by published math.** FSRS-lite decay (Ebbinghaus → SuperMemo → FSRS-6), Modern Hopfield retrieval (Ramsauer 2020), RRF fusion (Cormack 2009).
+- **Local markdown, local by default.** Everything lives in `~/.agent-recall/`. Open it in Obsidian, grep it in the terminal, version it in git. The default keyword + RRF retrieval is fully local — zero cloud, no API keys, no lock-in. Semantic vector search is **optional**: set `OPENAI_API_KEY` and query/content text is sent to OpenAI for embeddings. Leave it unset and nothing leaves your machine.
+- **Backed by published math.** FSRS-lite decay (Ebbinghaus → SuperMemo → FSRS-6), RRF fusion (Cormack 2009). A Modern Hopfield re-rank primitive (Ramsauer 2020) ships in the codebase but is **not** wired into the default retrieval path — what runs today is BM25/keyword + RRF, plus optional vector search.
 
 > **The Automaticity Law.** Memory only compounds if it's used *automatically*, not on demand. Measured on the live corpus: push channels (`session_start`, `session_end`, correction hooks) show repeated behavior-changing usage, while pull channels had **zero** organic calls across 44 projects over weeks of real use — including from the agent that built them. That's why only 5 tools ship by default; the two-verb model (inhale/exhale) carries all the compounding value, and everything else is opt-in via `--full`.
 
@@ -77,11 +77,11 @@ At the end of a session, call session_end to compound what you learned.
 |---|---|---|---|---|
 | Correction tracking + precision KPI | ✅ Core feature | ❌ | ❌ | ❌ |
 | Behavioral calibration across sessions | ✅ | ❌ | ❌ | Partial |
-| Local markdown only (zero cloud) | ✅ | ❌ cloud | ❌ cloud | ❌ cloud |
+| Local markdown, zero cloud by default | ✅ (vector search optional, opt-in) | ❌ cloud | ❌ cloud | ❌ cloud |
 | MCP native | ✅ | ✅ | ✅ | ✅ |
-| FSRS-lite decay + Hopfield retrieval | ✅ | ❌ | ❌ | ❌ |
+| FSRS-lite decay + keyword/RRF retrieval | ✅ | ❌ | ❌ | ❌ |
 | Free / open source | ✅ MIT | Freemium | Freemium | Apache |
-| Works offline | ✅ | ❌ | ❌ | Partial |
+| Works offline | ✅ (default; vector search needs network) | ❌ | ❌ | Partial |
 
 The difference: AgentRecall is the only system that tracks whether the agent actually acted on a warning — not just that it stored one.
 

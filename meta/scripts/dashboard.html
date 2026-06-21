@@ -608,10 +608,13 @@
   </section>
 
   <!-- P4: Correction Precision — HERO (2fr wide) -->
-  <section class="panel" id="panel-precision" aria-label="Correction Precision">
+  <!-- HONEST LABEL (loop1): this metric is heeded/retrieved where "heeded" means the
+       surfaced correction was NOT visibly re-violated in the session summary. It is
+       "surfaced, not contradicted" — NOT proven behavior change. -->
+  <section class="panel" id="panel-precision" aria-label="Surfaced, not contradicted">
     <div class="panel-hdr panel-hdr--dark">
-      <span class="panel-title panel-title--hero">★ &nbsp;Correction Precision</span>
-      <span class="panel-sub panel-sub--light" id="precision-sub">heeded / retrieved · selected project</span>
+      <span class="panel-title panel-title--hero">★ &nbsp;Surfaced, not contradicted</span>
+      <span class="panel-sub panel-sub--light" id="precision-sub">surfaced &amp; not re-violated / retrieved · selected project</span>
     </div>
     <div class="panel-body panel-body--dark" style="display:flex;flex-direction:column;">
       <div class="precision-bars">
@@ -625,7 +628,7 @@
           <div class="pv-number" id="pv-number" aria-label="Precision percentage">—</div>
           <div class="pv-right">
             <div class="pv-sublabel">corrections</div>
-            <div class="pv-sublabel">heeded</div>
+            <div class="pv-sublabel">surfaced, not contradicted</div>
             <div class="pv-delta" id="pv-delta"></div>
           </div>
         </div>
@@ -1284,7 +1287,8 @@ function renderCorrectionPrecision() {
     dEl.className = 'pv-delta pv-delta--neutral';
   }
 
-  precisionSub.textContent = p.slug + ' · ' + totalCorrections + ' corrections';
+  /* Honest caption (loop1): "heeded" = surfaced & not visibly re-violated, NOT proven behavior change. */
+  precisionSub.textContent = p.slug + ' · surfaced, not contradicted (not proven behavior change)';
 
   /* Build bar chart data from global_insights_top or corrections kpis high_signal */
   var insights = (p.global_insights_top || []).slice(0, 8);

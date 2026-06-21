@@ -14,9 +14,9 @@
   <a href="https://github.com/Goldentrii/AgentRecall/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen?style=flat-square" alt="License"></a>
   <img src="https://img.shields.io/badge/MCP-5_tools_default-orange?style=flat-square" alt="Tools">
   <img src="https://img.shields.io/badge/memory_layers-5-7C3AED?style=flat-square" alt="5 layers">
-  <img src="https://img.shields.io/badge/cloud-zero-blue?style=flat-square" alt="Zero Cloud">
+  <img src="https://img.shields.io/badge/cloud-zero_by_default-blue?style=flat-square" alt="Zero cloud by default">
   <img src="https://img.shields.io/badge/decay-FSRS--lite-3B82F6?style=flat-square" alt="FSRS-lite decay">
-  <img src="https://img.shields.io/badge/retrieval-Hopfield_%2B_RRF-8B5CF6?style=flat-square" alt="Hopfield retrieval">
+  <img src="https://img.shields.io/badge/retrieval-keyword_%2B_RRF-8B5CF6?style=flat-square" alt="Keyword + RRF retrieval">
   <img src="https://img.shields.io/badge/feedback-precision_KPI-F59E0B?style=flat-square" alt="Precision KPI">
 </p>
 
@@ -62,8 +62,8 @@ At the end of a session, call session_end to compound what you learned.
 - **以纠正为先。** 你说"不对"时，我们记下 `CorrectionRecord`（严重度、归属、证据）。跨会话被确认 N 次后，自动晋升为跨项目的 insight。
 - **可量化的学习闭环。** 每条纠正都跟踪 `retrieved_count`、`heeded_count`、`recurrence_count`、`precision`。唯一重要的 KPI：警告之后同样的 bug 还复发吗？
 - **五种记忆类型。** Episodic、semantic、procedural、narrative、correction —— 对应认知心理学经典分类（Squire 2004、Tulving 1972）。
-- **只用本地 markdown。** 一切都在 `~/.agent-recall/`。用 Obsidian 打开、用终端 grep、用 git 版本管理。零云、零 API key、零锁定。
-- **基于已发表数学。** FSRS-lite 衰减（Ebbinghaus → SuperMemo → FSRS-6）、Modern Hopfield 检索（Ramsauer 2020）、RRF 融合（Cormack 2009）。
+- **本地 markdown，默认本地优先。** 一切都在 `~/.agent-recall/`。用 Obsidian 打开、用终端 grep、用 git 版本管理。默认的关键词 + RRF 检索完全本地——零云、零 API key、零锁定。语义向量检索是**可选项**：设置 `OPENAI_API_KEY` 后，query/content 文本会发送到 OpenAI 生成 embedding；不设置则数据完全不出本机。
+- **基于已发表数学。** FSRS-lite 衰减（Ebbinghaus → SuperMemo → FSRS-6）、RRF 融合（Cormack 2009）。代码库内置一个 Modern Hopfield 重排序原语（Ramsauer 2020），但**未**接入默认检索路径——当前实际运行的是 BM25/关键词 + RRF，外加可选的向量检索。
 
 > **自动化定律（The Automaticity Law）。** 记忆只有在被*自动*使用时才会复合，而不是按需调用。基于真实语料库测量：推送通道（`session_start`、`session_end`、纠正 hooks）有持续的行为改变使用记录；而拉取通道在 44 个项目、数周真实使用中有**零**次有机调用——包括构建它们的 agent 本身。这就是为什么默认只发布 5 个工具：双动词模型（吸入/呼出）承载了所有复合价值，其余功能通过 `--full` 按需开启。
 
@@ -77,11 +77,11 @@ At the end of a session, call session_end to compound what you learned.
 |---|---|---|---|---|
 | 纠正追踪 + precision KPI | ✅ 核心功能 | ❌ | ❌ | ❌ |
 | 跨会话行为校准 | ✅ | ❌ | ❌ | 部分 |
-| 纯本地 markdown（零云端） | ✅ | ❌ 云端 | ❌ 云端 | ❌ 云端 |
+| 本地 markdown，默认零云端 | ✅（向量检索为可选、需手动开启） | ❌ 云端 | ❌ 云端 | ❌ 云端 |
 | MCP 原生支持 | ✅ | ✅ | ✅ | ✅ |
-| FSRS-lite 衰减 + Hopfield 检索 | ✅ | ❌ | ❌ | ❌ |
+| FSRS-lite 衰减 + 关键词/RRF 检索 | ✅ | ❌ | ❌ | ❌ |
 | 免费 / 开源 | ✅ MIT | Freemium | Freemium | Apache |
-| 支持离线使用 | ✅ | ❌ | ❌ | 部分 |
+| 支持离线使用 | ✅（默认；向量检索需联网） | ❌ | ❌ | 部分 |
 
 区别在于：AgentRecall 是唯一追踪 agent 是否真正按警告行事的系统——而不只是把警告存起来。
 
