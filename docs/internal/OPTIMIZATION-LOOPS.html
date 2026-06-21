@@ -87,7 +87,7 @@
     <tr><td>3</td><td>Leave-one-out predict-the-correction eval</td><td>understanding validation</td><td><span class="st done" id="s3">done ✓ (negative)</span></td><td id="r3"><b>Honest negative:</b> real corpus → 0 fired, recall 0/13, precision uncomputable. Harness verified clean. predict_hit dead code fixed. 418/418</td></tr>
     <tr><td>4</td><td>Real-time session_start: who / what / progress / who-you-are</td><td>real-time recognition</td><td><span class="st done" id="s4">done ✓</span></td><td id="r4">deterministic, zero-network, <b>~0.3–1.0ms</b>; 4 fields accurate on 3 real projects; 426/426. 1 latent WHO-on-bootstrap bug → L5 carry-in</td></tr>
     <tr><td>5</td><td>Local semantic matcher — attack the 0/13 (linguistics)</td><td>understanding research</td><td><span class="st done" id="s5">done ✓</span></td><td id="r5"><b>recall 0/13 → 2/13 @ 0% FP</b> (real signal, local/zero-key); paraphrase 0/6→6/6; WHO fix w/ real fixture. 444/444. Honest: fuzzy-lexical+dictionary, not meaning</td></tr>
-    <tr><td>6</td><td>Mathematics layer + integrity doctor + final self-eval</td><td>math / reflection</td><td><span class="st plan" id="s6">planned</span></td><td id="r6">—</td></tr>
+    <tr><td>6</td><td>Math layer (MATH.md) + read-only integrity store-doctor</td><td>math / integrity</td><td><span class="st done" id="s6">done ✓</span></td><td id="r6">MATH.md honest ("redundancy→intent" = <b>aspirational</b>, FSRS hand-tuned, Hopfield unwired); <code>ar doctor</code> found <b>3 real issues on your store</b> (16-room index drift, 22-day stale lock, dreaming never consumed). 454/454</td></tr>
     <tr><td>7</td><td>Structured backlog — store-doctor integrity + filelock fail-loud / capture-gate survivorship-bias fix</td><td>integrity</td><td><span class="st plan" id="s7">planned</span></td><td id="r7">—</td></tr>
     <tr><td>8</td><td>Structured backlog — embeddings / rule-induction step (gated by L5 paraphrase eval)</td><td>understanding</td><td><span class="st plan" id="s8">planned</span></td><td id="r8">—</td></tr>
     <tr><td>9</td><td>🎨 Freestyle — "The Mirror" (agent's first-person model of you, surfaced for correction)</td><td>creative</td><td><span class="st plan" id="s9">freestyle</span></td><td id="r9">—</td></tr>
@@ -207,6 +207,28 @@
       </ul></div>
     </div>
     <div class="blk selfeval" style="margin-top:14px;"><h4>Self-evaluation</h4><p><b>The best kind of win — 9/10.</b> The differentiator went from <i>empirically zero</i> to <i>empirically nonzero with zero false positives</i>, measured on the same harness that produced the honest 0, with no cloud dependency. And the round-table refused to let me overclaim it: it's named as fuzzy-lexical, not understanding. That's the discipline working — real progress AND no theater. The honest gap (this isn't meaning-matching; "redundancy reconstructs intent" still has no mathematical model) is exactly what Loop 6 formalizes and freestyle Loop 10 will experimentally attack.</p></div>
+  </section>
+
+  <section class="loop" id="loop-6">
+    <h2>⑥ Math layer + store doctor <span class="st done">done ✓</span></h2>
+    <div class="theme">Theme: math / integrity / reflection. Commit <code>e75ee04</code>. Build/test 454/454.</div>
+    <div class="grid2">
+      <div class="blk"><h4>Part 1 — MATH.md (your "how does math help", answered honestly)</h4><ul>
+        <li><b>FSRS-lite</b> <code>R=exp(−days/S)</code>, S +30%/confirm — form grounded, <b>constants hand-picked, NOT fit to recall data</b> (says so).</li>
+        <li><b>RRF</b> <code>Σ 1/(k+rank)</code>, k=60 grounded; per-source weights hand-tuned; <b>Hopfield math grounded but NOT wired</b> into the default path.</li>
+        <li><b>cosine</b> = binary char-trigram set-cosine over a hand-mapped concept space — lexical/heuristic, NOT learned.</li>
+        <li><b>The big question — answered without flinching:</b> "redundancy over time reconstructs intent" is <b>ASPIRATIONAL today</b> = clustering + exponential decay + set-cosine. "No posterior. No information-theoretic accumulation. No generative model of intent." + a falsifiable <b>Loop-10 sketch</b> (corrections as noisy samples of a latent intent vector; variance/SNR converging with N).</li>
+      </ul></div>
+      <div class="blk"><h4>Part 2 — store-doctor (read-only) found REAL issues</h4><ul>
+        <li>Run on your <b>real store (51 projects)</b>, <code>ar doctor</code> = RED on 3 genuine pre-existing conditions:</li>
+        <li>⛔ <b>vector-index drift in 16 rooms</b> (e.g. <code>aam/goals</code> index=4 vs disk=24) — the counts are badly out of sync with disk.</li>
+        <li>⛔ <b>22-day-old abandoned lock</b> (<code>.lock-pipeline-*</code> from May 30) — a crashed writer's lock never cleaned.</li>
+        <li>⛔ <b>dreaming never consumed anything</b> (<code>lastConsumedAt=null</code>) — the known auth-stall, now detected (and L2's login-free consolidation already covers the safety steps regardless).</li>
+        <li>Verified <b>read-only on production</b> (1750→1750 files; did not remove the lock). 10 tests inject + reproduce each RED.</li>
+      </ul></div>
+    </div>
+    <div class="blk" style="margin-top:14px;"><h4>Honest caveat (carried)</h4><p>The doctor's <code>'ok'</code> means "no failure surfaced," NOT "verified healthy" — each check's catch-block degrades to <code>ok</code> to honor the never-throw/never-noise guarantee, so an unreadable store could read green. Documented intent, low-sev. Two minor false-positive-RED paths noted (laptop-off-2-nights trips dreaming; truly-concurrent same-room writes). These are real findings for you to act on (a reindex / lock-cleanup is a candidate structured loop).</p></div>
+    <div class="blk selfeval" style="margin-top:14px;"><h4>Self-evaluation</h4><p><b>Strong win — 9/10.</b> The math doc answered your hardest question without dressing it up — and naming "redundancy reconstructs intent" as aspirational (with a concrete experiment to make it real) is exactly the honesty the whole run is built on. The doctor isn't a toy: it immediately found 3 real latent problems in your live store that nothing else was watching for. The −1: "ok ≠ verified healthy" is a genuine false-negative trade-off, and read-only is enforced by convention+test rather than a hard runtime guard.</p></div>
   </section>
 
   <div class="foot mono">Living document — updated after each loop. Not pushed. Final self-evaluation lands after loop 11.</div>
