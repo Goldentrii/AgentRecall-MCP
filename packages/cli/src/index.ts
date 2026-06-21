@@ -89,6 +89,7 @@ META:
 
 DIAGNOSTICS:
   ar stats             Show memory system health: corrections, feedback, insights, graph edges
+  ar corrections rejected [--stats] [--json]  Survivorship-bias probe: corrections the capture gate discarded
   ar rooms             Show palace rooms with entry counts and topic keywords
   ar sync-memory       Sync AgentRecall → Claude auto-memory (corrections + insights + rooms)
 
@@ -476,6 +477,49 @@ async function main(): Promise<void> {
       } else {
         const profile = core.readBlindSpots(slug);
         output(profile ?? "none yet — run `ar blind-spots --recompute` after corrections accumulate");
+      }
+      break;
+    }
+    case "corrections": {
+      const sub = rest[0];
+      switch (sub) {
+        case "rejected": {
+          // Survivorship-bias probe — READ-ONLY view of corrections the capture
+          // gate discarded (corrections/_rejected.jsonl). `--stats` aggregates
+          // discard count, rate (vs. accepted), and top reasons. `--json` raw.
+          const slug = await core.resolveProject(project);
+          const accepted = core.readCorrections(slug).length;
+          if (hasFlag("--stats", rest) || rest.length === 1) {
+            const stats = core.getRejectedStats(slug, accepted);
+            if (hasFlag("--json", rest)) {
+              output(stats);
+            } else {
+              const lines: string[] = [
+                `discarded corrections (${slug}): ${stats.discarded}`,
+                `accepted: ${stats.accepted ?? "?"}`,
+                stats.rate !== undefined
+                  ? `discard rate: ${(stats.rate * 100).toFixed(1)}% (${stats.discarded}/${(stats.accepted ?? 0) + stats.discarded})`
+                  : `discard rate: unknown (accepted count unavailable)`,
+              ];
+              if (stats.top_reasons.length > 0) {
+                lines.push("top reasons:");
+                for (const r of stats.top_reasons) {
+                  lines.push(`  ${r.count}× ${r.reason}`);
+                }
+              } else {
+                lines.push("no rejections logged yet");
+              }
+              output(lines.join("\n"));
+            }
+          } else {
+            // List raw rows.
+            output(core.readRejectedCorrections(slug));
+          }
+          break;
+        }
+        default:
+          process.stderr.write(`Unknown corrections subcommand: ${sub ?? "(none)"}\nUsage: ar corrections rejected [--stats] [--json]\n`);
+          process.exitCode = 1;
       }
       break;
     }

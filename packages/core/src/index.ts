@@ -217,11 +217,17 @@ export {
   readP0Corrections,
   retractCorrection,
   isLikelyRealCorrection,
+  logRejectedCorrection,
+  readRejectedCorrections,
+  getRejectedStats,
+  GATE_VERSION,
 } from "./storage/corrections.js";
 export type {
   CorrectionRecord,
   WriteCorrectionResult,
   RetractCorrectionResult,
+  RejectedCorrectionRecord,
+  RejectedStats,
 } from "./storage/corrections.js";
 
 // Helpers

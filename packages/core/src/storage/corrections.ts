@@ -59,6 +59,23 @@ export interface CorrectionRecord {
   last_predicted?: string;    // ISO timestamp of most recent prediction
 }
 
+/**
+ * One discarded correction-candidate, appended to corrections/_rejected.jsonl
+ * when the capture gate rejects the text. This is the survivorship-bias probe:
+ * the soft corrections the palace never sees ("that's not what I meant",
+ * "closer but the spacing is off") become VISIBLE here instead of vanishing.
+ *
+ * Written best-effort only — see logRejectedCorrection. A rejection log can
+ * NEVER throw into the capture path.
+ */
+export interface RejectedCorrectionRecord {
+  ts: string;            // ISO timestamp of the rejection
+  project: string;       // project slug (raw, as passed to writeCorrection)
+  rule: string;          // the FULL rejected rule text (what the gate classified on)
+  reason: string;        // gate.reason — which gate fired
+  gate_version: string;  // GATE_VERSION at time of rejection
+}
+
 export interface CorrectionOutcome {
   correction_id: string;
   project: string;
@@ -112,6 +129,24 @@ function correctionsDir(project: string): string {
 function outcomesPath(project: string): string {
   return path.join(correctionsDir(project), "_outcomes.jsonl");
 }
+
+function rejectedPath(project: string): string {
+  return path.join(correctionsDir(project), "_rejected.jsonl");
+}
+
+/**
+ * Gate version stamp — bump whenever isLikelyRealCorrection's accept criteria
+ * change so a rejected-log analysis can attribute discard rates to a specific
+ * gate revision. Kept in lock-step with the v2 (2026-06-12) classifier above.
+ */
+export const GATE_VERSION = "v2-2026-06-12";
+
+/**
+ * Cap for _rejected.jsonl — keep the most-recent N rows so a survivorship-bias
+ * probe can never grow the file unbounded on the hot capture path. Rotation is
+ * best-effort: a failure to rotate must never throw into writeCorrection.
+ */
+const REJECTED_LOG_CAP = 2000;
 
 /** Auto-detect severity: p0 if uses strong negation/mandate language, else p1. */
 function detectSeverity(text: string): "p0" | "p1" {
@@ -259,6 +294,10 @@ export function writeCorrection(project: string, correction: CorrectionRecord): 
   // v2: classify on rule field only (context is for future use, never gate-input).
   const gate = isLikelyRealCorrection(correction.rule ?? "");
   if (!gate.ok) {
+    // Survivorship-bias probe — record the discarded candidate (FULL rejected
+    // text + reason) so soft corrections the palace silently drops become
+    // measurable. Best-effort: logRejectedCorrection can NEVER throw here.
+    logRejectedCorrection(project, correction.rule ?? "", gate.reason ?? "rejected");
     return { written: false, reason: gate.reason };
   }
 
@@ -425,6 +464,117 @@ export function recordOutcome(outcome: CorrectionOutcome): void {
   const tmp = `${filepath}.tmp.${process.pid}.${Date.now()}`;
   fs.writeFileSync(tmp, JSON.stringify(updated, null, 2), { encoding: "utf-8", mode: 0o600 });
   fs.renameSync(tmp, filepath);
+}
+
+/**
+ * Best-effort: append one row to corrections/_rejected.jsonl recording a
+ * gate-rejected correction candidate. INVARIANT: never throws — every fs op is
+ * wrapped so a rejection log can never escalate into the capture path. Reads
+ * nothing on the hot path except the (already-small) file it rotates.
+ *
+ * Rotation: when the file exceeds REJECTED_LOG_CAP rows, it is rewritten with
+ * only the most-recent rows (append-only semantics, bounded size). Rotation is
+ * itself best-effort — a rotation failure still leaves the append intact.
+ */
+export function logRejectedCorrection(
+  project: string,
+  rule: string,
+  reason: string,
+): void {
+  try {
+    const dir = correctionsDir(project);
+    ensureDir(dir);
+    const row: RejectedCorrectionRecord = {
+      ts: new Date().toISOString(),
+      project,
+      rule,
+      reason,
+      gate_version: GATE_VERSION,
+    };
+    const p = rejectedPath(project);
+    fs.appendFileSync(p, JSON.stringify(row) + "\n", "utf-8");
+
+    // Bounded rotation — keep only the most-recent rows. Best-effort: if any
+    // step throws, the append above already succeeded and we simply skip trim.
+    try {
+      const raw = fs.readFileSync(p, "utf-8");
+      const lines = raw.split("\n").filter((l) => l.trim());
+      if (lines.length > REJECTED_LOG_CAP) {
+        const kept = lines.slice(-REJECTED_LOG_CAP).join("\n") + "\n";
+        const tmp = `${p}.tmp.${process.pid}.${Date.now()}`;
+        fs.writeFileSync(tmp, kept, { encoding: "utf-8", mode: 0o600 });
+        fs.renameSync(tmp, p);
+      }
+    } catch {
+      /* rotation is best-effort — append already landed */
+    }
+  } catch {
+    /* a rejection log can NEVER throw into the capture path */
+  }
+}
+
+/**
+ * Read all rejected correction candidates for a project, oldest-first (file
+ * order). Returns [] when no log exists — never throws. Skips malformed lines.
+ */
+export function readRejectedCorrections(project: string): RejectedCorrectionRecord[] {
+  const p = rejectedPath(project);
+  if (!fs.existsSync(p)) return [];
+  let raw: string;
+  try {
+    raw = fs.readFileSync(p, "utf-8");
+  } catch {
+    return [];
+  }
+  const out: RejectedCorrectionRecord[] = [];
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      const rec = JSON.parse(trimmed) as RejectedCorrectionRecord;
+      if (rec && typeof rec.rule === "string" && typeof rec.reason === "string") {
+        out.push(rec);
+      }
+    } catch {
+      /* skip malformed line */
+    }
+  }
+  return out;
+}
+
+export interface RejectedStats {
+  project: string;
+  discarded: number;
+  /** Discard rate = discarded / (discarded + accepted). undefined if accepted unknown. */
+  rate?: number;
+  /** Accepted count if known (e.g. from readCorrections). */
+  accepted?: number;
+  /** Reasons sorted by descending count. */
+  top_reasons: Array<{ reason: string; count: number }>;
+}
+
+/**
+ * Aggregate the rejected log into discard count + per-reason breakdown. When
+ * `acceptedCount` is supplied the discard RATE is computed too. Read-only.
+ */
+export function getRejectedStats(project: string, acceptedCount?: number): RejectedStats {
+  const rows = readRejectedCorrections(project);
+  const byReason = new Map<string, number>();
+  for (const r of rows) {
+    byReason.set(r.reason, (byReason.get(r.reason) ?? 0) + 1);
+  }
+  const top_reasons = [...byReason.entries()]
+    .map(([reason, count]) => ({ reason, count }))
+    .sort((a, b) => b.count - a.count);
+  const discarded = rows.length;
+  const denom = acceptedCount !== undefined ? discarded + acceptedCount : undefined;
+  return {
+    project,
+    discarded,
+    accepted: acceptedCount,
+    rate: denom && denom > 0 ? Number((discarded / denom).toFixed(4)) : undefined,
+    top_reasons,
+  };
 }
 
 /**
