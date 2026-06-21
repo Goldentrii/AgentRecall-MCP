@@ -124,6 +124,15 @@ describe("Loop 3 — LOO predict eval harness (deterministic fixture)", () => {
     assert.ok(r.predictable >= 1, "engineered cluster yields predictable corrections");
     assert.ok(typeof r.recall === "number" && r.recall >= 0 && r.recall <= 1, "recall in [0,1]");
 
+    // Secondary honest denominator (active_predictable) is computed and is a
+    // SUBSET of predictable. In this all-active fixture it equals predictable.
+    assert.ok(typeof r.active_predictable === "number", "active_predictable is computed");
+    assert.ok(r.active_predictable <= r.predictable, "active_predictable <= predictable (subset invariant)");
+    assert.ok(
+      r.recall_active === null || (r.recall_active >= 0 && r.recall_active <= 1),
+      "recall_active is null or in [0,1]",
+    );
+
     // Lead-time present because there are hits, and non-negative.
     assert.ok(r.lead_time, "lead-time present when hits exist");
     assert.ok(r.lead_time.max_days >= 0, "lead-time days non-negative");
@@ -157,6 +166,37 @@ describe("Loop 3 — LOO predict eval harness (deterministic fixture)", () => {
     assert.equal(lonely.predictable, 0, "isolated rule has no prior sibling → not predictable");
     assert.equal(lonely.fired, 0, "isolated rule fires no prediction");
     assert.equal(lonely.hits, 0, "isolated rule yields no hit");
+  });
+
+  it("active_predictable EXCLUDES cases whose only enabling sibling is retracted (active===false)", () => {
+    const root = path.join(tmpdir(), `ar-loo-retracted-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    // A RETRACTED (active:false) prior, then an ACTIVE later correction in the
+    // same cluster. deriveBlindSpots() drops active===false, so the active-only
+    // blind profile can never represent the later one — it inflates `predictable`
+    // (theoretical) but must NOT count toward `active_predictable` (achievable).
+    writeCorrection(root, "retracted-proj", {
+      id: "pin-digest-old", date: "2026-03-01", severity: "p0", project: "retracted-proj",
+      rule: "Always pin the docker base image digest",
+      context: "A floating docker tag drifted the build. Always pin the docker base image digest.",
+      tags: ["docker", "pin", "digest"], weight: 1, active: false, kind: "correction",
+    });
+    writeCorrection(root, "retracted-proj", {
+      id: "pin-digest-new", date: "2026-03-02", severity: "p0", project: "retracted-proj",
+      rule: "Pin the docker base image to a digest, never a tag",
+      context: "The image moved under a tag again and broke prod. Pin the docker base image to a digest, never a tag.",
+      tags: ["docker", "pin", "digest"], weight: 1, active: true, kind: "correction",
+    });
+    try {
+      const r = runLooEval(root);
+      assert.ok(r.predictable >= 1, "the active correction has a prior same-cluster sibling → predictable");
+      assert.ok(
+        r.active_predictable < r.predictable,
+        `active_predictable (${r.active_predictable}) must be < predictable (${r.predictable}) when the only enabling sibling is retracted`,
+      );
+      assert.ok(r.active_predictable <= r.predictable, "active_predictable <= predictable invariant");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("empty corpus → honest nulls, no throw", () => {

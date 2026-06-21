@@ -253,7 +253,8 @@ export function runLooEval(root, opts = {}) {
   const projects = listProjects(root);
 
   let corpusSize = 0;
-  let predictable = 0; // corrections that HAD >= 1 prior same-cluster sibling
+  let predictable = 0; // corrections that HAD >= 1 prior same-cluster sibling (ALL priors, incl. retracted)
+  let activePredictable = 0; // SUBSET of predictable: C's with >= 1 ACTIVE (active!==false) same-cluster prior
   let predictionsFired = 0; // C's where the blind predictor fired >= 1 risk
   let hits = 0; // fired predictions whose top risk anchored to a same-cluster sibling
   let antiSelfConfirmHits = 0; // hits where the anchor's cluster is a DIFFERENT correction than C
@@ -306,6 +307,14 @@ export function runLooEval(root, opts = {}) {
         predictable += 1;
         bumpBucket(bySeverity, sev, "predictable");
         bumpBucket(byProject, project, "predictable");
+
+        // SECONDARY honest denominator (measurement-validity fix, Loop 5/9):
+        // deriveBlindSpots() drops active===false signals, so a C whose only
+        // same-cluster priors are RETRACTED can NEVER be represented by the
+        // active-only blind profile — it inflates `predictable` (theoretical)
+        // but is structurally unpredictable. Count separately; primary untouched.
+        const activePriorSiblings = priorSiblings.filter((pc) => pc.active !== false);
+        if (activePriorSiblings.length > 0) activePredictable += 1;
       }
 
       if (priorCorrs.length === 0) continue; // nothing to derive a profile from
@@ -387,6 +396,10 @@ export function runLooEval(root, opts = {}) {
 
   const precision = predictionsFired > 0 ? hits / predictionsFired : null;
   const recall = predictable > 0 ? hits / predictable : null;
+  // Achievable ceiling: recall against only the cases the active-only blind
+  // profile can actually represent. hits ⊆ active_predictable by construction
+  // (a hit requires an active-derived blind spot to fire), so this is ≤ 1.
+  const recallActive = activePredictable > 0 ? hits / activePredictable : null;
   const leadTime = leadTimes.length
     ? {
         n: leadTimes.length,
@@ -403,11 +416,13 @@ export function runLooEval(root, opts = {}) {
     projects: projects.length,
     corpus_size: corpusSize,
     predictable,
+    active_predictable: activePredictable,
     predictions_fired: predictionsFired,
     hits,
     anti_self_confirm_hits: antiSelfConfirmHits,
     precision,
     recall,
+    recall_active: recallActive,
     lead_time: leadTime,
     // Negative-pair false-positive instrument (precision protection).
     neg_trials: negTrials,
@@ -442,14 +457,17 @@ function renderReport(r) {
   lines.push(`  MODE               ${r.mode}${r.semantic_threshold != null ? ` (threshold=${r.semantic_threshold})` : ""}`);
   lines.push(`  projects           ${r.projects}`);
   lines.push(`  corrections (N)    ${r.corpus_size}`);
-  lines.push(`  predictable (had ≥1 prior same-cluster sibling)  ${r.predictable}`);
+  lines.push(`  predictable (had ≥1 prior same-cluster sibling)         ${r.predictable}  [theoretical]`);
+  lines.push(`  active_predictable (≥1 ACTIVE such sibling)             ${r.active_predictable}  [achievable — active-only blind profile can represent these]`);
   lines.push(`  predictions fired  ${r.predictions_fired}`);
   lines.push(`  hits               ${r.hits}`);
   lines.push(`  anti-self-confirm hits (from a DIFFERENT cluster) ${r.anti_self_confirm_hits}`);
   lines.push("");
   lines.push(`  PRECISION  hits/fired       ${fmtPct(r.precision)}  (${r.hits}/${r.predictions_fired})`);
-  lines.push(`  RECALL     hits/predictable ${fmtPct(r.recall)}  (${r.hits}/${r.predictable})`);
+  lines.push(`  RECALL     hits/predictable        ${fmtPct(r.recall)}  (${r.hits}/${r.predictable})  [theoretical denominator]`);
+  lines.push(`  RECALL*    hits/active_predictable ${fmtPct(r.recall_active)}  (${r.hits}/${r.active_predictable})  [ACHIEVABLE ceiling]`);
   lines.push(`  FALSE-POS  fires/neg-pairs  ${fmtPct(r.false_positive_rate)}  (${r.neg_fires}/${r.neg_trials})  [unrelated pairs MUST NOT fire]`);
+  lines.push(`  note: ${r.predictable - r.active_predictable} of ${r.predictable} "predictable" C's have ONLY retracted (active===false) enabling siblings — structurally unpredictable by the active-only blind profile; RECALL* is the achievable ceiling, RECALL is the theoretical one.`);
   if (r.lead_time) {
     lines.push(
       `  LEAD-TIME  n=${r.lead_time.n}  mean=${r.lead_time.mean_days}d  median=${r.lead_time.median_days}d  max=${r.lead_time.max_days}d`,
