@@ -13,6 +13,7 @@ import * as path from "node:path";
 import { getRoot } from "../types.js";
 import { ensureDir } from "../storage/fs-utils.js";
 import { syncToSupabase } from "../supabase/sync.js";
+import { scrubForCloud } from "../storage/content-guard.js";
 import { withLock } from "../storage/filelock.js";
 
 // ── Stopwords for title normalization ────────────────────────────────────────
@@ -127,9 +128,10 @@ export function writeInsightsIndex(index: InsightsIndex): void {
   const p = indexPath();
   ensureDir(path.dirname(p));
   index.updated = new Date().toISOString();
-  fs.writeFileSync(p, JSON.stringify(index, null, 2), "utf-8");
+  const serialized = JSON.stringify(index, null, 2);
+  fs.writeFileSync(p, serialized, "utf-8");
   // "global" is the Supabase row key for cross-project data; source_project uses "_global" sentinel — these are intentionally different namespaces
-  syncToSupabase(p, JSON.stringify(index, null, 2), "global", "awareness");
+  syncToSupabase(p, scrubForCloud(serialized), "global", "awareness");
 }
 
 /**

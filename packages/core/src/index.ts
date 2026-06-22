@@ -217,10 +217,12 @@ export {
   readP0Corrections,
   retractCorrection,
   isLikelyRealCorrection,
+  dropHardNoise,
   logRejectedCorrection,
   readRejectedCorrections,
   getRejectedStats,
   GATE_VERSION,
+  splitSentences,
 } from "./storage/corrections.js";
 export type {
   CorrectionRecord,
@@ -229,6 +231,17 @@ export type {
   RejectedCorrectionRecord,
   RejectedStats,
 } from "./storage/corrections.js";
+
+// Storage — durable intent (save-trigger vocabulary + arbiter)
+export { DURABLE_INTENT_PATTERNS, saveTriggerKind } from "./storage/durable-intent.js";
+
+// Storage — capture router (two-lane pivot)
+export { routeCapture } from "./storage/capture-router.js";
+export type { CaptureRouteInput, CaptureRouteResult, CaptureRouteKind } from "./storage/capture-router.js";
+
+// Storage — content guard (cloud egress scrub)
+export { scrubForCloud, scrubPromptInjection, scrubSecretContent } from "./storage/content-guard.js";
+export type { SecretScanResult } from "./storage/content-guard.js";
 
 // Helpers
 export {

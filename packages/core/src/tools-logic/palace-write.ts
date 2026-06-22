@@ -11,6 +11,7 @@ import type { Importance } from "../types.js";
 import { appendToLog } from "../palace/log.js";
 import { generateSlug } from "../helpers/auto-name.js";
 import { syncToSupabase } from "../supabase/sync.js";
+import { scrubForCloud } from "../storage/content-guard.js";
 
 export interface PalaceWriteInput {
   room: string;
@@ -119,9 +120,9 @@ export async function palaceWrite(input: PalaceWriteInput): Promise<PalaceWriteR
   // --importance high measurably raises the room's salience (not always medium).
   recordAccess(slug, safeRoom, importance);
 
-  // Async sync to Supabase (non-blocking)
+  // Async sync to Supabase (non-blocking) — scrub injection and secrets before egress.
   const writtenContent = fs.readFileSync(targetFile, "utf-8");
-  syncToSupabase(targetFile, writtenContent, slug, "palace", safeRoom);
+  syncToSupabase(targetFile, scrubForCloud(writtenContent), slug, "palace", safeRoom);
 
   const fanOutResult = fanOut(slug, safeRoom, targetTopic, content, input.connections ?? [], importance);
   updatePalaceIndex(slug);

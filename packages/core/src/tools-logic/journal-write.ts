@@ -12,6 +12,7 @@ import { updatePalaceIndex } from "../palace/index-manager.js";
 import { journalFileName, type SaveType } from "../storage/session.js";
 import type { SignificanceTag, ThemeTag } from "../helpers/journal-sig-theme.js";
 import { syncToSupabase } from "../supabase/sync.js";
+import { scrubForCloud } from "../storage/content-guard.js";
 
 export interface JournalWriteInput {
   content: string;
@@ -136,8 +137,8 @@ export async function journalWrite(input: JournalWriteInput): Promise<JournalWri
     palaceResult = { room: input.palace_room, topic: topicFile, fan_out: fanOutResult.updatedRooms };
   }
 
-  // Async sync to Supabase (non-blocking)
-  syncToSupabase(filePath, updated, slug, "journal");
+  // Async sync to Supabase (non-blocking) — scrub injection and secrets before egress.
+  syncToSupabase(filePath, scrubForCloud(updated), slug, "journal");
 
   // Advisory routing hint — only when no palace_room was already specified
   let routingHint: JournalWriteResult["routing_hint"] = null;

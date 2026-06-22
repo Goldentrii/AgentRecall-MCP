@@ -13,6 +13,7 @@ import { ensureDir, readJsonSafe, writeJsonAtomic } from "../storage/fs-utils.js
 import { withLock } from "../storage/filelock.js";
 import { extractKeywords } from "../helpers/auto-name.js";
 import { syncToSupabase } from "../supabase/sync.js";
+import { scrubForCloud } from "../storage/content-guard.js";
 import {
   type DigestEntry,
   type DigestIndex,
@@ -128,7 +129,7 @@ export function createDigest(input: DigestStoreInput): DigestStoreResult {
     const digestFilePath = contentPath(dir, id);
     fs.writeFileSync(digestFilePath, input.content, "utf-8");
     // Async sync to Supabase (non-blocking)
-    syncToSupabase(digestFilePath, input.content, project, "digest");
+    syncToSupabase(digestFilePath, scrubForCloud(input.content), project, "digest");
     index.entries.push(entry);
     writeIndex(dir, index);
 
@@ -314,7 +315,7 @@ function refreshDigestInternal(
   const refreshedFilePath = contentPath(dir, existing.id);
   fs.writeFileSync(refreshedFilePath, newContent, "utf-8");
   // Async sync to Supabase (non-blocking)
-  syncToSupabase(refreshedFilePath, newContent, existing.project, "digest");
+  syncToSupabase(refreshedFilePath, scrubForCloud(newContent), existing.project, "digest");
   writeIndex(dir, index);
 
   return {

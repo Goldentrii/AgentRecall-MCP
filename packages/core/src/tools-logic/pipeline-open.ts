@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import { resolveProject } from "../storage/project.js";
 import { withLock } from "../storage/filelock.js";
 import { syncToSupabase } from "../supabase/sync.js";
+import { scrubForCloud } from "../storage/content-guard.js";
 import {
   findActiveMilestone,
   nextOrder,
@@ -18,7 +19,7 @@ import {
 function syncPipelineFile(filePath: string, project: string): void {
   try {
     const content = fs.readFileSync(filePath, "utf-8");
-    syncToSupabase(filePath, content, project, "palace", "pipeline");
+    syncToSupabase(filePath, scrubForCloud(content), project, "palace", "pipeline");
   } catch {
     // Best-effort — Supabase sync failures must never break a write.
   }

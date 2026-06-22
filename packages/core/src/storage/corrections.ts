@@ -306,11 +306,53 @@ const PREFERENCE_PATTERN =
  * Returns { ok: true } when the text passes, or { ok: false, reason } explaining
  * which gate fired. Callers may surface the reason in a warning.
  */
+/**
+ * dropHardNoise — the four hard-noise precision-floor gates extracted so they
+ * can be called independently by the two-lane router (both lanes apply the same
+ * pre-filter before routing).
+ *
+ * Returns true  = text passes (KEEP — not obviously noise)
+ * Returns false = text fails a hard gate (DROP — un-rescuable by actionable scan)
+ *
+ * Identical semantics to the inline gates in isLikelyRealCorrection; this
+ * extraction must NOT change gate v4 behaviour (Loops 7/8/14 must stay intact).
+ *
+ * Gate 1  — minimum length (< 12 chars)
+ * Gate 2a — starts with '<' (system/tool fragment)
+ * Gate 2b — pure digits (bare number, no rule content)
+ * Gate 2c — bare file path (no spaces, has / or \, no 4+ letter word)
+ * Gate 3  — doc/report/transcript header (markdown '#', file://, ⏺, report title)
+ */
+export function dropHardNoise(text: string): boolean {
+  const r = (typeof text === "string" ? text : "").trim();
+
+  // Gate 1 — minimum length
+  if (r.length < 12) return false;
+
+  // Gate 2a — system/tool fragment
+  if (r.startsWith("<")) return false;
+
+  // Gate 2b — bare number
+  if (/^\d+$/.test(r)) return false;
+
+  // Gate 2c — bare file path: no spaces, contains / or \, no 4+ letter words
+  if (!/\s/.test(r) && /[/\\]/.test(r) && !/\b[a-zA-Z]{4,}\b/.test(r)) return false;
+
+  // Gate 3 — doc/report/transcript header
+  const firstLine = r.split(/\r?\n/, 1)[0]?.trim() ?? "";
+  const docHeaderPattern =
+    /^(#{1,6}\s|file:\/\/|⏺|.*\b(test\s+report|status\s+report|local\s+test|mission|protocol|语言风格指南)\b\s*[—\-:])/i;
+  if (docHeaderPattern.test(firstLine)) return false;
+
+  return true;
+}
+
 export function isLikelyRealCorrection(rule: string, _context?: string): { ok: boolean; reason?: string } {
   // NOTE: _context is accepted for forward-compat but NEVER classified on.
   const r = rule.trim();
 
   // ── HARD NOISE GATES (precision floor) — un-rescuable, run on WHOLE text ───
+  // Mirrors dropHardNoise's gates (kept inline for the per-gate reason strings).
 
   // Gate 1 — minimum length
   if (r.length < 12) {

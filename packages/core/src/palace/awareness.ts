@@ -22,6 +22,7 @@ import { ensureDir } from "../storage/fs-utils.js";
 import { extractKeywords } from "../helpers/auto-name.js";
 import { withLock } from "../storage/filelock.js";
 import { syncToSupabase } from "../supabase/sync.js";
+import { scrubForCloud } from "../storage/content-guard.js";
 import { readSupabaseConfig } from "../supabase/config.js";
 
 const MAX_LINES = 200;
@@ -81,11 +82,11 @@ export function writeAwareness(content: string): void {
       const truncated = lines.slice(0, cutAt).join("\n");
       fs.writeFileSync(p, truncated + "\n", "utf-8");
       // Async sync to Supabase (non-blocking)
-      syncToSupabase(p, fs.readFileSync(p, "utf-8"), "global", "awareness");
+      syncToSupabase(p, scrubForCloud(fs.readFileSync(p, "utf-8")), "global", "awareness");
     } else {
       fs.writeFileSync(p, content, "utf-8");
       // Async sync to Supabase (non-blocking)
-      syncToSupabase(p, fs.readFileSync(p, "utf-8"), "global", "awareness");
+      syncToSupabase(p, scrubForCloud(fs.readFileSync(p, "utf-8")), "global", "awareness");
     }
   });
 }
