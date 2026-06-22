@@ -78,6 +78,8 @@ const SECRET_CONTENT_PATTERNS: ReadonlyArray<{ re: RegExp; label: string }> = [
   { re: /\bghp_[A-Za-z0-9_]{20,}\b/g,      label: "GitHub PAT (ghp_)" },
   { re: /\bgho_[A-Za-z0-9_]{20,}\b/g,      label: "GitHub OAuth token (gho_)" },
   { re: /\bghs_[A-Za-z0-9_]{20,}\b/g,      label: "GitHub app token (ghs_)" },
+  { re: /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g, label: "GitHub fine-grained PAT (github_pat_)" },
+  { re: /\bghr_[A-Za-z0-9]{20,}\b/g,       label: "GitHub refresh token (ghr_)" },
   { re: /\bsk-[A-Za-z0-9\-_]{20,}\b/g,     label: "OpenAI/Anthropic secret key (sk-)" },
   { re: /\bxoxb-[A-Za-z0-9\-]{20,}\b/g,    label: "Slack bot token (xoxb-)" },
   { re: /\bxoxp-[A-Za-z0-9\-]{20,}\b/g,    label: "Slack user token (xoxp-)" },

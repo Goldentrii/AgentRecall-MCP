@@ -9,15 +9,13 @@ import {
 // ---------------------------------------------------------------------------
 // GUARD 3 — strict scan_result schema for bootstrap_import
 //
-// Replaces the previous z.union([z.string(), z.record(z.string(), z.unknown())])
-// which accepted any arbitrary object. This schema validates the structural
-// shape of a BootstrapScanResult and requires _session_nonce to be present
-// as a non-empty string. The nonce is then validated server-side inside
-// bootstrapImport() against the in-process VALID_NONCES registry.
-//
-// Note: _session_nonce presence is checked here; cryptographic validity
-// (is it a known nonce?) is checked inside bootstrapImport() — the MCP
-// layer enforces structural shape, the core layer enforces security semantics.
+// inputSchema (line ~101) intentionally uses z.union([z.string(), z.record(...)]).
+// This is a loose outer shape (accepts string or object) so the MCP transport
+// can carry either form. The REAL structural validation happens at the handler
+// level (~line 121) via BootstrapScanResultSchema.safeParse() — that is where
+// the nonce + shape are enforced. The handler then calls bootstrapImport() which
+// validates the nonce cryptographically against the in-process VALID_NONCES
+// registry (core layer enforces security semantics; MCP layer handles transport).
 // ---------------------------------------------------------------------------
 const ImportableItemSchema = z.object({
   id: z.string(),

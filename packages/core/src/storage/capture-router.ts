@@ -22,6 +22,7 @@
  * LOCAL-ONLY: MUST NOT import journal-write, palace-write, or syncToSupabase.
  */
 
+import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -49,12 +50,7 @@ interface DedupEntry {
 }
 
 function quickHash(text: string): string {
-  let h = 0;
-  for (let i = 0; i < text.length; i++) {
-    h = ((h << 5) - h) + text.charCodeAt(i);
-    h |= 0;
-  }
-  return Math.abs(h).toString(36).slice(0, 8);
+  return crypto.createHash("sha256").update(text, "utf-8").digest("hex").slice(0, 16);
 }
 
 function readDedupEntries(): DedupEntry[] {

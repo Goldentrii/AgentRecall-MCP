@@ -21,10 +21,10 @@ Where automation is partial it's split **detection** (does infra notice without 
 | **save on human "save"** | detect AUTO (`hook-save` nudge) / persist AGENT | AGENT | AGENT | AGENT |
 | **save on agent "I saved this"** | SEMI-AUTO — P3 Stop-time transcript scan force-archives (detect SEMI / persist AUTO) | AGENT | AGENT | AGENT |
 | **passive correction capture** | AUTO, **gated** (`hook-correction` → v4 gate) | N/A (no hook) | N/A | N/A |
-| **save at stop (lossless backstop)** | AUTO (`hook-end` always-archive + P3 agent-trigger) | **NONE** — agent must call `session_end` (data-loss risk on crash) | NONE | NONE |
+| **save at stop (lossless backstop)** | AUTO (`hook-end` always-archive + P3 agent-trigger) *(OQ-4 caveat: Stop-time scan is best-effort; verified against a fixture, not yet a live Stop payload; silent no-op on payload drift)* | **NONE** — agent must call `session_end` (data-loss risk on crash) | NONE | NONE |
 | **status board** | `ar status` (CLI, always) · `/arstatus` · `project_board(format:text)` `[--full]` | `ar status` (CLI) · `project_board(format:text)` `[--full]` | same | `project_board` `[--full]`; else the 5 default tools + `instructions` are the only carriers |
 | **brief / onboarding** | `brief()` `[--full]` | `brief()` `[--full]` | `brief()` `[--full]` | `brief()` if `--full`, else `instructions` carrier |
-| **empty-store transfer failsafe** | offer at `session_start` / `ar status` (describe-only until consent) | same | same | same |
+| **empty-store transfer failsafe** | offer at `session_start` (describe-only until consent) | same | same | same |
 
 **\*** OpenClaw is Tier A only when `AR_HOST` is set AND its hooks are confirmed wired; otherwise Tier B.
 
@@ -41,7 +41,7 @@ Where automation is partial it's split **detection** (does infra notice without 
 
 - **Opt-in cloud.** No Supabase config → **zero egress**, fully local. Personal tier needs `sync_personal:true`.
 - **Generous saving stays local.** The explicit-trigger lane writes only the local raw archive — structurally cannot reach `syncToSupabase` (enforced by `egress-guard.test.mjs`).
-- **Every cloud write is scrubbed** — `scrubForCloud` (prompt-injection scrub + content secret-scan: AWS/GitHub/OpenAI/Anthropic/Slack/PEM-block/npm tokens) runs before all 9 `syncToSupabase` call sites.
+- **Every cloud write is scrubbed** — `scrubForCloud` (prompt-injection scrub + content secret-scan: AWS/GitHub/OpenAI/Anthropic/Slack/PEM-block/npm/GitHub-fine-grained-PAT tokens) is enforced **inside the egress primitive** (`doSync` in `packages/core/src/supabase/sync.ts`) so every path — `syncToSupabase()` and `backfill()` — is covered structurally. `Authorization: Bearer <jwt>` is intentionally not scanned (short-lived; high false-positive rate on normal journal content — documented scope decision, not a gap).
 - **Bootstrap reads are jailed** — realpath symlink-jail, content + filename secret denylist, same-session nonce on import, describe-only until consent.
 
 ## Measurement status (honest — not yet load-bearing)
@@ -60,6 +60,6 @@ The Tier-B "AGENT" claims are **structurally in place** (the carrier verifiably 
 
 ## How a host's tier is determined (as-built)
 
-The current signal is **binary and real**: the `CLAUDE_CODE_HOOKS` env var. When it is set (Claude Code), the host is Tier A and `session_start` suppresses the "call `brief()` for lifecycle rules" pointer because the hooks auto-drive the lifecycle (`session-start.ts:152`). When it is absent, the host is treated as Tier B and the agent-driver pointers/instructions are surfaced. There is **no runtime hook-probing** (not observable; produces confident-wrong answers).
+The current signal is **binary and real**: the `CLAUDE_CODE_HOOKS` env var. When it is set (Claude Code), the host is Tier A and `session_start` suppresses the "call `brief()` for lifecycle rules" pointer because the hooks auto-drive the lifecycle (`packages/mcp-server/src/tools/session-start.ts:152`). When it is absent, the host is treated as Tier B and the agent-driver pointers/instructions are surfaced. There is **no runtime hook-probing** (not observable; produces confident-wrong answers).
 
 **Deferred:** a multi-value `AR_HOST` profile selector (`claude-code` | `openclaw` | `codex` | `chatbox` | `generic`) and the optional `settings.json` "hooks present?" check to promote OpenClaw to Tier A. Not built yet — today the split is the binary `CLAUDE_CODE_HOOKS` signal above, with everything non-Claude defaulting to the conservative Tier-B agent-driven path.

@@ -1,7 +1,7 @@
 # AgentRecall Cross-Surface ADAPTER + Agent-Driven Lifecycle — Verified Design Spec
 
-> **Status:** FINAL, for human go/no-go. Implementation is a SEPARATE approved step. Nothing in this doc has been built.
-> **Branch context:** `opt/autonomous-loops`. **Naming-P0:** the layer is the **ADAPTER**, never "pipeline" — `pipeline_*` is the live project-narrative-phase domain (11 files) and is untouched/unaliased.
+> **Status:** IMPLEMENTED — P0–P5 landed on `feat/cross-surface-adapter` (NOT pushed/merged/version-bumped). This spec is the design of record; see `HOST-TIERS.md` for the as-built per-surface contract.
+> **Branch context:** `feat/cross-surface-adapter`. **Naming-P0:** the layer is the **ADAPTER**, never "pipeline" — `pipeline_*` is the live project-narrative-phase domain (11 files) and is untouched/unaliased.
 > **Verdict reconciliation:** 2 blockers (over-save/privacy, bootstrap-security) and 4 concerns are folded in below. Blockers that cannot be resolved on paper are listed as **OPEN QUESTIONS the human must answer (§12)**.
 
 ---
@@ -122,7 +122,7 @@ Triggers: save, checkpoint, retain, remember this, don't forget, 记住这个.
 `brief(project?)` → ≤200 tokens, modeled on `check_action` + `sessionStartLite` (no LLM): identity line, active phase, top corrections/`watch_for`, the 3-rule lifecycle, the trigger vocab, and a tier-conditional "no hooks on this host — YOU must call session_end" line. **Not** in the default 5-tool surface (Automaticity Law). `session_start`'s return adds one pointer line: *"Hook-less host? call `brief()` once for lifecycle rules."*
 
 ### ToolAnnotations (zero-config, SDK-native, currently unused)
-`readOnlyHint` on `recall`/`check`/`check_action`/`brief`; `idempotentHint` on `session_start`. *(Caveat: clients that don't expose hints ignore them — reinforcement, not load-bearing.)*
+`readOnlyHint` on `brief` only (as-built: `recall` writes feedback-log, `check` writes decision-trail — neither is read-only). `idempotentHint` on `session_start` was removed (recordPolicyLoad increments `rule.hits` on every call — not idempotent). *(Caveat: clients that don't expose hints ignore them — reinforcement, not load-bearing.)*
 
 ### Falsifiability (MCP-reliability required_fix)
 The reliability claim is **not load-bearing until measured.** Ship a per-host call-rate eval (Codex, chatbox, Cursor) for the three lifecycle moments (`session_start` at entry, `session_end` at exit, self-fire on durable-intent), with a stated pass threshold mirroring the Loops 7/8/14 eval discipline. **If a host falls below threshold, its row in `HOST-TIERS.md` downgrades from "AGENT/self-driven" to "HUMAN-prompted only"** (matching the already-shipped `meta/integrations/codex.md` model, which is human-triggered today). Contract reflects measured behavior, not aspiration.

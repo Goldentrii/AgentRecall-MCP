@@ -7,6 +7,7 @@ import { getSupabaseClient } from "./client.js";
 import { readSupabaseConfig } from "./config.js";
 import { createEmbeddingProvider, type EmbeddingProvider } from "./embedding.js";
 import { classifyStore } from "../storage/classification.js";
+import { scrubForCloud } from "../storage/content-guard.js";
 
 // ---------------------------------------------------------------------------
 // Utilities (exported for testing)
@@ -136,7 +137,15 @@ async function doSync(
     const client = getSupabaseClient();
     if (!client) return;
 
-    const hash = contentHash(content);
+    // EGRESS CHOKEPOINT — authoritative scrub for ALL upload paths
+    // (syncToSupabase + backfill). Scrub happens BEFORE hashing so the stored
+    // hash always matches the hash computed by backfill's skip-dedup check.
+    // Call-site scrubs (the 9 syncToSupabase callers that pre-wrap content in
+    // scrubForCloud) are redundant defense-in-depth — scrubForCloud is idempotent,
+    // so double-scrub is safe and the call-site wraps are intentionally kept as a
+    // privacy boundary safeguard.
+    const scrubbedContent = scrubForCloud(content);
+    const hash = contentHash(scrubbedContent);
 
     const { data: existing } = await client
       .from("ar_sync_state")
@@ -146,7 +155,7 @@ async function doSync(
 
     if (existing?.file_hash === hash) return;
 
-    const parsed = parseMemoryFile(content);
+    const parsed = parseMemoryFile(scrubbedContent);
     const slug = deriveSlug(filePath);
 
     const { data: entry, error: upsertErr } = await client
@@ -211,7 +220,10 @@ export async function backfill(
         skipped++;
         continue;
       }
-      const hash = contentHash(file.content);
+      // Skip-dedup hash must match what doSync stores: hash of SCRUBBED content.
+      // Using raw content here would cause raw_hash != scrubbed_hash for any file
+      // containing a secret pattern, making the skip never fire → re-uploads every run.
+      const hash = contentHash(scrubForCloud(file.content));
       const { data: existing } = await client
         .from("ar_sync_state")
         .select("file_hash")

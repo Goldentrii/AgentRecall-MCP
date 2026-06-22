@@ -396,6 +396,22 @@ describe("scrubSecretContent — catches known secret prefixes", () => {
     assert.ok(redactedCount >= 1);
   });
 
+  it("redacts a GitHub fine-grained PAT (github_pat_…)", () => {
+    const content = "token: github_pat_abcdefghijklmnopqrstuvwxyz1234 — fine-grained PAT";
+    const { content: scrubbed, redactedCount, labels } = scrubSecretContent(content);
+    assert.ok(!scrubbed.includes("github_pat_abcdefghijklmnopqrstuvwxyz1234"), "github_pat_ token must be redacted");
+    assert.equal(redactedCount, 1);
+    assert.ok(labels.some((l) => l.includes("fine-grained PAT")));
+  });
+
+  it("redacts a GitHub refresh token (ghr_…)", () => {
+    const content = "refresh_token=ghr_abcdefghijklmnopqrstuvwxyz1234 in oauth flow";
+    const { content: scrubbed, redactedCount, labels } = scrubSecretContent(content);
+    assert.ok(!scrubbed.includes("ghr_abcdefghijklmnopqrstuvwxyz1234"), "ghr_ token must be redacted");
+    assert.equal(redactedCount, 1);
+    assert.ok(labels.some((l) => l.includes("refresh token")));
+  });
+
   it("does not redact clean content", () => {
     const content = "This is a normal journal entry with no secrets.";
     const { content: scrubbed, redactedCount } = scrubSecretContent(content);

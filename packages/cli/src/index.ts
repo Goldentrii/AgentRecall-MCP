@@ -1505,19 +1505,9 @@ async function main(): Promise<void> {
       // Reads UserPromptSubmit JSON from stdin.
       // Detects save-intent phrases and injects a prompt for Claude to call session_end().
       // Always exits 0 — never blocks the conversation.
-      const SAVE_PATTERNS = [
-        /\bsave\s+(?:the\s+|this\s+)?session\b/i,
-        /\bsave\s+this\b/i,
-        /\bretain\s+this\b/i,
-        /\bcheckpoint\b/i,
-        /\bdon'?t\s+forget\s+this\b/i,
-        /\bkeep\s+a\s+note\b/i,
-        /\bwrite\s+(?:this\s+)?down\b/i,
-        /\bremember\s+(?:this|that|what we did)\b/i,
-        /\bbookmark\s+this\b/i,
-        /\blog\s+this\b/i,
-        /保存|记录一下|存档|别忘了|记住这个|写下来/,
-      ];
+      // Save-intent vocabulary is owned by durable-intent.ts (SINGLE SOURCE OF TRUTH).
+      // saveTriggerKind() is the shared arbiter used by both hook-save and the
+      // cross-surface capture-path two-lane router — no inline SAVE_PATTERNS here.
 
       try {
         const chunks: Buffer[] = [];
@@ -1535,7 +1525,7 @@ async function main(): Promise<void> {
 
         if (!prompt || prompt.length < 4) process.exit(0);
 
-        const isSaveIntent = SAVE_PATTERNS.some((p) => p.test(prompt));
+        const isSaveIntent = core.saveTriggerKind(prompt) === "explicit-save";
         if (!isSaveIntent) process.exit(0);
 
         // Inject signal — Claude reads this and calls session_end()
