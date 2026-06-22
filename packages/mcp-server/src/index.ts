@@ -38,6 +38,9 @@ import { register as registerRegisterRule } from "./tools/register-rule.js";
 // ── Pre-action proactive matcher (items 3 + 5) ──────────────────────────
 import { register as registerCheckAction } from "./tools/check-action.js";
 
+// ── Cross-surface adapter (P4): brief ────────────────────────────────────
+import { register as registerBrief } from "./tools/brief.js";
+
 // ── Legacy tools (still importable for SDK/CLI, not registered by default) ──
 // DEPRECATED v3.4: use session_start instead
 // import { register as registerJournalColdStart } from "./tools/journal-cold-start.js";
@@ -119,6 +122,7 @@ Full-mode additions (--full):
   digest                 Context cache — store/recall/invalidate pre-computed analysis
   bootstrap_scan         Discover existing projects on this machine
   bootstrap_import       Import discovered projects into AgentRecall
+  brief                  Compact LLM-free re-orientation briefing (≤200 tokens, read-only)
 
 Storage: ${getRoot()}
 Legacy:  ${getLegacyRoot()}
@@ -161,6 +165,7 @@ if (args.includes("--list-tools")) {
     { name: "digest", description: "Context cache — store/recall/read/invalidate pre-computed analysis (--full)" },
     { name: "bootstrap_scan", description: "Discover existing projects on this machine (--full)" },
     { name: "bootstrap_import", description: "Import discovered projects into AgentRecall (--full)" },
+    { name: "brief", description: "Compact LLM-free re-orientation briefing ≤200 tokens, read-only (--full)" },
   ];
   const tools = fullMode ? [...coreTools, ...fullOnlyTools] : coreTools;
   process.stdout.write(JSON.stringify(tools, null, 2) + "\n");
@@ -185,6 +190,9 @@ if (fullMode) {
   // On-demand recall + pre-action safety
   registerMemoryQuery(server);
   registerCheckAction(server);
+
+  // Cross-surface adapter (P4): brief — compact LLM-free re-orientation
+  registerBrief(server);
 
   // Behavior policies
   registerRegisterRule(server);

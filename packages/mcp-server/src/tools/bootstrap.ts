@@ -6,6 +6,56 @@ import {
   type BootstrapScanResult,
 } from "agent-recall-core";
 
+// ---------------------------------------------------------------------------
+// GUARD 3 — strict scan_result schema for bootstrap_import
+//
+// Replaces the previous z.union([z.string(), z.record(z.string(), z.unknown())])
+// which accepted any arbitrary object. This schema validates the structural
+// shape of a BootstrapScanResult and requires _session_nonce to be present
+// as a non-empty string. The nonce is then validated server-side inside
+// bootstrapImport() against the in-process VALID_NONCES registry.
+//
+// Note: _session_nonce presence is checked here; cryptographic validity
+// (is it a known nonce?) is checked inside bootstrapImport() — the MCP
+// layer enforces structural shape, the core layer enforces security semantics.
+// ---------------------------------------------------------------------------
+const ImportableItemSchema = z.object({
+  id: z.string(),
+  type: z.enum(["identity", "memory", "architecture", "trajectory"]),
+  source_path: z.string(),
+  size_bytes: z.number(),
+  preview: z.string(),
+});
+
+const DiscoveredProjectSchema = z.object({
+  slug: z.string(),
+  name: z.string(),
+  path: z.string(),
+  sources: z.array(z.object({
+    type: z.enum(["git", "claude-memory", "claudemd", "package-json"]),
+    path: z.string(),
+    detail: z.string(),
+  })),
+  description: z.string().optional(),
+  language: z.string().optional(),
+  last_activity: z.string().optional(),
+  already_in_ar: z.boolean(),
+  importable_items: z.array(ImportableItemSchema),
+});
+
+const BootstrapScanResultSchema = z.object({
+  projects: z.array(DiscoveredProjectSchema),
+  global_items: z.array(ImportableItemSchema),
+  stats: z.object({
+    total_projects: z.number(),
+    total_importable_items: z.number(),
+    total_already_in_ar: z.number(),
+    scan_duration_ms: z.number(),
+  }),
+  _session_nonce: z.string().min(1, "_session_nonce must be a non-empty string — call bootstrap_scan() first"),
+  _scan_roots: z.array(z.string()),
+});
+
 export function register(server: McpServer): void {
   server.registerTool("bootstrap_scan", {
     title: "Bootstrap Scan",
@@ -46,20 +96,40 @@ export function register(server: McpServer): void {
 
   server.registerTool("bootstrap_import", {
     title: "Bootstrap Import",
-    description: "Import discovered projects into AgentRecall. Call bootstrap_scan first, then pass the scan results here. Creates palace entries, identity files, and initial journals for selected projects.",
+    description: "Import discovered projects into AgentRecall. Call bootstrap_scan FIRST, then pass the EXACT scan_result object returned here — do NOT construct scan_result manually. Security: requires _session_nonce from the scan call; fabricated or replayed scan results are rejected.",
     inputSchema: {
-      scan_result: z.union([z.string(), z.record(z.string(), z.unknown())]).describe("BootstrapScanResult from bootstrap_scan — accepts either the parsed object or JSON string"),
+      scan_result: z.union([z.string(), z.record(z.string(), z.unknown())]).describe("BootstrapScanResult from bootstrap_scan — pass the exact object returned by bootstrap_scan, including _session_nonce. Do NOT construct this manually."),
       project_slugs: z.array(z.string()).optional().describe("Import only these projects (default: all new)"),
       item_types: z.array(z.string()).optional().describe("Import only these item types: identity, memory, architecture, trajectory"),
     },
   }, async ({ scan_result, project_slugs, item_types }) => {
     let scan: BootstrapScanResult;
     try {
+      // Parse JSON string if needed
+      let rawScan: unknown;
       if (typeof scan_result === "string") {
-        scan = JSON.parse(scan_result) as BootstrapScanResult;
+        try {
+          rawScan = JSON.parse(scan_result);
+        } catch {
+          return { content: [{ type: "text" as const, text: "Error: scan_result string is not valid JSON. Pass the exact object from bootstrap_scan." }], isError: true };
+        }
       } else {
-        scan = scan_result as unknown as BootstrapScanResult;
+        rawScan = scan_result;
       }
+
+      // GUARD 3: Strict structural validation — rejects malformed / fabricated objects
+      const parsed = BootstrapScanResultSchema.safeParse(rawScan);
+      if (!parsed.success) {
+        const firstError = parsed.error.issues[0];
+        const msg = firstError
+          ? `${firstError.path.join(".")}: ${firstError.message}`
+          : "scan_result failed schema validation";
+        return {
+          content: [{ type: "text" as const, text: `Security: scan_result rejected — ${msg}. Pass the exact object returned by bootstrap_scan().` }],
+          isError: true,
+        };
+      }
+      scan = parsed.data as BootstrapScanResult;
     } catch {
       return { content: [{ type: "text" as const, text: "Error: scan_result must be valid JSON from bootstrap_scan" }], isError: true };
     }

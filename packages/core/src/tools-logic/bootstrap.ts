@@ -10,6 +10,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
+import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { getRoot } from "../types.js";
@@ -20,8 +21,55 @@ import { palaceWrite } from "./palace-write.js";
 import { journalWrite } from "./journal-write.js";
 import { awarenessUpdate } from "./awareness-update.js";
 import { palaceDir, sanitizeProject } from "../storage/paths.js";
+import { scrubSecretContent } from "../storage/content-guard.js";
 
 const execFileAsync = promisify(execFile);
+
+// ---------------------------------------------------------------------------
+// GUARD 3: In-process nonce registry
+//
+// bootstrapScan() mints a random UUID nonce and stores it here.
+// bootstrapImport() requires the caller to pass back the same nonce.
+// This ensures that only a scan result produced by THIS process can be
+// imported — an external MCP client that fabricates a scan_result cannot
+// know the nonce and will be rejected.
+//
+// Map<nonce, scanRoots> — roots embedded so import can re-validate paths.
+// ---------------------------------------------------------------------------
+const VALID_NONCES = new Map<string, string[]>();
+
+/** Maximum age (ms) after which a nonce is automatically expired. 30 minutes. */
+const NONCE_MAX_AGE_MS = 30 * 60 * 1000;
+const NONCE_TIMESTAMPS = new Map<string, number>();
+
+/** Register a newly-minted nonce (called by bootstrapScan). */
+function registerNonce(nonce: string, scanRoots: string[]): void {
+  // Purge expired nonces to avoid unbounded growth
+  const now = Date.now();
+  for (const [k, ts] of NONCE_TIMESTAMPS) {
+    if (now - ts > NONCE_MAX_AGE_MS) {
+      VALID_NONCES.delete(k);
+      NONCE_TIMESTAMPS.delete(k);
+    }
+  }
+  VALID_NONCES.set(nonce, scanRoots);
+  NONCE_TIMESTAMPS.set(nonce, now);
+}
+
+/**
+ * Validate a nonce passed to bootstrapImport.
+ * Returns the registered scan roots if valid, null if invalid or expired.
+ */
+function validateNonce(nonce: string): string[] | null {
+  const ts = NONCE_TIMESTAMPS.get(nonce);
+  if (ts === undefined) return null;
+  if (Date.now() - ts > NONCE_MAX_AGE_MS) {
+    VALID_NONCES.delete(nonce);
+    NONCE_TIMESTAMPS.delete(nonce);
+    return null;
+  }
+  return VALID_NONCES.get(nonce) ?? null;
+}
 
 // ---------------------------------------------------------------------------
 // Denylist — parent / system / cache directories that should NEVER be imported
@@ -103,6 +151,21 @@ export interface BootstrapScanResult {
     total_already_in_ar: number;
     scan_duration_ms: number;
   };
+  /**
+   * SECURITY: Session nonce — a GUID generated at scan time, embedded in the
+   * result, and required by bootstrapImport(). This gates the import: only
+   * scan results from THIS process's session can be imported, preventing
+   * cross-session replay and attacker fabrication of scan_result objects.
+   *
+   * The nonce is an opaque string — importers must pass it through unchanged.
+   */
+  _session_nonce: string;
+  /**
+   * The resolved (realpath) scan roots used during this scan. bootstrapImport()
+   * re-validates every source_path against this list to prevent symlink-escaped
+   * paths injected via a fabricated scan_result.
+   */
+  _scan_roots: string[];
 }
 
 export interface ImportSelection {
@@ -150,7 +213,9 @@ const SKIP_DIRS = new Set([
 ]);
 
 const SECRET_PATTERNS = [
+  // Exact-match / extension patterns on basename
   /\.env$/i,
+  /\.env\..+$/i,           // .env.local, .env.development, .env.*.local
   /credentials/i,
   /secrets/i,
   /tokens/i,
@@ -161,19 +226,83 @@ const SECRET_PATTERNS = [
   /^id_ecdsa$/i,
   /^authorized_keys$/i,
   /\.pub$/i,
+  /^\.npmrc$/i,
+  /^\.netrc$/i,
+  /^\.pgpass$/i,
+  /^\.aws$/i,              // edge case: dir named .aws
+  /^\.bash_history$/i,     // shell command history
+  /^\.zsh_history$/i,      // zsh command history
+  /^hosts\.yml$/i,         // gh CLI OAuth token store (~/.config/gh/hosts.yml)
 ];
+
+/**
+ * Parent directory names that contain secrets. When a file lives inside one of
+ * these dirs, it is treated as secret regardless of its basename. Catches
+ * ~/.ssh/config, ~/.aws/config, ~/.docker/config.json, ~/.kube/config, etc.
+ */
+const SECRET_PARENT_DIRS = new Set<string>([
+  ".ssh",
+  ".aws",
+  ".docker",
+  ".kube",
+  ".gnupg",
+  ".gpg",
+  "gh",               // ~/.config/gh/hosts.yml stores GitHub OAuth tokens
+]);
 
 const MAX_FILE_SIZE = 5 * 1024; // 5KB
 const PREVIEW_LEN = 100;
 const GIT_TIMEOUT_MS = 2000;
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Security helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Normalize a filesystem path by resolving symlinks.
+ * Returns the real absolute path, or the input as-is when the path does not
+ * yet exist (e.g. a newly-created temp directory not yet written).
+ */
+function saferealpathSync(p: string): string {
+  try {
+    return fs.realpathSync(p);
+  } catch {
+    return p;
+  }
+}
+
+/**
+ * Return true when `filePath` is inside one of the `allowedRoots` after
+ * symlink resolution on BOTH sides. This is Guard 1 (realpath jail).
+ *
+ * - Resolves `filePath` with realpathSync (follows symlinks).
+ * - Each root is also normalised — a symlinked scan root itself is followed.
+ * - Checks real === root OR real starts with root + '/'.
+ */
+function isInsideScanRoots(filePath: string, allowedRoots: string[]): boolean {
+  const real = saferealpathSync(filePath);
+  for (const root of allowedRoots) {
+    const realRoot = saferealpathSync(root);
+    if (real === realRoot || real.startsWith(realRoot + "/")) return true;
+  }
+  return false;
+}
+
+/**
+ * Guard 2 — expanded secret file check.
+ *
+ * Checks BOTH:
+ *   a) Basename against SECRET_PATTERNS (original behaviour).
+ *   b) Immediate parent directory name against SECRET_PARENT_DIRS (new).
+ *
+ * Either condition is sufficient to flag the file as secret.
+ */
 function isSecretFile(filePath: string): boolean {
   const base = path.basename(filePath);
-  return SECRET_PATTERNS.some((re) => re.test(base));
+  if (SECRET_PATTERNS.some((re) => re.test(base))) return true;
+  const parentDir = path.basename(path.dirname(filePath));
+  if (SECRET_PARENT_DIRS.has(parentDir)) return true;
+  return false;
 }
 
 function toSlug(name: string): string {
@@ -218,28 +347,26 @@ function detectLanguage(dir: string): string | undefined {
   }
 }
 
-function readPreview(filePath: string): string {
-  try {
-    if (!fs.existsSync(filePath)) return "";
-    const stat = fs.statSync(filePath);
-    if (stat.size > MAX_FILE_SIZE) return "[file too large — skipped]";
-    const buf = Buffer.alloc(PREVIEW_LEN + 10);
-    const fd = fs.openSync(filePath, "r");
-    let bytesRead: number;
-    try {
-      bytesRead = fs.readSync(fd, buf, 0, PREVIEW_LEN + 10, 0);
-    } finally {
-      fs.closeSync(fd);
-    }
-    return buf
-      .slice(0, bytesRead)
-      .toString("utf-8")
-      .slice(0, PREVIEW_LEN)
-      .replace(/\n/g, " ")
-      .trim();
-  } catch {
-    return "";
-  }
+/**
+ * GUARD 4 — CONSENT GATE: readPreview intentionally returns a placeholder
+ * string during the SCAN phase. File content is NOT read until the user
+ * explicitly calls bootstrapImport() (the opt-in step).
+ *
+ * Previously: read first 100 bytes of every discovered file into the
+ * BootstrapScanResult → MCP response, which meant secret file CONTENT
+ * (e.g. first line of ~/.env, first 100 chars of a key file that bypassed
+ * the denylist) could appear in MCP logs, terminal output, and remote
+ * Supabase sync.
+ *
+ * Now: preview is always the empty string during scan. The only fields
+ * populated are source_path and size_bytes, which are metadata-only.
+ * The actual content is read at import time inside bootstrapImport() after
+ * the realpath jail and secret-file checks have already run.
+ */
+function readPreview(_filePath: string): string {
+  // Intentionally no-op during scan (Guard 4: consent gate).
+  // Content is read at import time, not scan time.
+  return "";
 }
 
 function fileSizeBytes(filePath: string): number {
@@ -318,26 +445,36 @@ function getTargetRoom(meta: Record<string, string>): string {
   }
 }
 
-/** Walk a directory to find git repos up to max_depth. Stops recursing into found repos. */
+/**
+ * Walk a directory to find git repos up to max_depth. Stops recursing into
+ * found repos.
+ *
+ * GUARD 1 (realpath jail): each discovered repo path is resolved via
+ * realpathSync so that symlinked directories are followed to their real
+ * location. The realpath is what gets recorded — callers must compare against
+ * realpath-normalised scan roots, not raw string prefixes.
+ */
 function findGitRepos(dir: string, maxDepth: number, depth = 0): string[] {
   if (depth > maxDepth) return [];
-  if (!fs.existsSync(dir)) return [];
+  // Resolve symlinks before existence check (Guard 1)
+  const realDir = saferealpathSync(dir);
+  if (!fs.existsSync(realDir)) return [];
 
   let entries: fs.Dirent[];
   try {
-    entries = fs.readdirSync(dir, { withFileTypes: true });
+    entries = fs.readdirSync(realDir, { withFileTypes: true });
   } catch {
     return [];
   }
 
   const hasGit = entries.some((e) => e.name === ".git" && e.isDirectory());
-  if (hasGit) return [dir];
+  if (hasGit) return [realDir];
 
   const results: string[] = [];
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
     if (SKIP_DIRS.has(entry.name)) continue;
-    results.push(...findGitRepos(path.join(dir, entry.name), maxDepth, depth + 1));
+    results.push(...findGitRepos(path.join(realDir, entry.name), maxDepth, depth + 1));
   }
   return results;
 }
@@ -371,8 +508,27 @@ export async function bootstrapScan(options?: {
   const t0 = Date.now();
   const maxDepth = options?.max_depth ?? 3;
   const home = os.homedir();
+  const realHome = saferealpathSync(home);
+
+  // GUARD 1 & 3: resolve scan dirs via realpathSync so symlinked roots are
+  // followed, and record the resolved roots in the result for import-time
+  // re-validation.
   const rawScanDirs = [...DEFAULT_SCAN_DIRS, ...(options?.scan_dirs ?? []), ...(options?.source_dirs ?? [])];
-  const scanDirs = rawScanDirs.filter((d) => d.startsWith(home));
+  // Filter: must start with home (string check before realpath) then re-check
+  // against realHome after resolution
+  const scanDirs = rawScanDirs
+    .filter((d) => d.startsWith(home) || d.startsWith(realHome))
+    .map((d) => saferealpathSync(d))
+    .filter((d) => d.startsWith(realHome));
+
+  // Deduplicate resolved roots
+  const uniqueScanRoots = [...new Set(scanDirs)];
+
+  // Session nonce — ties scan result to this process. bootstrapImport() must
+  // pass back the same nonce or the import is rejected (Guard 3).
+  const sessionNonce = randomUUID();
+  registerNonce(sessionNonce, uniqueScanRoots);
+
   const arSlugs = existingArSlugs();
 
   // Map from slug → DiscoveredProject (for merging multi-source projects)
@@ -382,7 +538,7 @@ export async function bootstrapScan(options?: {
   // 1. Git repo discovery
   // -------------------------------------------------------------------------
   const allRepoDirs: string[] = [];
-  for (const dir of scanDirs) {
+  for (const dir of uniqueScanRoots) {
     allRepoDirs.push(...findGitRepos(dir, maxDepth));
   }
   const uniqueRepoDirs = [...new Set(allRepoDirs)];
@@ -633,6 +789,8 @@ export async function bootstrapScan(options?: {
       total_already_in_ar: alreadyInAr,
       scan_duration_ms: Date.now() - t0,
     },
+    _session_nonce: sessionNonce,
+    _scan_roots: uniqueScanRoots,
   };
 }
 
@@ -646,6 +804,52 @@ export async function bootstrapImport(
 ): Promise<ImportResult> {
   const t0 = Date.now();
   const home = os.homedir();
+  const realHome = saferealpathSync(home);
+
+  // GUARD 3: Validate session nonce — reject fabricated scan results.
+  // A scan_result arriving over MCP from an untrusted caller will not have a
+  // nonce registered in this process's VALID_NONCES map.
+  const nonce = (scan as BootstrapScanResult)._session_nonce;
+  if (!nonce) {
+    return {
+      projects_created: 0,
+      items_imported: 0,
+      items_skipped: 0,
+      errors: [{ project: "__security__", item: "__nonce__", error: "bootstrap_import rejected: scan_result is missing _session_nonce. Call bootstrap_scan() in the same session to obtain a valid scan result." }],
+      duration_ms: Date.now() - t0,
+    };
+  }
+  const registeredRoots = validateNonce(nonce);
+  if (!registeredRoots) {
+    return {
+      projects_created: 0,
+      items_imported: 0,
+      items_skipped: 0,
+      errors: [{ project: "__security__", item: "__nonce__", error: "bootstrap_import rejected: _session_nonce is invalid, expired (>30m), or was not produced by this session's bootstrap_scan(). Fabricated scan results are not accepted." }],
+      duration_ms: Date.now() - t0,
+    };
+  }
+
+  // GUARD 1: Use registeredRoots (realpath-resolved scan roots from scan time)
+  // as the trusted allowlist. Every source_path is re-validated against these
+  // roots after symlink resolution before any file read.
+  const allowedScanRoots = registeredRoots.length > 0 ? registeredRoots : [realHome];
+
+  /**
+   * Validate a source_path from the scan result:
+   *   1. Resolve symlinks (realpathSync).
+   *   2. Confirm the resolved path is inside one of allowedScanRoots OR inside home.
+   *   3. Re-run isSecretFile() on the resolved path (catches renamed/moved files).
+   */
+  function isPathSafe(sourcePath: string): boolean {
+    if (!sourcePath || typeof sourcePath !== "string") return false;
+    // INTENTIONAL: realHome is included as a fallback root so that AutoMemory
+    // items (e.g. ~/.claude/projects/…) are accepted even when scan_dirs was a
+    // narrower subset. For in-home files isSecretFile() (Guard 2) is the
+    // content/filename barrier — it runs on every accepted path before import.
+    return isInsideScanRoots(sourcePath, [...allowedScanRoots, realHome]);
+  }
+
   const includeGlobal = selection?.include_global ?? true;
   const skipItems = new Set(selection?.skip_items ?? []);
   const allowedTypes = selection?.item_types ? new Set(selection.item_types) : null;
@@ -757,20 +961,25 @@ export async function bootstrapImport(
           await journalWrite({ content, project: proj.slug, saveType: "arsave" });
           itemsImported++;
         } else if (item.id === "claudemd") {
-          // Read CLAUDE.md first 3KB, write to architecture room
+          // GUARD 1 + 2: realpath jail + secret-file check
           if (!fs.existsSync(item.source_path) || isSecretFile(item.source_path)) {
             itemsSkipped++;
             continue;
           }
-          if (!item.source_path.startsWith(home)) {
+          if (!isPathSafe(item.source_path)) {
             itemsSkipped++;
             continue;
           }
           const raw = fs.readFileSync(item.source_path, "utf-8");
-          // Scrub prompt-injection patterns before importing user-controlled
-          // content into palace. CLAUDE.md often contains <system-reminder>
-          // tags etc. that would surface to future agents as if real.
-          const claudemdContent = scrubPromptInjection(raw.slice(0, 3000));
+          // GUARD 2: scrub prompt-injection AND content secrets before import.
+          // CLAUDE.md often contains <system-reminder> tags; some may also
+          // inadvertently include API keys / tokens in examples.
+          const afterInjection = scrubPromptInjection(raw.slice(0, 3000));
+          const { content: claudemdContent, redactedCount: claudemdSecrets } = scrubSecretContent(afterInjection);
+          if (claudemdSecrets > 0) {
+            // Non-fatal: log but proceed with redacted content
+            errors.push({ project: proj.slug, item: item.id, error: `[SECURITY] ${claudemdSecrets} secret pattern(s) redacted from CLAUDE.md before import` });
+          }
           await palaceWrite({
             room: "architecture",
             topic: "project-conventions",
@@ -779,12 +988,12 @@ export async function bootstrapImport(
           });
           itemsImported++;
         } else if (item.id.startsWith("claude-memory:")) {
-          // Read memory file, strip frontmatter, route by type
+          // GUARD 1 + 2: realpath jail + secret-file check
           if (!fs.existsSync(item.source_path) || isSecretFile(item.source_path)) {
             itemsSkipped++;
             continue;
           }
-          if (!item.source_path.startsWith(home)) {
+          if (!isPathSafe(item.source_path)) {
             itemsSkipped++;
             continue;
           }
@@ -795,8 +1004,12 @@ export async function bootstrapImport(
           }
           const rawContent = fs.readFileSync(item.source_path, "utf-8");
           const { body: rawBody, meta } = stripFrontmatter(rawContent);
-          // Scrub prompt-injection patterns before storing imported content.
-          const body = scrubPromptInjection(rawBody);
+          // GUARD 2: two-layer scrub — injection then content secrets.
+          const afterInjection = scrubPromptInjection(rawBody);
+          const { content: body, redactedCount: memSecrets } = scrubSecretContent(afterInjection);
+          if (memSecrets > 0) {
+            errors.push({ project: proj.slug, item: item.id, error: `[SECURITY] ${memSecrets} secret pattern(s) redacted from memory file before import` });
+          }
           const rawTopic = (meta["name"] ?? item.id.replace("claude-memory:", "")).replace(/\.md$/, "");
           const topic = rawTopic.replace(/[^a-zA-Z0-9_\-]/g, "-");
 
@@ -860,11 +1073,12 @@ export async function bootstrapImport(
       }
 
       try {
+        // GUARD 1 + 2: realpath jail + secret-file check for global items
         if (!fs.existsSync(item.source_path) || isSecretFile(item.source_path)) {
           itemsSkipped++;
           continue;
         }
-        if (!item.source_path.startsWith(home)) {
+        if (!isPathSafe(item.source_path)) {
           itemsSkipped++;
           continue;
         }
@@ -875,7 +1089,12 @@ export async function bootstrapImport(
         }
         const rawContent = fs.readFileSync(item.source_path, "utf-8");
         const { body: rawBody, meta } = stripFrontmatter(rawContent);
-        const body = scrubPromptInjection(rawBody);
+        // GUARD 2: two-layer scrub
+        const afterInjection = scrubPromptInjection(rawBody);
+        const { content: body, redactedCount: globalSecrets } = scrubSecretContent(afterInjection);
+        if (globalSecrets > 0) {
+          errors.push({ project: globalSlug, item: item.id, error: `[SECURITY] ${globalSecrets} secret pattern(s) redacted from global item before import` });
+        }
         const rawTopic2 = (meta["name"] ?? item.id.replace("global:", "")).replace(/\.md$/, "");
         const topic = rawTopic2.replace(/[^a-zA-Z0-9_\-]/g, "-");
 

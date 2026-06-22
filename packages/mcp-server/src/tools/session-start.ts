@@ -145,6 +145,15 @@ function formatTerse(result: SessionStartResult): string {
     lines.push(result.empty_state);
   }
 
+  // ── P4 cross-surface adapter — hook-less host pointer ─────────────────
+  // Append to the human-readable text layer only (not the JSON struct) to
+  // avoid blowing the 1600-char token budget. Omitted in Claude Code (where
+  // CLAUDE_CODE_HOOKS is set) since hooks auto-drive the lifecycle.
+  if (!process.env["CLAUDE_CODE_HOOKS"]) {
+    lines.push("");
+    lines.push("Hook-less host? call brief() once for lifecycle rules.");
+  }
+
   return lines.join("\n");
 }
 

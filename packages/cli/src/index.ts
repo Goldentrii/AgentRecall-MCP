@@ -2013,7 +2013,11 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
           }
         }
         output(``);
-        output(`  Run ar cold-start to see your projects.`);
+        const board = await core.projectBoard();
+        const boardWidth = process.stdout.columns
+          ? Math.min(110, Math.max(80, process.stdout.columns))
+          : 100;
+        output(core.renderBoard(board, { boardWidth }));
         output(`${LINE}`);
       } else if (dryRun) {
         // ── ar bootstrap --dry-run ────────────────────────────────────────

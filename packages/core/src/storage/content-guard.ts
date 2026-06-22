@@ -84,8 +84,8 @@ const SECRET_CONTENT_PATTERNS: ReadonlyArray<{ re: RegExp; label: string }> = [
   { re: /\bnpm_[A-Za-z0-9]{20,}\b/g,        label: "npm registry token" },
   { re: /_authToken=[^\s"'\r\n]{8,}/g,       label: "npm _authToken (.npmrc)" },
   {
-    re: /-----BEGIN\s+(RSA |EC |OPENSSH |ENCRYPTED )?(?:PRIVATE KEY|CERTIFICATE)-----/g,
-    label: "PEM private key/certificate marker",
+    re: /-----BEGIN\s+(?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?(?:PRIVATE KEY|CERTIFICATE)-----[\s\S]*?-----END\s+(?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?(?:PRIVATE KEY|CERTIFICATE)-----/g,
+    label: "PEM private key/certificate block",
   },
 ];
 

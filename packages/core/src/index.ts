@@ -365,6 +365,26 @@ export { check, type CheckInput, type CheckResult, type WatchFor, type PastDelta
 export { memoryQuery, type MemoryQueryInput, type MemoryQueryResult, type MemoryQueryItem } from "./tools-logic/memory-query.js";
 export { projectStatus, type ProjectStatusInput, type ProjectStatusResult } from "./tools-logic/project-status.js";
 
+// Tool logic — cross-surface adapter (P4): brief + bootstrap exports
+export {
+  brief,
+  LIFECYCLE_TEXT,
+  type BriefInput,
+  type BriefResult,
+  type BriefCorrection,
+  type BriefWatchFor,
+  type BriefRule,
+} from "./tools-logic/brief.js";
+export {
+  bootstrapScan,
+  bootstrapImport,
+  type BootstrapScanResult,
+  type ImportableItem,
+  type DiscoveredProject,
+  type ImportSelection,
+  type ImportResult,
+} from "./tools-logic/bootstrap.js";
+
 // Digest — context cache (v4.0)
 export {
   type DigestEntry,
@@ -392,16 +412,7 @@ export { digestStore } from "./tools-logic/digest-store.js";
 export { digestRecall } from "./tools-logic/digest-recall.js";
 export { digestRead } from "./tools-logic/digest-read.js";
 
-// Tool logic — bootstrap (layered scan + selective import)
-export {
-  bootstrapScan,
-  bootstrapImport,
-  type BootstrapScanResult,
-  type DiscoveredProject,
-  type ImportableItem,
-  type ImportSelection,
-  type ImportResult,
-} from "./tools-logic/bootstrap.js";
+// (bootstrap exports moved up to cross-surface-adapter block above)
 
 // Supabase — config
 export { readSupabaseConfig, writeSupabaseConfig } from "./supabase/config.js";

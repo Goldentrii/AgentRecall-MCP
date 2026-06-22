@@ -23,7 +23,7 @@ describe("MCP server smoke tests", () => {
     assert.equal(tools.length, 5);
   });
 
-  it("--full exposes all 23 tools", async () => {
+  it("--full exposes all 24 tools", async () => {
     const { stdout } = await execFileAsync("node", [ENTRY, "--list-tools", "--full"]);
     const tools = JSON.parse(stdout);
     const names = tools.map((t) => t.name);
@@ -33,7 +33,8 @@ describe("MCP server smoke tests", () => {
     assert.ok(names.includes("project_status"));
     assert.ok(names.includes("bootstrap_scan"));
     assert.ok(names.includes("bootstrap_import"));
-    assert.equal(tools.length, 23);
+    assert.ok(names.includes("brief"));
+    assert.equal(tools.length, 24);
   });
 
   it("--version prints a semver string", async () => {
