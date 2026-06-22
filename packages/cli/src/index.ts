@@ -91,6 +91,8 @@ DIAGNOSTICS:
   ar stats             Show memory system health: corrections, feedback, insights, graph edges
   ar corrections rejected [--stats] [--json]  Survivorship-bias probe: corrections the capture gate discarded
   ar mirror [--json]   The Mirror: first-person, citation-backed self-model from your real corrections/insights (personal-tier, local-only; omit --project for the cross-project mirror)
+  ar doctor [--json]   READ-ONLY store integrity check: index drift, stale locks, stalled consolidation seam
+  ar repair [--apply] [--json]  Remediate doctor findings (DRY-RUN unless --apply): reindex drift, remove dead locks, login-free drain
   ar rooms             Show palace rooms with entry counts and topic keywords
   ar sync-memory       Sync AgentRecall → Claude auto-memory (corrections + insights + rooms)
 
@@ -542,6 +544,35 @@ async function main(): Promise<void> {
       }
       // Non-zero exit on red so scripts/CI can gate on it; warn/ok exit 0.
       if (result.status === "red") process.exitCode = 1;
+      break;
+    }
+    case "repair": {
+      // WRITE-side remediation of store-doctor findings (sibling to `doctor`).
+      // DRY-RUN by default — pass `--apply` to actually mutate. Reindexes drifted
+      // projects, removes dead locks, runs the login-free consolidation drain.
+      const apply = hasFlag("--apply", rest);
+      const result = await core.runStoreRepair({ apply });
+      if (hasFlag("--json", rest)) {
+        output(result);
+      } else {
+        const lines: string[] = [core.storeRepairSummary(result)];
+        if (result.reindexed.projects.length)
+          lines.push(`  reindex: ${result.reindexed.projects.join(", ")}`);
+        if (result.locksRemoved.names.length)
+          lines.push(`  locks:   ${result.locksRemoved.names.join(", ")}`);
+        if (result.drained.projects.length)
+          lines.push(`  drain:   ${result.drained.projects.join(", ")}`);
+        // Surface any per-step error so a clean-looking summary never hides a failure.
+        for (const [label, step] of [
+          ["reindex", result.reindexed],
+          ["locks", result.locksRemoved],
+          ["drain", result.drained],
+        ] as const) {
+          if (step.error) lines.push(`  ⚠ ${label} error: ${step.error}`);
+        }
+        if (!apply) lines.push("  (dry-run — pass --apply to make these changes)");
+        output(lines.join("\n"));
+      }
       break;
     }
     case "mirror": {

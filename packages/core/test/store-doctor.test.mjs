@@ -140,16 +140,17 @@ describe("store-doctor (read-only integrity diagnostics)", () => {
     assert.equal(stale.level, "red", stale.detail);
   });
 
-  it("CHECK 3: raw archive with a back-dated consume marker (>24h) → dreaming_stale RED", () => {
+  it("CHECK 3 (genuine stall): a raw segment OLDER than the retention window, unconsumed → dreaming_stale RED", () => {
     const dir = rawDir(TEST_ROOT, PROJECT);
     fs.mkdirSync(dir, { recursive: true });
-    // A raw segment exists (something to consolidate)...
-    fs.writeFileSync(path.join(dir, "2026-06-20--sess.md"), "---\n---\nraw transcript\n", "utf-8");
-    // ...but the consume marker last advanced 30h ago.
-    const thirtyHrsAgo = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString();
+    const seg = path.join(dir, "2025-01-01--old-sess.md");
+    fs.writeFileSync(seg, "---\n---\nold raw transcript\n", "utf-8");
+    // Back-date the SEGMENT 200d — well past any retention window; marker null.
+    const agedMs = Date.now() - 200 * 24 * 60 * 60 * 1000;
+    fs.utimesSync(seg, new Date(agedMs), new Date(agedMs));
     fs.writeFileSync(
       path.join(dir, ".consumed.json"),
-      JSON.stringify({ lastConsumedOffset: 0, lastConsumedAt: thirtyHrsAgo }),
+      JSON.stringify({ lastConsumedOffset: 0, lastConsumedAt: null }),
       "utf-8",
     );
 
@@ -159,13 +160,48 @@ describe("store-doctor (read-only integrity diagnostics)", () => {
     assert.equal(r.status, "red");
   });
 
-  it("CHECK 3: a fresh consume marker (<24h) with raw segments stays OK", () => {
+  it("CHECK 3 (healthy buffer): RECENT raw segments stay OK regardless of marker freshness", () => {
     const dir = rawDir(TEST_ROOT, PROJECT);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "2026-06-21--sess.md"), "---\n---\nraw\n", "utf-8");
     fs.writeFileSync(
       path.join(dir, ".consumed.json"),
       JSON.stringify({ lastConsumedOffset: 0, lastConsumedAt: new Date().toISOString() }),
+      "utf-8",
+    );
+    const dream = doctor.runStoreDoctor().checks.find((c) => c.name === "dreaming_stale");
+    assert.equal(dream.level, "ok", dream.detail);
+  });
+
+  it("CHECK 3 (WARN tier): a NULL marker with raw older than the warn floor (but within retention) → WARN", () => {
+    const dir = rawDir(TEST_ROOT, PROJECT);
+    fs.mkdirSync(dir, { recursive: true });
+    const seg = path.join(dir, "2026-05-01--mid-sess.md");
+    fs.writeFileSync(seg, "---\n---\nmid-age raw\n", "utf-8");
+    // 30 days old: past the 7d warn floor but well within the 90d retention RED
+    // threshold. Marker never advanced → the silent-seam-failure WARN.
+    const midMs = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    fs.utimesSync(seg, new Date(midMs), new Date(midMs));
+    fs.writeFileSync(
+      path.join(dir, ".consumed.json"),
+      JSON.stringify({ lastConsumedOffset: 0, lastConsumedAt: null }),
+      "utf-8",
+    );
+    const dream = doctor.runStoreDoctor().checks.find((c) => c.name === "dreaming_stale");
+    assert.equal(dream.level, "warn", dream.detail);
+  });
+
+  it("CHECK 3 (login-free false-positive guard): RECENT raw + NULL marker is OK, not RED", () => {
+    // This is the live-store shape that the old "consumed within 24h" rule
+    // false-positived on: a login-free store used within the last day, whose raw
+    // segments are recent backups and whose marker has not advanced yet. The
+    // content is already regex-folded into the palace — nothing is stalled.
+    const dir = rawDir(TEST_ROOT, PROJECT);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "2026-06-22--sess.md"), "---\n---\nraw\n", "utf-8");
+    fs.writeFileSync(
+      path.join(dir, ".consumed.json"),
+      JSON.stringify({ lastConsumedOffset: 0, lastConsumedAt: null }),
       "utf-8",
     );
     const dream = doctor.runStoreDoctor().checks.find((c) => c.name === "dreaming_stale");

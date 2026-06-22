@@ -30,6 +30,7 @@ import { countRoomEntries } from "../palace/rooms.js";
 import { palaceDir, archiveRawDir } from "../storage/paths.js";
 import { STALE_LOCK_MS } from "../storage/filelock.js";
 import { getDreamHealth } from "../storage/dream-health.js";
+import { resolveRetentionDays } from "../storage/retention.js";
 import type { PalaceIndex } from "../types.js";
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -49,8 +50,16 @@ export const INDEX_DRIFT_TOLERANCE = 1;
 /** A held lock older than this is escalated from WARN (merely stale) to RED. */
 export const LOCK_RED_MS = 5 * 60 * 1000; // 5 minutes
 
-/** Dreaming/consolidation that hasn't advanced in this long → RED. */
-export const DREAM_RED_MS = 24 * 60 * 60 * 1000; // 24h
+/**
+ * A `.consumed.json` marker that has NEVER advanced (lastConsumedAt null/absent)
+ * while raw segments older than this sit in the archive → WARN. It signals the
+ * login-free consolidation seam (which advances the marker at every session_end)
+ * has not run even once for that project — a silently-failing `advanceConsumeMarker`
+ * — WITHOUT the false positive of flagging a day-old fresh store. Distinct from
+ * the RED retention window (resolved live via resolveRetentionDays) so the two
+ * severities can't be conflated.
+ */
+export const DREAM_NULL_MARKER_WARN_DAYS = 7;
 
 export type DoctorLevel = "ok" | "warn" | "red";
 export type DoctorStatus = "ok" | "warn" | "red";
@@ -215,47 +224,86 @@ function checkStaleLock(): DoctorCheck {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// Check 3 — DREAMING > 24h
+// Check 3 — STALLED CONSOLIDATION SEAM
 // ───────────────────────────────────────────────────────────────────────────
 
 /**
- * The consolidation/dreaming loop is healthy when (a) the AAM dream cron has not
- * been failing (getDreamHealth) AND (b) at least one project's `.consumed.json`
- * `lastConsumedAt` marker has advanced within the last 24h. A store that has raw
- * archive segments but whose newest `lastConsumedAt` is > 24h old (or null while
- * raw exists) means distillation has stalled — the known auth-expiry failure
- * mode — → RED.
+ * Dreaming/consolidation health. Severity tiers:
  *
- * READ-ONLY: reads dream logs and .consumed.json markers only.
+ *   RED  — (a) the AAM LLM dream cron is actively failing (getDreamHealth banner,
+ *          the known OAuth/network-expiry mode), OR (b) a raw segment OLDER than
+ *          the retention window is still UNCONSUMED (mtime newer than the
+ *          `.consumed.json` marker) → the seam that folds raw into the palace and
+ *          prunes the backup has stalled, so the archive will grow unbounded.
+ *   WARN — the marker has NEVER advanced (null/absent) while raw segments older
+ *          than DREAM_NULL_MARKER_WARN_DAYS exist → the login-free seam (which
+ *          advances the marker at every session_end) likely failed silently for
+ *          that project, even though nothing is unbounded yet.
+ *   OK   — everything else, notably a login-free store whose raw is all RECENT.
+ *          That is the normal lossless backup buffer: the content is already
+ *          regex-folded into the palace at session_end and the segments simply
+ *          await their retention-window prune. The earlier "consumed within 24h"
+ *          rule false-positived on EVERY healthy login-free store; anchoring on
+ *          the (config-resolved) retention window fixes that without going blind
+ *          to a genuinely stuck marker (the WARN tier).
+ *
+ * The retention window is resolved LIVE (resolveRetentionDays) from the SAME
+ * source the pruner uses, so the doctor can never flag at a different threshold
+ * than safety-consolidation actually prunes at.
+ *
+ * READ-ONLY: directory listing + per-segment stat + marker read + dream log read.
  */
 function checkDreamingStale(): DoctorCheck {
   const base: DoctorCheck = {
     name: "dreaming_stale",
     level: "ok",
-    detail: "Dreaming/consolidation has advanced within the last 24h.",
+    detail: "Consolidation seam healthy: no raw segment older than the retention window is unconsumed.",
     fix_hint: "",
   };
 
   const now = Date.now();
-  let anyRaw = false;
-  let newestConsumedMs: number | null = null;
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const retentionMs = resolveRetentionDays() * DAY_MS;
+  const warnMs = DREAM_NULL_MARKER_WARN_DAYS * DAY_MS;
+  const agedUnconsumed: string[] = []; // RED evidence (project slugs)
+  const nullMarkerStale: string[] = []; // WARN evidence (project slugs)
 
   try {
     for (const proj of listAllProjects()) {
       const rawDir = archiveRawDir(proj.slug);
-      const rawFiles = safeReaddir(rawDir).filter((f) => f.endsWith(".md"));
+      const rawFiles = safeReaddir(rawDir).filter(
+        (f) => f.endsWith(".md") && f !== "index.md",
+      );
       if (rawFiles.length === 0) continue;
-      anyRaw = true;
+
       const marker = readJsonSafe<{ lastConsumedAt: string | null }>(
         path.join(rawDir, ".consumed.json"),
       );
-      const at = marker?.lastConsumedAt ?? null;
-      if (at) {
-        const ms = new Date(at).getTime();
-        if (!Number.isNaN(ms) && (newestConsumedMs === null || ms > newestConsumedMs)) {
-          newestConsumedMs = ms;
+      const lastConsumed = marker?.lastConsumedAt ?? null;
+      const markerNeverAdvanced = lastConsumed === null;
+      const lastMs = lastConsumed ? new Date(lastConsumed).getTime() : 0;
+
+      let projAged = false;
+      let projNullStale = false;
+      for (const f of rawFiles) {
+        let mtime: number;
+        try {
+          mtime = fs.statSync(path.join(rawDir, f)).mtimeMs;
+        } catch {
+          continue; // raced with a prune — skip
+        }
+        const age = now - mtime;
+        const unconsumed = mtime > lastMs; // matches pruneRawArchive's `mtime <= lastConsumedAt` consumed contract
+        if (age > retentionMs && unconsumed) {
+          projAged = true;
+          break; // RED beats WARN — no need to look further in this project
+        }
+        if (markerNeverAdvanced && age > warnMs) {
+          projNullStale = true;
         }
       }
+      if (projAged) agedUnconsumed.push(proj.slug);
+      else if (projNullStale) nullMarkerStale.push(proj.slug);
     }
   } catch {
     return base; // unreadable store → don't fabricate a failure
@@ -269,29 +317,35 @@ function checkDreamingStale(): DoctorCheck {
     dreamBanner = null;
   }
 
-  // No raw archive AND no cron-failure signal → nothing to consolidate; healthy.
-  if (!anyRaw && !dreamBanner) return base;
-
-  const consumedAgeMs = newestConsumedMs === null ? Infinity : now - newestConsumedMs;
-  const stale = anyRaw && consumedAgeMs > DREAM_RED_MS;
-
-  if (stale || dreamBanner) {
+  // RED tier — genuine unbounded growth or an actively-failing cron.
+  if (agedUnconsumed.length > 0 || dreamBanner) {
     const parts: string[] = [];
-    if (stale) {
+    if (agedUnconsumed.length > 0) {
       parts.push(
-        newestConsumedMs === null
-          ? "raw archive exists but nothing has ever been consumed (lastConsumedAt=null)"
-          : `newest consume marker is ${Math.round(consumedAgeMs / 3_600_000)}h old (>24h)`,
+        `${agedUnconsumed.length} project(s) with raw older than the retention window still unconsumed: ${agedUnconsumed.slice(0, 6).join(", ")}`,
       );
     }
     if (dreamBanner) parts.push(dreamBanner);
     return {
       name: "dreaming_stale",
       level: "red",
-      detail: `Dreaming/consolidation appears stalled: ${parts.join(" · ")}`,
-      fix_hint: "Check the dreaming agent's auth (known OAuth-expiry failure mode) and run a manual consolidation drain (`ar consolidate-async`).",
+      detail: `Consolidation seam appears stalled: ${parts.join(" · ")}`,
+      fix_hint:
+        "Run `ar repair --apply` (login-free drain: advances the consume marker + prunes aged raw). If the dream-cron banner is set, also check the dreaming agent's auth (known OAuth-expiry mode).",
     };
   }
+
+  // WARN tier — a marker that never advanced while raw aged past the warn floor.
+  if (nullMarkerStale.length > 0) {
+    return {
+      name: "dreaming_stale",
+      level: "warn",
+      detail: `${nullMarkerStale.length} project(s) have raw segments older than ${DREAM_NULL_MARKER_WARN_DAYS}d but a consume marker that never advanced (login-free seam may have failed silently): ${nullMarkerStale.slice(0, 6).join(", ")}.`,
+      fix_hint:
+        "Run `ar repair --apply` to drain (advances the consume marker). If it recurs, the session_end safety-consolidation pass is not firing for that project.",
+    };
+  }
+
   return base;
 }
 

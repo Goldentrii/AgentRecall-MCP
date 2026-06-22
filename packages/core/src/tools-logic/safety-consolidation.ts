@@ -57,13 +57,18 @@ import {
 import { archiveRawDir } from "../storage/paths.js";
 import { readJsonSafe, writeJsonAtomic } from "../storage/fs-utils.js";
 import { readSupabaseConfig } from "../supabase/config.js";
+import {
+  DEFAULT_ARCHIVE_RETENTION_DAYS,
+  resolveRetentionDays,
+} from "../storage/retention.js";
 
 const DAY_MS = 86_400_000;
 
-/** Default raw-archive retention window (days). Segments older than this AND
- *  distilled are gzipped. Overridable via config.json `archive_retention_days`
- *  or the AGENT_RECALL_ARCHIVE_RETENTION_DAYS env var. */
-export const DEFAULT_ARCHIVE_RETENTION_DAYS = 90;
+// The raw-archive retention window now lives in storage/retention.ts (single
+// source of truth shared with store-doctor.ts, so the pruner and the integrity
+// check can never disagree on the threshold). Re-exported here for barrel /
+// back-compat consumers that import it from this module.
+export { DEFAULT_ARCHIVE_RETENTION_DAYS };
 
 /** Deterministic graduation floor: a crystallization candidate graduates when
  *  its members together carry at least this many confirmations. Layered on top
@@ -124,31 +129,6 @@ export interface SafetyConsolidationOptions {
   olderThanDays?: number;
   /** Override the deterministic graduation confirmation floor. */
   minConfirmations?: number;
-}
-
-/** Resolve the retention window: explicit opt > config.json > env > default. */
-function resolveRetentionDays(explicit?: number): number {
-  if (typeof explicit === "number" && Number.isFinite(explicit) && explicit > 0) {
-    return explicit;
-  }
-  const env = process.env.AGENT_RECALL_ARCHIVE_RETENTION_DAYS;
-  if (env) {
-    const n = Number(env);
-    if (Number.isFinite(n) && n > 0) return n;
-  }
-  // config.json may carry an optional archive_retention_days (not part of the
-  // typed SupabaseConfig, so read the raw file shape defensively).
-  try {
-    const cfg = readSupabaseConfig() as unknown as {
-      archive_retention_days?: number;
-    } | null;
-    if (cfg && typeof cfg.archive_retention_days === "number" && cfg.archive_retention_days > 0) {
-      return cfg.archive_retention_days;
-    }
-  } catch {
-    // config read is best-effort — fall through to default
-  }
-  return DEFAULT_ARCHIVE_RETENTION_DAYS;
 }
 
 /**

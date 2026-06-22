@@ -303,12 +303,21 @@ export {
   storeDoctorBanner,
   INDEX_DRIFT_TOLERANCE,
   LOCK_RED_MS,
-  DREAM_RED_MS,
+  DREAM_NULL_MARKER_WARN_DAYS,
   type StoreDoctorResult,
   type DoctorCheck,
   type DoctorLevel,
   type DoctorStatus,
 } from "./tools-logic/store-doctor.js";
+export {
+  runStoreRepair,
+  storeRepairSummary,
+  type StoreRepairResult,
+  type StoreRepairOptions,
+  type RepairSnapshot,
+  type RepairStepProjects,
+  type RepairStepLocks,
+} from "./tools-logic/store-repair.js";
 export { palaceSearch, type PalaceSearchInput, type PalaceSearchResult } from "./tools-logic/palace-search.js";
 export { awarenessUpdate, type AwarenessUpdateInput, type AwarenessUpdateResult } from "./tools-logic/awareness-update.js";
 export { recallInsight, type RecallInsightInput, type RecallInsightResult } from "./tools-logic/recall-insight.js";
