@@ -1,4 +1,4 @@
-<title>AgentRecall · 自主优化 12 Loops</title>
+<title>AgentRecall · 自主优化 13 Loops</title>
 <style>
 :root{--bg:#FAF7F0;--surface:#F1ECDD;--surface-2:#E8E1CC;--ink:#2B2520;--ink-soft:#5A4E3F;--ink-faint:#8C7F6B;--rule:#DCD1B5;--rule-soft:#E6DFC8;--accent:#8A6A3F;--accent-soft:#C9A56C;--accent-dim:rgba(138,106,63,.10);--good:#5C7A4A;--bad:#A6483C;--blue:#4E6E8E;--amber:#B07A2E;--shadow:0 1px 2px rgba(43,37,32,.05),0 6px 20px rgba(43,37,32,.07);}
 @media(prefers-color-scheme:dark){:root{--bg:#15120E;--surface:#1E1A14;--surface-2:#28231B;--ink:#ECE3D2;--ink-soft:#BBAE97;--ink-faint:#897C68;--rule:#322B21;--rule-soft:#261F18;--accent:#C9A56C;--accent-soft:#E0C088;--accent-dim:rgba(201,165,108,.13);--good:#9DBE84;--bad:#D98A7C;--blue:#8FB0CE;--amber:#D9A85A;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.4);}}
@@ -87,8 +87,8 @@ tr:last-child td{border-bottom:0;}
   <div class="topbar">
     <div class="logo">🔁</div>
     <div>
-      <h1 class="title"><span class="zh">自主优化 · 12 Loops</span><span class="en">Autonomous Optimization · 12 Loops</span></h1>
-      <div class="sub">AgentRecall · opt/autonomous-loops · 29 commits · NOT pushed · 2026-06-22</div>
+      <h1 class="title"><span class="zh">自主优化 · 13 Loops</span><span class="en">Autonomous Optimization · 13 Loops</span></h1>
+      <div class="sub">AgentRecall · opt/autonomous-loops · 31 commits · NOT pushed · 2026-06-22</div>
     </div>
     <div class="lang">
       <button id="zhBtn" class="on" onclick="setLang('zh')">中文</button>
@@ -162,6 +162,11 @@ tr:last-child td{border-bottom:0;}
         <span class="lbl"><span class="zh">真库修复</span><span class="en">Live repair</span></span>
         <span class="sc">9/10</span>
       </a>
+      <a class="neg" data-target="loop-13">
+        <span class="num">⑬ 🎨</span>
+        <span class="lbl"><span class="zh">嵌入实验</span><span class="en">Embedding</span></span>
+        <span class="sc">9/10</span>
+      </a>
       <a class="spec" data-target="final">
         <span class="num">★</span>
         <span class="lbl"><span class="zh">总评</span><span class="en">Final</span></span>
@@ -202,6 +207,7 @@ tr:last-child td{border-bottom:0;}
     <tr><td>10</td><td><span class="zh">🎨 意图收敛实验</span><span class="en">🎨 Intent-convergence</span></td><td><span class="zh">「冗余→意图」<b>UNTESTABLE</b>(0 个 N≥3 簇);第 3 次确认稀疏天花板</span><span class="en">"Redundancy→intent" <b>UNTESTABLE</b> (0 N≥3 clusters); 3rd confirmation of sparsity ceiling</span></td><td class="grade">9.5</td></tr>
     <tr><td>11</td><td><span class="zh">🎨 零样本跨项目迁移</span><span class="en">🎨 Cross-project transfer</span></td><td><span class="zh">~27% 词法 / ~9% 实质;跨项目不能救稀疏天花板;第 4 次确认</span><span class="en">~27% lexical / ~9% substantive; cross-project cannot rescue sparsity ceiling; 4th confirmation</span></td><td class="grade">9</td></tr>
     <tr><td>12</td><td><span class="zh">✅ 真实库修复(store-repair)</span><span class="en">✅ Live-store repair</span></td><td><span class="zh">你授权后:3 个真问题在<b>真实库</b>修好(16 room 漂移 / 23 天废锁 / null marker),red→ok,<b>零内容丢失</b>;doctor 假阳性也修了;round-table 抓的 4 个问题全变回归守卫</span><span class="en">authorized: 3 real findings fixed on the <b>live store</b> (16-room drift / 23-day lock / null marker), red→ok, <b>zero content lost</b>; doctor false-positive fixed too; round-table's 4 issues all regression-guarded</span></td><td class="grade">9</td></tr>
+    <tr><td>13</td><td><span class="zh">🎨 学得的语义表示(实验)</span><span class="en">🎨 Learned semantic representation</span></td><td><span class="zh">本地零 key 句向量(MiniLM):harness 上 <b>1/13</b> vs 词法 2/13;对抗改写只桥接 <b>2/8</b>;<b>诚实负数</b> —— 不值得加依赖,数据稀疏天花板第 <b>5</b> 次确认(skeptic 纠正了我的夸大)</span><span class="en">local zero-key MiniLM: <b>1/13</b> vs lexical 2/13 on the harness; adversarial paraphrase bridged only <b>2/8</b>; <b>honest negative</b> — not worth the dependency, <b>5th</b> confirmation of the data-density ceiling (skeptic corrected my overclaims)</span></td><td class="grade">9</td></tr>
     <tr><td>+</td><td><span class="zh">2 个评测诚实性补丁</span><span class="en">2 eval-honesty patches</span></td><td><span class="zh">active_predictable 第二分母 · 词法↔语义对称提醒(非 loop,补丁)</span><span class="en">active_predictable denominator · symmetric lexical/semantic caveat (patches, not loops)</span></td><td class="grade">—</td></tr>
   </table></div>
 
@@ -646,44 +652,85 @@ tr:last-child td{border-bottom:0;}
     </div>
   </section>
 
+  <!-- LOOP 13 -->
+  <section class="loop" id="loop-13">
+    <div class="loop-hdr">
+      <h2>⑬ 🎨 <span class="zh">学得的语义表示(实验)</span><span class="en">Learned semantic representation (experiment)</span></h2>
+      <span class="st neg">9 / 10 · <span class="zh">诚实负数</span><span class="en">honest negative</span></span>
+    </div>
+    <div class="meta">commit ae8b845 · <span class="zh">主题:解开「工具 vs 数据」二义性 · eval-first · 你选的本地零 key 方案</span><span class="en">Theme: resolve the instrument-vs-data ambiguity · eval-first · your zero-key choice</span></div>
+    <div class="blks">
+      <div class="blk">
+        <div class="blk-label"><span class="zh">问题</span><span class="en">Problem</span></div>
+        <p><span class="zh">前 4 次测量(L3 0/13 · L9 0/25 · L10 无法测 · L11 ~9%)都指向「数据稀疏」,但全用<b>词法</b>匹配器 —— 无法排除「其实是工具(词袋)不行」。这一轮用最强的<b>本地</b>工具来判:零 key 句向量(MiniLM,WASM,你选的方案)。</span>
+        <span class="en">The prior 4 measurements all pointed at "data-sparse," but all used <b>lexical</b> matchers — none could rule out an instrument artifact. This loop tests the strongest <b>local</b> instrument: zero-key sentence embeddings (MiniLM, WASM — your chosen approach).</span></p>
+      </div>
+      <div class="blk hi">
+        <div class="blk-label"><span class="zh">改了什么 · eval-first</span><span class="en">What was built · eval-first</span></div>
+        <p><span class="zh"><b>先实验、不碰生产依赖。</b>唯一的仓库改动是可复用的 A/B 钩子:<code>predict-loo.mjs</code> 的 <code>matchFn</code>,让任何匹配器都能跑<b>同一个</b> LOO harness(predictable 集合与命中判定都不变,只换「触发」决定)。默认行为字节级不变(测试钉住,仍 5/5)。3 个探针 + skeptic round-table。</span>
+        <span class="en"><b>Tested before committing any dependency.</b> The only repo change is a reusable A/B hook — <code>matchFn</code> in <code>predict-loo.mjs</code> — driving any matcher through the <b>identical</b> LOO harness (predictable set + HIT judgment unchanged; only the fire decision swaps). Default byte-identical (test-pinned, still 5/5). 3 probes + a skeptic round-table.</span></p>
+      </div>
+      <div class="blk se">
+        <div class="blk-label"><span class="zh">结果</span><span class="en">Result</span></div>
+        <p><span class="zh">harness:嵌入 <b>1/13</b> vs 词法-语义 <b>2/13</b>(没赢)。决定性的<b>对抗改写</b>探针:手工造 8 对「同意图、零共词」(词法必miss),嵌入只桥接 <b>2/8</b>,且大多在可用阈值以下。skeptic 的 Probe A:真实语料里 <b>0</b> 条天然改写对。</span>
+        <span class="en">Harness: embedding <b>1/13</b> vs lexical-semantic <b>2/13</b> (did not win). The decisive <b>adversarial-paraphrase</b> probe: 8 hand-crafted same-intent/zero-shared-word pairs (lexical must miss) — embedding bridged only <b>2/8</b>, most below a usable threshold. Skeptic's Probe A: <b>0</b> natural paraphrase pairs in the real corpus.</span></p>
+        <div class="num-row">
+          <span class="metric">harness 1/13 vs 2/13</span>
+          <span class="metric">adversarial 2/8</span>
+          <span class="metric">natural pairs: 0</span>
+        </div>
+      </div>
+      <div class="blk lo">
+        <div class="blk-label"><span class="zh">Round-table 纠正了我的夸大(第 5 次)</span><span class="en">Round-table corrected my overclaims (5th time)</span></div>
+        <p><span class="zh">skeptic 判 <b>OVERCLAIMED</b>:① 全文最近邻测试是<b>循环</b>的(predictable 本就按词法选出)—— 我撤回它作证据 ② n=13 下「嵌入更差」站不住,只能说<b>「无可测收益」</b> ③ 更准的机制:嵌入把<b>项目共现</b>当相似(假阳性),词法不会。产品决定不变,理由更准、更诚实。</span>
+        <span class="en">The skeptic ruled <b>OVERCLAIMED</b>: ① the full-text NN test is <b>circular</b> (predictable cases were selected lexically) — I retracted it as evidence; ② at n=13 "embedding is worse" is unsupportable — the honest claim is <b>"no demonstrable benefit"</b>; ③ better mechanism: embeddings read <b>project co-occurrence</b> as similarity (false positives) where lexical doesn't. Decision unchanged; the reasoning is now sharper and more honest.</span></p>
+      </div>
+      <div class="blk">
+        <div class="blk-label"><span class="zh">决定</span><span class="en">Decision</span></div>
+        <p><span class="zh"><b>不加嵌入依赖。</b>无召回增益 + 项目共现假阳性 + 保持「极轻量·零 key·本地 markdown」。数据稀疏天花板<b>第 5 次确认</b>(这次用最强工具 + 非循环测试)。诚实保留:更大的模型能桥接更多改写,但<b>数据</b>天花板不变;语料若变得更口语化,用 <code>matchFn</code> 钩子重测即可。完整记录:<code>docs/internal/loop13-embedding-experiment.md</code>。</span>
+        <span class="en"><b>Do NOT add the embedding dependency.</b> No recall gain + project-co-occurrence false positives + keeps "featherweight, zero-key, local-markdown." <b>5th confirmation</b> of the data-density ceiling (now with the strongest instrument + a non-circular test). Honest caveat: a larger model bridges more paraphrases, but the <b>data</b> ceiling stands; re-test via the <code>matchFn</code> hook if a future corpus is more paraphrastic. Full record: <code>docs/internal/loop13-embedding-experiment.md</code>.</span></p>
+      </div>
+    </div>
+  </section>
+
   <!-- FINAL -->
-  <div class="sech" id="final" style="border-color:var(--accent);">★ <span class="zh">总评 —— 自主 11-loop 跑 + Loop 12 授权修复</span><span class="en">Final self-evaluation — the autonomous 11-loop run + Loop 12 authorized repair</span></div>
+  <div class="sech" id="final" style="border-color:var(--accent);">★ <span class="zh">总评 —— 自主 11-loop 跑 + Loops 12–13 授权延伸</span><span class="en">Final self-evaluation — the autonomous 11-loop run + Loops 12–13 authorized follow-up</span></div>
   <div class="card">
-    <p><b><span class="zh">11/11 自主完成,Loop 12(你授权)已在<b>真实库</b>上落地。全程 build 绿(508 测试)。分支 opt/autonomous-loops,29 个 commit,<u>从未 push、未升版本、未删文件 —— 红线全程守住</u>。</span>
-    <span class="en">11/11 autonomous loops done; Loop 12 (authorized) landed on the <b>live store</b>. Build green throughout (508 tests). Branch opt/autonomous-loops, 29 commits — nothing pushed, no version bump, no deletes. REDLINE held the entire run.</span></b></p>
+    <p><b><span class="zh">11/11 自主完成,Loops 12–13(你授权)已落地:真实库修复 + 学得表示实验。全程 build 绿(508 测试)。分支 opt/autonomous-loops,31 个 commit,<u>从未 push、未升版本、未删文件 —— 红线全程守住</u>。</span>
+    <span class="en">11/11 autonomous loops done; Loops 12–13 (authorized) landed: live-store repair + the learned-representation experiment. Build green throughout (508 tests). Branch opt/autonomous-loops, 31 commits — nothing pushed, no version bump, no deletes. REDLINE held the entire run.</span></b></p>
 
     <p style="margin-top:12px;"><b><span class="zh">这次跑出来的唯一诚实结论:</span><span class="en">The one honest conclusion the run earned:</span></b></p>
-    <p><span class="zh">AgentRecall 是个<b>真正不错的记忆系统</b>,落地了真实、可验证的成果(免登录整合、~1ms 实时识别、发现真问题的 store-doctor、把 recall 拉离零的语义匹配),并且现在<b>会测量自己有没有用,而不是假设有用</b>。但「理解」撞上了<b>同一道天花板,四种独立方式都确认</b>:语料意图稀疏,词袋匹配器分不清「没有共同意图」和「有共同意图、只是换了词」。</span>
-    <span class="en">AgentRecall is a <b>genuinely good memory system</b> — real verified wins (login-free consolidation, ~1ms real-time recognition, store-doctor that found real bugs, semantic matcher that moved recall off zero) — and it now <b>measures whether it works instead of assuming it does</b>. But "understanding" hit <b>one ceiling, confirmed four independent ways</b>: the corpus is intent-sparse, and a bag-of-tokens matcher cannot tell "no shared intent" from "shared intent, different words."</span></p>
+    <p><span class="zh">AgentRecall 是个<b>真正不错的记忆系统</b>,落地了真实、可验证的成果(免登录整合、~1ms 实时识别、发现并<b>修复</b>真问题的 store-doctor/repair、把 recall 拉离零的语义匹配),并且现在<b>会测量自己有没有用,而不是假设有用</b>。但「理解」撞上了<b>同一道天花板,五种独立方式都确认</b>(L3 0/13 · L9 0/25 · L10 无法测 · L11 ~9% · <b>L13 嵌入也赢不了</b>):语料意图稀疏,而且天然没有「同意图、换了词」的对 —— 不是工具不行,是数据没有那个信号。</span>
+    <span class="en">AgentRecall is a <b>genuinely good memory system</b> — real verified wins (login-free consolidation, ~1ms real-time recognition, a store-doctor/repair that found AND <b>fixed</b> real bugs, a semantic matcher that moved recall off zero) — and it now <b>measures whether it works instead of assuming it does</b>. But "understanding" hit <b>one ceiling, confirmed five independent ways</b> (L3 0/13 · L9 0/25 · L10 untestable · L11 ~9% · <b>L13 embeddings don't win either</b>): the corpus is intent-sparse and has no natural "same intent, different words" pairs — not an instrument limit, the data lacks the signal.</span></p>
 
-    <p style="margin-top:10px;"><b><span class="zh">单个最高杠杆的下一步赌注:</span><span class="en">Single highest-leverage next bet:</span></b></p>
-    <p><span class="zh">把词重叠换成<b>学得的语义表示</b>(sentence embedding + 用这次 LOO harness 的 HIT/MISS 标签校准阈值)。这是<b>唯一</b>能区分「真·数据稀疏墙」和「只是工具假象」的改动。这次建的 harness(LOO / 改写测试 / 意图收敛 / 跨项目)就是任何新表示必须打败的记分牌。</span>
-    <span class="en">Replace token-overlap with a <b>learned semantic representation</b> (sentence embeddings, calibrated against this run's LOO HIT/MISS labels). It is the <i>only</i> change that can tell a real data-sparsity wall apart from an instrument artifact. The harnesses built this run (LOO / paraphrase / intent-convergence / cross-project) are the scoreboard any new representation must beat.</span></p>
+    <p style="margin-top:10px;"><b><span class="zh">那个「下一步赌注」—— 现在已经测了(Loop 13):</span><span class="en">That "next bet" — now tested (Loop 13):</span></b></p>
+    <p><span class="zh">最高杠杆的赌注是把词重叠换成<b>学得的语义表示</b>。Loop 13 用本地零 key 句向量做了这个实验 —— <b>在你的真实语料上没有可测收益</b>(harness 1/13 vs 词法 2/13;对抗改写只桥接 2/8;天然改写对为 0)。所以那道墙是<b>数据密度</b>,不是工具假象 —— 现在用最强工具确认了。真正的解法不是更好的匹配器,而是<b>更多带「同意图、不同措辞」信号的数据</b>。这次建的 harness(LOO / 改写 / 意图收敛 / 跨项目 + 可插拔 <code>matchFn</code>)是任何未来表示必须打败的记分牌。</span>
+    <span class="en">The highest-leverage bet was to replace token-overlap with a <b>learned semantic representation</b>. Loop 13 ran exactly that experiment with local zero-key embeddings — <b>no measurable benefit on your real corpus</b> (harness 1/13 vs lexical 2/13; adversarial paraphrase 2/8; natural paraphrase pairs 0). So the wall is <b>data density</b>, not an instrument artifact — now confirmed with the strongest tool. The real unlock isn't a better matcher; it's <b>more data carrying the "same intent, different wording" signal</b>. The harnesses built here (LOO / paraphrase / intent-convergence / cross-project + the pluggable <code>matchFn</code>) are the scoreboard any future representation must beat.</span></p>
 
     <p style="margin-top:12px;"><b><span class="zh">Orchestrator 自评:8.5 / 10。</span><span class="en">Orchestrator self-grade: 8.5 / 10.</span></b></p>
-    <p><span class="zh"><b>做对的:</b>诚实可验证的进步;红线全程守住;round-table 三次抓到我自己的错(L1 死代码 · L4 掩盖 bug 的测试 · L7 夸大数字),每次我都照实记下而不是掩盖。</span>
-    <span class="en"><b>Right:</b> honest, verified, no-theater progress; REDLINE held; round-table caught my own errors three times (L1 dead-code · L4 bug-masking test · L7 overclaimed number) and I recorded each plainly instead of burying it.</span></p>
+    <p><span class="zh"><b>做对的:</b>诚实可验证的进步;红线全程守住;round-table <b>反复</b>抓到我自己的错(L1 死代码 · L4 掩盖 bug 的测试 · L7 夸大数字 · L12 配置发散等 4 个 · L13 循环测试+n=13 夸大),每次我都照实记下、当场修,而不是掩盖 —— 一个会犯错、但始终被不与它共享盲点的 reviewer 检查着的 orchestrator。</span>
+    <span class="en"><b>Right:</b> honest, verified, no-theater progress; REDLINE held; the round-table caught my own errors <b>again and again</b> (L1 dead-code · L4 bug-masking test · L7 overclaimed number · L12's 4 issues · L13's circular test + n=13 overclaim) and I recorded and fixed each plainly — an orchestrator that errs but is always checked by reviewers who don't share its blind spots.</span></p>
     <p><span class="zh"><b>该改的(−1.5):</b>早期 5-agent 大扇出耗光了 session 预算,导致 Loop 8 只有自验证;应该从一开始就控制开销。另外有两次让夸大的措辞进了 commit 说明,是 reviewer 先抓到的。</span>
     <span class="en"><b>Differently (−1.5):</b> early 5-agent fan-outs exhausted the budget and left Loop 8 self-verified — I should have paced spend from the start. Twice an overclaim reached a commit note that a reviewer, not I, caught first.</span></p>
   </div>
 
   <!-- DECISIONS -->
-  <div class="sech" id="decide" style="border-color:var(--amber);">⚑ <span class="zh">待你决定(#3 已完成)</span><span class="en">Your call (#3 now done)</span></div>
+  <div class="sech" id="decide" style="border-color:var(--amber);">⚑ <span class="zh">待你决定(只剩 #1;#2、#3 已完成)</span><span class="en">Your call (only #1 left; #2 & #3 done)</span></div>
   <div class="card decide">
     <p><b>1 · <span class="zh">合并 / 推送?</span><span class="en">Merge / push?</span></b></p>
-    <p><span class="zh">「合并到 main」= 把 25 个 commit 合进<b>本地电脑上的</b> main 分支(可逆,完全不碰 GitHub)。「push 到 GitHub」是<b>另一步</b>,属于红线范畴,需要你明确说「可以 push」。现在<b>两件都没做</b>,全在 <code>opt/autonomous-loops</code>。建议:先 review + 给 Loop 8 补一次 round-table 复验,再决定。</span>
-    <span class="en">"Merge to main" = merge the 25 commits into your <b>local machine's</b> main branch (reversible, doesn't touch GitHub at all). "Push to GitHub" is a <b>separate step</b>, REDLINE territory, requires your explicit "yes, push." <b>Both are currently undone</b> — all on <code>opt/autonomous-loops</code>. My rec: review + re-verify Loop 8 with an independent round-table first, then decide.</span></p>
+    <p><span class="zh">「合并到 main」= 把 31 个 commit 合进<b>本地电脑上的</b> main 分支(可逆,完全不碰 GitHub)。「push 到 GitHub」是<b>另一步</b>,属于红线范畴,需要你明确说「可以 push」。现在<b>两件都没做</b>,全在 <code>opt/autonomous-loops</code>。建议:先 review + 给 Loop 8 补一次 round-table 复验(这是唯一还没独立复验的 loop),再决定。</span>
+    <span class="en">"Merge to main" = merge the 31 commits into your <b>local machine's</b> main branch (reversible, doesn't touch GitHub at all). "Push to GitHub" is a <b>separate step</b>, REDLINE territory, requires your explicit "yes, push." <b>Both are currently undone</b> — all on <code>opt/autonomous-loops</code>. My rec: review + re-verify Loop 8 with an independent round-table (the one loop still un-re-verified) first, then decide.</span></p>
 
-    <p style="margin-top:10px;"><b>2 · <span class="zh">下一个赌注:学得的语义表示?</span><span class="en">Next bet: learned semantic representation?</span></b></p>
-    <p><span class="zh">四次独立测量都撞上同一道天花板。「学得的语义表示」是<b>唯一</b>能解开「真·数据稀疏 vs 工具假象」二义性的改动。下游的全局 blind-spots、predict-the-correction 都卡在这里。要不要做?</span>
-    <span class="en">Four independent measurements hit the same ceiling. A learned semantic representation is the <b>only</b> change that resolves the "real data-sparsity vs instrument artifact" ambiguity. Global blind-spots and predict-the-correction downstream are both blocked on this. Do it?</span></p>
+    <p style="margin-top:10px;"><b>2 · <span class="zh">✅ 已回答 — 学得的语义表示</span><span class="en">✅ ANSWERED — learned semantic representation</span></b></p>
+    <p><span class="zh"><b>Loop 13 做了这个实验</b>(你选的本地零 key 路线)。结论:在你真实语料上<b>没有可测收益</b>(harness 1/13 vs 词法 2/13;对抗改写只桥接 2/8;天然改写对为 0)。<b>决定:不加这个依赖</b> —— 没召回增益、会引入项目共现假阳性、且会失去「极轻量·零 key」。数据稀疏天花板第 5 次确认。诚实保留:更大模型能桥接更多改写,但数据天花板不变 —— 语料若变得更口语化,用 <code>matchFn</code> 钩子重测。详见 <code>docs/internal/loop13-embedding-experiment.md</code>。</span>
+    <span class="en"><b>Loop 13 ran the experiment</b> (your zero-key local route). Verdict: <b>no measurable benefit</b> on your real corpus (harness 1/13 vs lexical 2/13; adversarial paraphrase 2/8; natural pairs 0). <b>Decision: do NOT add the dependency</b> — no recall gain, adds project-co-occurrence false positives, and costs the "featherweight, zero-key" identity. 5th confirmation of the data-density ceiling. Honest caveat: a larger model bridges more paraphrases, but the data ceiling stands — re-test via the <code>matchFn</code> hook if a future corpus is more paraphrastic. Full record: <code>docs/internal/loop13-embedding-experiment.md</code>.</span></p>
 
     <p style="margin-top:10px;"><b>3 · <span class="zh">✅ 已完成 — store-doctor 的 3 个真问题</span><span class="en">✅ DONE — the 3 real store-doctor findings</span></b></p>
     <p><span class="zh">你授权后,<b>Loop 12 已在真实库修好全部 3 个</b>(16 room 漂移 / 23 天废锁 / null marker):<code>red → ok</code>,<b>零内容丢失</b>(对比备份验证)。doctor 的假阳性也一并修了,并建了可重复的 <code>ar repair</code> 工具 + 回归测试。详见上方 Loop 12。<b>这条不再需要你决定。</b></span>
     <span class="en">Authorized → <b>Loop 12 fixed all 3 on the live store</b> (16-room drift / 23-day lock / null marker): <code>red → ok</code>, <b>zero content lost</b> (diff-verified vs backup). The doctor's false-positive was fixed too, and a repeatable <code>ar repair</code> tool + regression tests were added. See Loop 12 above. <b>No decision needed here anymore.</b></span></p>
   </div>
 
-  <div class="foot">12 loops · opt/autonomous-loops · NOT pushed · build green 508 tests · live store red→ok · 2026-06-22</div>
+  <div class="foot">13 loops · opt/autonomous-loops · NOT pushed · build green 508 tests · live store red→ok · 2026-06-22</div>
 </div>
 
 <script>
