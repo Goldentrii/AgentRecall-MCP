@@ -25,8 +25,40 @@ import {
 } from "../dist/storage/corrections.js";
 
 describe("capture gate v3 — GATE_VERSION stamp", () => {
-  it("GATE_VERSION is bumped to v3-2026-06-21 (Loop 8)", () => {
-    assert.equal(GATE_VERSION, "v3-2026-06-21");
+  it("GATE_VERSION is bumped to v4-2026-06-22 (Loop 14 precision fix)", () => {
+    assert.equal(GATE_VERSION, "v4-2026-06-22");
+  });
+});
+
+describe("capture gate v4 — PRECISION: hedged filler rejected, recall preserved", () => {
+  // Loop 14 round-table found a MEDIUM false-accept: bare weak verbs
+  // (use/should/avoid/stop/prefer) accepted tentative first-person filler.
+  it("rejects tentative first-person filler whose only signal is a weak verb", () => {
+    const filler = [
+      "I think we should use it",
+      "the team wants to use the new API endpoint",
+      "sounds good, I will use that approach",
+      "maybe we could prefer the other one",
+    ];
+    for (const f of filler) {
+      assert.equal(isLikelyRealCorrection(f).ok, false, `hedged filler must be rejected: ${f}`);
+    }
+  });
+
+  it("STILL accepts a hedged opener when a STRONG directive marker is present (recall-safe)", () => {
+    // The hedge frame must NOT swallow a real rule that carries a strong marker.
+    assert.equal(isLikelyRealCorrection("I think we should always deploy to staging first").ok, true);
+    assert.equal(isLikelyRealCorrection("maybe, but never put secrets in the KV store").ok, true);
+  });
+
+  it("STILL accepts a directive sentence that FOLLOWS a hedged opener (per-fragment, not whole-text)", () => {
+    // A hedged first sentence must not poison a later directive sentence.
+    assert.equal(isLikelyRealCorrection("I think that part is fine. Use inline, not full width.").ok, true);
+  });
+
+  it("STILL accepts a direct weak-verb correction with no hedge frame (no recall loss)", () => {
+    assert.equal(isLikelyRealCorrection("stop making the button full width, it should be inline").ok, true);
+    assert.equal(isLikelyRealCorrection("avoid the floating docker tag, prefer a pinned digest").ok, true);
   });
 });
 
@@ -90,6 +122,13 @@ describe("capture gate v3 — RECALL: directive in sentence 2 is now ACCEPTED", 
     for (const c of cases) {
       assert.equal(isLikelyRealCorrection(c).ok, true, `should accept: ${c}`);
     }
+  });
+
+  it("REGRESSION PIN: the truncated first sentence alone is rejected — full-text scan is what rescues", () => {
+    // If a future change re-introduces the v2 first-sentence slice, "No, that's
+    // wrong" on its own rejects (ack) — proving the 2-sentence accept above is
+    // owed to the full-text scan, not to the opener.
+    assert.equal(isLikelyRealCorrection("No, that's wrong").ok, false, "the opener alone must reject");
   });
 
   it("accepts a corrective-fact 'X (not Y)' statement with no imperative verb", () => {

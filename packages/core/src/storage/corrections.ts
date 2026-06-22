@@ -142,11 +142,16 @@ function rejectedPath(project: string): string {
  * v3 (2026-06-21, Loop 8): the gate now scans the FULL correction text (and its
  * decimal-safe sentence fragments) for an actionable marker instead of only the
  * truncated first sentence. Loop 7 proved the first-sentence-slice discarded
- * ~60% of genuine soft corrections whose directive lived in sentence 2. The
- * NOISE filters (system-fragment / too-short / pure-acknowledgment / doc-header)
- * are unchanged and still run FIRST so the precision floor holds.
+ * genuine soft corrections whose directive lived in sentence 2. The NOISE
+ * filters (system-fragment / too-short / pure-acknowledgment / doc-header) are
+ * unchanged and still run FIRST so the precision floor holds.
+ *
+ * v4 (2026-06-22, Loop 14): split directive markers into STRONG (accept anywhere)
+ * vs WEAK (accept only outside a hedged/reporting frame), closing the round-table's
+ * MEDIUM false-accept where tentative filler ("I think we should use it") passed on
+ * a bare weak verb. Recall-safe — no fixture correction relies on a hedged weak verb.
  */
-export const GATE_VERSION = "v3-2026-06-21";
+export const GATE_VERSION = "v4-2026-06-22";
 
 /**
  * Cap for _rejected.jsonl — keep the most-recent N rows so a survivorship-bias
@@ -237,12 +242,26 @@ export function splitSentences(text: string): string[] {
   return out.length > 0 ? out : [text.trim()].filter(Boolean);
 }
 
-// Imperative/modal marker — directive verbs and mandates. Scanned per-fragment
-// (Loop 8) so a directive in sentence 2+ is seen. Deliberately TIGHT: only
-// markers that signal a behavioral instruction, NOT generic prose verbs (those
-// were the false-accept vector — see the dropped v2 "verbIsh anywhere" path).
-const IMPERATIVE_PATTERN =
-  /\b(never|always|don'?t|do not|must\s+not|must|should\s+not|should|needs?\s+(to|those|the|a|an|more|all)\b|use|using|stop|avoid|prefer|instead|make\s+sure|remember\s+to|remove\s+all|replace\s+with|default\s+to|keep\s+the|keep\s+\w|show\s+(both|all|the|only))\b/i;
+// Directive markers, split by STRENGTH (Loop 14 precision fix). Scanned
+// per-fragment (Loop 8) so a directive in sentence 2+ is seen.
+//
+// STRONG markers signal a behavioral rule even inside prose, so they accept
+// unconditionally. WEAK markers (a bare modal/verb) are genuine in a direct
+// correction ("stop making it full width, it should be inline") but ALSO appear
+// in tentative first-person filler ("I think we should use it") — the MEDIUM
+// false-accept the Loop 14 round-table found. WEAK markers therefore accept only
+// when the fragment is NOT a hedged/reporting frame. This is recall-safe: every
+// genuine fixture correction carries a STRONG marker, a preference shape, or a
+// non-hedged weak verb (verified by scripts/eval/capture-gate-confusion.mjs).
+const STRONG_IMPERATIVE =
+  /\b(never|always|don'?t|do not|must\s+not|must|should\s+not|needs?\s+(to|those|the|a|an|more|all)\b|instead|make\s+sure|remember\s+to|remove\s+all|replace\s+with|default\s+to|keep\s+the|keep\s+\w|show\s+(both|all|the|only))\b/i;
+const WEAK_IMPERATIVE = /\b(should|use|using|stop|avoid|prefer)\b/i;
+// Tentative / reporting frame at the START of a fragment — the speaker is musing
+// or reporting, not issuing a rule. A WEAK marker inside such a frame is NOT a
+// directive. Anchored at ^ so it only catches the OPENER, never a directive
+// sentence that merely follows a hedge.
+const HEDGE_FRAME =
+  /^\s*(i\s+(think|guess|suppose|believe|reckon|feel|will)\b|i'?ll\b|i'?m\s+going\s+to\b|maybe\b|perhaps\b|sounds?\s+good\b|the\s+team\s+(wants?|thinks?|prefers?)\b|we\s+(could|might|may)\b)/i;
 
 // Preference / corrective-fact statement. Includes user-preference verbs (CJK
 // equivalents) AND the "X not Y" / "wrong … not" corrective-fact shape that
@@ -330,8 +349,16 @@ export function isLikelyRealCorrection(rule: string, _context?: string): { ok: b
   // a text that opens with an acknowledgment.
   const fragments = [r, ...splitSentences(r)];
 
-  // (a) imperative / modal marker in any fragment
-  if (fragments.some((f) => IMPERATIVE_PATTERN.test(f))) {
+  // (a) STRONG directive marker in any fragment → accept unconditionally.
+  if (fragments.some((f) => STRONG_IMPERATIVE.test(f))) {
+    return { ok: true };
+  }
+
+  // (a2) WEAK directive marker → accept only in a fragment that is NOT a hedged/
+  // reporting frame. Closes the Loop-14 filler-prose false-accept ("I think we
+  // should use it") while still accepting a direct weak-verb correction ("stop
+  // making it full width") and a directive sentence that merely FOLLOWS a hedge.
+  if (fragments.some((f) => WEAK_IMPERATIVE.test(f) && !HEDGE_FRAME.test(f))) {
     return { ok: true };
   }
 
