@@ -297,6 +297,7 @@ export { journalCapture, type JournalCaptureInput, type JournalCaptureResult } f
 export { journalList, type JournalListInput, type JournalListResult } from "./tools-logic/journal-list.js";
 export { journalProjects, type JournalProjectsResult } from "./tools-logic/journal-projects.js";
 export { projectBoard, type ProjectBoardResult, type ProjectEntry, type ProjectStatus } from "./tools-logic/project-board.js";
+export { renderBoard, renderDreamBanner, fitToWidth, displayWidth, charDisplayWidth, type DreamStatus, type RenderBoardOptions } from "./display/board-render.js";
 export { journalSearch, type JournalSearchInput, type JournalSearchResult } from "./tools-logic/journal-search.js";
 export { journalState, stateFilePath, readState, type JournalStateInput, type JournalStateResult } from "./tools-logic/journal-state.js";
 export { journalColdStart, type JournalColdStartInput, type JournalColdStartResult } from "./tools-logic/journal-cold-start.js";

@@ -83,6 +83,7 @@ DIGEST (context cache):
 
 META:
   ar projects
+  ar status [--json]   Project status board (human table by default; --json for structured data)
   ar synthesize [--entries N] [--focus full|decisions|blockers|goals] [--no-palace] [--consolidate]
   ar knowledge write --category <cat> --title "t" --what "w" --cause "c" --fix "f" [--severity critical|important|minor]
   ar knowledge read [--category <cat>]
@@ -246,6 +247,18 @@ async function main(): Promise<void> {
     case "projects": {
       const result = await core.journalProjects();
       output(result);
+      break;
+    }
+    case "status": {
+      const board = await core.projectBoard();
+      if (hasFlag("--json", rest)) {
+        output(board);
+      } else {
+        const boardWidth = process.stdout.columns
+          ? Math.min(110, Math.max(80, process.stdout.columns))
+          : 100;
+        output(core.renderBoard(board, { boardWidth }));
+      }
       break;
     }
     case "palace": {
