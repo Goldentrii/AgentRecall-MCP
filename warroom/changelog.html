@@ -116,6 +116,51 @@
     <span style="font-size:20px;color:var(--accent);flex-shrink:0;">→</span>
   </a>
 
+  <!-- MAJOR: v3.4.33 -->
+  <section class="hero">
+    <div class="hero-head">
+      <div class="tagrow">
+        <span class="vbadge">v3.4.33</span>
+        <span class="major"><span class="en ">★ Cross-surface release</span><span class="zh ">★ 跨平台版本</span></span>
+        <span class="date mono">2026-06-22</span>
+      </div>
+      <h2 class="hero-title"><span class="en ">The Cross-Surface Adapter</span><span class="zh ">跨平台 Adapter</span></h2>
+      <p class="hero-lede"><span class="en ">AgentRecall's auto-lifecycle used to fully fire only on Claude Code (which has hooks). This release makes the <b>agent itself</b> the lifecycle driver on hook-less hosts (Codex, chatbox, OpenClaw) — honestly: no fake "AUTO" badge where a host physically can't auto-fire. Built in 6 phases, each ground→design→adversarial-verify→converge, then a full-suite security sweep. Also ships the 14-loop autonomous hardening run.</span><span class="zh ">AgentRecall 的自动生命周期过去只在 Claude Code（有 hooks）完整运作。这一版让 <b>agent 自己</b>在无 hook 的宿主（Codex、chatbox、OpenClaw）上驱动生命周期 —— 诚实地:不在物理上无法自动触发的宿主上贴假「AUTO」标。6 个阶段构建,每个都 ground→设计→对抗验证→收敛,最后全量安全扫描。同时附带 14-loop 自主硬化成果。</span></p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <span class="ic">🧭</span>
+        <h3><span class="en ">Agent-driven lifecycle</span><span class="zh ">Agent 自驱生命周期</span></h3>
+        <p><span class="en ">A server-level MCP <code>instructions</code> carrier + tool-description timing tags + a read-only <code>brief()</code> tool tell the agent to recall at start, save on durable intent, and close at exit — wherever hooks can't reach.</span><span class="zh ">MCP server 级 <code>instructions</code> 载体 + 工具时序标签 + 只读 <code>brief()</code> 工具,告诉 agent 开局 recall、有持久意图就存、退出前收尾 —— 在 hooks 够不到的地方。</span></p>
+        <p class="why"><span class="en ">Honest: on hook-less hosts this is best-effort agent-driven, not magic auto-save — and unmeasured on real hosts yet.</span><span class="zh ">诚实:无 hook 宿主上这是尽力而为的 agent 自驱,不是魔法自动存 —— 且尚未在真实宿主上测量。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">🔀</span>
+        <h3><span class="en ">Two-lane capture, local-first</span><span class="zh ">双道捕获,本地优先</span></h3>
+        <p><span class="en ">An explicit "save/记住" (from you OR the agent) writes the <b>local</b> raw archive liberally; passive text still passes the v4 capture gate. Storage isn't the constraint — losing a correction is.</span><span class="zh ">显式「save/记住」(你或 agent)放开写<b>本地</b>无损档案;被动文本仍过 v4 捕获门。存储不是约束 —— 丢失纠正才是。</span></p>
+      </div>
+      <div class="card flag">
+        <span class="ic">🔒</span>
+        <h3><span class="en ">Privacy: one egress chokepoint</span><span class="zh ">隐私:单一出口闸</span></h3>
+        <p><span class="en ">No cloud config → zero egress. Every Supabase write is scrubbed (prompt-injection + secret-scan) <b>inside the egress primitive</b> — verified impossible to bypass. Bootstrap reads are realpath-jailed + secret-filtered + consent-gated.</span><span class="zh ">没配云 → 零外传。每次 Supabase 写入都在<b>出口原语内部</b>过 scrub(注入清洗 + 密钥扫描)—— 验证过绕不开。Bootstrap 读取有 realpath 牢笼 + 密钥过滤 + 同意门控。</span></p>
+        <p class="why"><span class="en ">A live secret-egress hole (backfill bypass) was caught by the final sweep and closed at the chokepoint.</span><span class="zh ">最终扫描抓到一个真·密钥外传漏洞(backfill 绕过),在闸点堵死。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">🖥️</span>
+        <h3><span class="en ">Surface-agnostic status board</span><span class="zh ">跨平台状态看板</span></h3>
+        <p><span class="en "><code>ar status</code> + a pure <code>renderBoard</code> + <code>project_board(format:text)</code> — the cockpit now works on any surface, not just the Claude skill.</span><span class="zh "><code>ar status</code> + 纯 <code>renderBoard</code> + <code>project_board(format:text)</code> —— 驾驶舱现在任意宿主可用,不再只是 Claude skill。</span></p>
+      </div>
+    </div>
+    <div class="verify">
+      <span class="vlabel"><span class="en ">Verified</span><span class="zh ">已验证</span></span>
+      <span class="pill">build · 0 errors</span>
+      <span class="pill">694 tests · 0 fail</span>
+      <span class="pill">6 phases · each round-table-verified</span>
+      <span class="pill">security · exploits probed</span>
+    </div>
+    <div class="shipped"><span class="en "><b>Shipped 2026-06-22 (v3.4.33):</b> 8 adapter commits + the 14-loop hardening. <i>Tier-B agent-self-drive is structurally in place but not yet measured on real Codex/chatbox sessions (per-host eval pending). npm publish tracked separately.</i></span><span class="zh "><b>2026-06-22 发布 (v3.4.33):</b>8 个 adapter commit + 14-loop 硬化。<i>Tier-B 的 agent 自驱已结构就位,但尚未在真实 Codex/chatbox 会话上测量(各宿主 eval 待办)。npm 发布另行处理。</i></span></div>
+  </section>
+
   <!-- REFLECTION: Autonomous Loops 12–14 (local, not released) -->
   <section class="hero">
     <div class="hero-head">
