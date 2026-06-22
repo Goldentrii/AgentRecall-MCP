@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import {
   buildRecognition,
   PERSON_LOW_CONFIDENCE_CAVEAT,
-} from "../dist/tools-logic/recognition.js";
+} from "../dist/tools-logic/recognition-builder.js";
 import { ensurePalaceInitialized } from "../dist/palace/rooms.js";
 import { writeIdentity, readIdentity } from "../dist/palace/identity.js";
 import { writeSkill } from "../dist/palace/skills.js";
@@ -224,10 +224,10 @@ describe("Loop 4 — buildRecognition", () => {
     }
   });
 
-  it("recognition.ts source references no Supabase / fetch / OpenAI in its call surface", () => {
+  it("recognition-builder.ts source references no Supabase / fetch / OpenAI in its call surface", () => {
     // Static guard: the assembler module itself imports no network client.
     const src = fs.readFileSync(
-      new URL("../src/tools-logic/recognition.ts", import.meta.url),
+      new URL("../src/tools-logic/recognition-builder.ts", import.meta.url),
       "utf-8",
     );
     // Strip comments so prose mentions ("no Supabase, no LLM") don't trip the grep.

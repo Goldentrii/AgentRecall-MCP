@@ -29,7 +29,7 @@ import { backfill } from "../supabase/sync.js";
 import { listMilestones } from "../palace/pipeline.js";
 import { getDreamHealth, type DreamHealth } from "../storage/dream-health.js";
 import { readBehaviorPolicies, recordPolicyLoad, type BehaviorRule } from "../storage/behavior-policies.js";
-import { buildRecognition, type RecognitionPayload } from "./recognition.js";
+import { buildRecognition, type RecognitionPayload } from "./recognition-builder.js";
 import { runStoreDoctor, storeDoctorBanner } from "./store-doctor.js";
 
 /** Slice text at the nearest word boundary, avoiding mid-word truncation. */

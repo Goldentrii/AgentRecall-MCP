@@ -11,3 +11,7 @@ dist/
 /src/
 supabase/.temp/
 .superpowers/
+
+# MCP registry publishing — secrets + downloaded binary (never commit)
+.mcpregistry_*token
+mcp-publisher

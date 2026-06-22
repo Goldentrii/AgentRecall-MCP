@@ -344,7 +344,7 @@ export {
   type RecognitionProject,
   type RecognitionPerson,
   type BuildRecognitionOptions,
-} from "./tools-logic/recognition.js";
+} from "./tools-logic/recognition-builder.js";
 export { sessionEnd, checkInsightQuality, type SessionEndInput, type SessionEndResult, type InsightQualityWarning, type MergeSuggestion } from "./tools-logic/session-end.js";
 export { promoteConfirmedInsights, type PromotionResult } from "./tools-logic/insight-promotion.js";
 export { check, type CheckInput, type CheckResult, type WatchFor, type PastDelta } from "./tools-logic/check.js";
@@ -517,13 +517,13 @@ export type { BlindSpot, BlindSpotProfile } from "./helpers/blind-spots.js";
 export { writeBlindSpots, readBlindSpots, recomputeBlindSpots } from "./storage/blind-spots-store.js";
 export { personalDir } from "./storage/paths.js";
 // Loop 9 — The Mirror (visible, correctable self-model)
-export { buildMirror, renderMirror, deriveCrossProjectPatterns } from "./tools-logic/mirror.js";
+export { buildMirror, renderMirror, deriveCrossProjectPatterns } from "./tools-logic/mirror-builder.js";
 export type {
   MirrorReflection,
   MirrorObservation,
   MirrorReaders,
   CrossProjectPattern,
-} from "./tools-logic/mirror.js";
+} from "./tools-logic/mirror-builder.js";
 export { predictCorrection } from "./tools-logic/predict-correction.js";
 export type {
   PredictCorrectionInput,

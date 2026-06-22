@@ -10,7 +10,7 @@ import {
   buildMirror,
   renderMirror,
   deriveCrossProjectPatterns,
-} from "../dist/tools-logic/mirror.js";
+} from "../dist/tools-logic/mirror-builder.js";
 import { deriveBlindSpots } from "../dist/helpers/blind-spots.js";
 
 // ── Fixture builders ───────────────────────────────────────────────────────
