@@ -91,6 +91,7 @@ META:
 DIAGNOSTICS:
   ar stats             Show memory system health: corrections, feedback, insights, graph edges
   ar corrections rejected [--stats] [--json]  Survivorship-bias probe: corrections the capture gate discarded
+  ar corrections export [--all-projects] [--include-retracted] [--since YYYY-MM-DD]  Vendor-neutral, fail-closed-scrubbed JSON export for external memory backends
   ar mirror [--json]   The Mirror: first-person, citation-backed self-model from your real corrections/insights (personal-tier, local-only; omit --project for the cross-project mirror)
   ar doctor [--json]   READ-ONLY store integrity check: index drift, stale locks, stalled consolidation seam
   ar repair [--apply] [--json]  Remediate doctor findings (DRY-RUN unless --apply): reindex drift, remove dead locks, login-free drain
@@ -533,8 +534,43 @@ async function main(): Promise<void> {
           }
           break;
         }
+        case "export": {
+          // Vendor-neutral, fail-closed-scrubbed export of corrections — the one
+          // supported egress contract for external memory backends. Active-only +
+          // current project by default; --all-projects / --include-retracted / --since widen it.
+          const allProjects = hasFlag("--all-projects", rest);
+          const includeRetracted = hasFlag("--include-retracted", rest);
+          const since = getFlag("--since", rest);
+          if (since !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(since)) {
+            process.stderr.write(`Invalid --since "${since}" — expected YYYY-MM-DD\n`);
+            process.exitCode = 1;
+            break;
+          }
+          const opts: Parameters<typeof core.exportCorrections>[0] = {
+            ...(includeRetracted ? { includeRetracted: true } : {}),
+            ...(since ? { since } : {}),
+          };
+          if (!allProjects) {
+            opts.project = await core.resolveProject(project);
+          }
+          try {
+            const rows = core.exportCorrections(opts);
+            // Non-blocking heads-up before a broad dump (stderr — does not pollute the JSON pipe).
+            if (allProjects) {
+              const projCount = new Set(rows.map((r) => r.project)).size;
+              process.stderr.write(`[ar] exporting ${rows.length} corrections across ${projCount} projects (retracted: ${includeRetracted ? "yes" : "no"})\n`);
+            }
+            // Always machine-readable: this output is meant to be piped into an adapter.
+            output(rows);
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            process.stderr.write(`Export aborted (fail-closed): ${msg}\n`);
+            process.exitCode = 1;
+          }
+          break;
+        }
         default:
-          process.stderr.write(`Unknown corrections subcommand: ${sub ?? "(none)"}\nUsage: ar corrections rejected [--stats] [--json]\n`);
+          process.stderr.write(`Unknown corrections subcommand: ${sub ?? "(none)"}\nUsage:\n  ar corrections rejected [--stats] [--json]\n  ar corrections export [--all-projects] [--include-retracted] [--since YYYY-MM-DD]\n`);
           process.exitCode = 1;
       }
       break;

@@ -1,6 +1,6 @@
 {
   "name": "agent-recall-cli",
-  "version": "3.4.33",
+  "version": "3.4.34",
   "description": "CLI for AgentRecall memory system",
   "type": "module",
   "bin": {
@@ -11,7 +11,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && chmod +x dist/index.js",
     "test": "node --test test/*.test.mjs"
   },
   "keywords": [
@@ -30,7 +30,7 @@
     "compounding-memory"
   ],
   "dependencies": {
-    "agent-recall-core": "3.4.33"
+    "agent-recall-core": "3.4.34"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

@@ -230,6 +230,44 @@ When defined, any agent (Claude, GPT, Gemini) can read/write the same memory sto
 
 ---
 
+## Release — v3.4.34 (2026-06-23) — `ar corrections export` (egress contract for external memory backends)
+
+First-class, vendor-neutral, **fail-closed-scrubbed** export of corrections — backlog item #1 surfaced by the AgentRecall + Hindsight integration round-table (20-agent workflow). Before this, any external memory backend (Hindsight/Mem0/Zep) had to glob `~/.agent-recall/projects/*/corrections/*.json` directly (coupled to internal layout) and re-implement the secret scrub (which drifts and leaks the next token type). And AR's `scrubForCloud` is fail-**open** (returns original on error) — correct for the sync hot-path, wrong for a deliberate export.
+
+| Item | What | Why |
+|------|------|-----|
+| `ar corrections export` | New CLI: `[--all-projects] [--include-retracted] [--since YYYY-MM-DD]`. Emits a stable `CorrectionExport[]` (`schema_version: "corrections-export/v1"`). | One supported egress contract — consumers pin the schema instead of globbing internal files. |
+| `scrubForExport()` (content-guard.ts) | Fail-**closed** sibling of `scrubForCloud`: scrubs, then re-scans the output and **throws `SecretScanError`** if any secret survives. Every outbound string field (rule/context/tags/project/kind/last_outcome) passes through it. | A deliberate export must abort rather than leak. Also the reusable core of backlog #4 (`ar scrub`). |
+| `confidence_basis: "authority-weight"` | Explicit field on every row labelling what `weight` means. | Pre-empts backlog #2 — `confidence` is overloaded 3 ways; downstream must not mistake correction authority for retrieval relevance or truth probability. |
+| Active-only default | Retracted (`active:false`) records excluded unless `--include-retracted`. | Never teach an external store a belief that was retracted. |
+
+**Decision (challenge to the original backlog wording):** **dropped `--format hindsight`** — AR core stays vendor-neutral; the Hindsight-specific mapping lives in the adapter/cookbook, not in core.
+
+**Verification:** 7 new tests + full core suite (638) green. Passed independent code-reviewer + security-reviewer (never-self-review); 2 HIGH fixed (all string fields scrubbed, not just rule/context/tags; fail-closed no longer defeated by a swallowed error), plus MEDIUM/LOW (TOCTOU on read, `--since` validation, all-projects stderr count). Real-store smoke: 23 corrections / 9 projects export secret-clean.
+
+**REDLINE:** committed + pushed to `origin` at human request. npm publish NOT done (still held; clean-clone dep-pin verification pending — Glama scar).
+
+---
+
+## Release — v3.4.33 (2026-06-22) — cross-surface adapter (agent-driven lifecycle for non-Claude hosts)
+
+AR's auto-lifecycle (recall-start / capture / save-stop) only fully fires on Claude Code (hooks). Codex/chatbox/OpenClaw had the MCP primitives but nothing fired them. The adapter makes the **agent** the lifecycle driver where hooks can't reach — honestly (no fake "AUTO" on hook-less hosts). Built P0–P5 via Workflow orchestration (ground→design→adversarial-verify→converge per phase, never-self-review).
+
+| Phase | What |
+|-------|------|
+| P0 | MCP server-level `instructions` carrier (constructor ARG 2 — arg1 silently drops) + tool-description timing tags + honesty-gated annotations |
+| P1 | Two-lane capture: `durable-intent.ts` (saveTriggerKind + hedge-demotion, single source), `capture-router.ts` (explicit-save → LOCAL raw-archive only; passive → v4 gate), `content-guard.ts` scrub |
+| P2 | `display/board-render.ts` (pure renderBoard) + `ar status` + `project_board format:text` |
+| P3 | hook-end Stop-time scan of the agent's own final message → force-archive (best-effort, never-throw) |
+| P4 | `brief` tool (read-only, budget-enforced) + empty-store transfer failsafe + 4 bootstrap read-side guards (realpath jail, content secret-scan, same-session nonce, consent gate) |
+| P5 | `docs/internal/HOST-TIERS.md` (honest per-surface matrix) |
+
+**Load-bearing invariant:** the egress chokepoint — `scrubForCloud` runs INSIDE `doSync` (covers `syncToSupabase()` AND `backfill()`); the final verification caught `backfill` bypassing a call-site-only scrub (a real secret-leak) and fixed it at the chokepoint. Privacy = opt-in cloud (no Supabase config → zero egress; generous-save stays local). Tier-B "agent self-driven" is structurally in place but **unmeasured** on real Codex/chatbox (OQ-6).
+
+**Shipped:** merged `feat/cross-surface-adapter` → main (ff), tagged `v3.4.33`, pushed to `origin`/Goldentrii. 694 tests green. npm publish held.
+
+---
+
 ## Release — v3.4.32 (2026-06-20) — Memory → Understanding (5 waves)
 
 > Branch-staged on `feat/memory-to-understanding`. Build clean, 408 tests green. NOT yet merged/published — version stamped at human request after the waves landed and the HIGH review items were closed.

@@ -151,3 +151,51 @@ export function scrubForCloud(content: string): string {
     return content;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Fail-CLOSED export scrub — for deliberate egress (e.g. `ar corrections export`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Raised by scrubForExport when a secret survives scrubbing. Distinct error type
+ * so callers can abort an export and name the offending record.
+ */
+export class SecretScanError extends Error {
+  constructor(public readonly label: string) {
+    super(`secret survived export scrub (${label}) — refusing to emit`);
+    this.name = "SecretScanError";
+  }
+}
+
+/**
+ * scrubForExport(content) — the fail-CLOSED sibling of scrubForCloud.
+ *
+ * scrubForCloud is fail-OPEN: on any internal error it returns the ORIGINAL
+ * content unchanged, which is the right call on the sync hot-path (never block a
+ * write) but the WRONG call for a deliberate export that will be handed to an
+ * external store. scrubForExport adds a post-condition: it re-scans the scrubbed
+ * output and THROWS SecretScanError if any known secret pattern still matches —
+ * so a redaction that silently failed open aborts the export instead of leaking.
+ *
+ * Use this for every string that leaves AgentRecall via an export/adapter path.
+ */
+export function scrubForExport(content: string): string {
+  const scrubbed = scrubForCloud(content);
+  // Fail-CLOSED post-condition. Re-scan the OUTPUT with the secret patterns
+  // DIRECTLY — not via scrubSecretContent(), whose own try/catch returns
+  // redactedCount:0 on an internal error and would silently re-open the fail-open
+  // hole this function exists to close. A bare re.test() here lets any regex-engine
+  // error propagate and abort the export rather than leak.
+  //
+  // Under scrubForCloud's current contract a successful scrub leaves no residue,
+  // so this never fires on normal input — it is a defense-in-depth guard that trips
+  // only if scrubForCloud fails open (its outer catch returns the original) or its
+  // redaction contract regresses. Either way: refuse to emit.
+  for (const { re, label } of SECRET_CONTENT_PATTERNS) {
+    re.lastIndex = 0;
+    if (re.test(scrubbed)) {
+      throw new SecretScanError(label);
+    }
+  }
+  return scrubbed;
+}

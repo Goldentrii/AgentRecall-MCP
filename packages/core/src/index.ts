@@ -240,8 +240,12 @@ export { routeCapture } from "./storage/capture-router.js";
 export type { CaptureRouteInput, CaptureRouteResult, CaptureRouteKind } from "./storage/capture-router.js";
 
 // Storage — content guard (cloud egress scrub)
-export { scrubForCloud, scrubPromptInjection, scrubSecretContent } from "./storage/content-guard.js";
+export { scrubForCloud, scrubPromptInjection, scrubSecretContent, scrubForExport, SecretScanError } from "./storage/content-guard.js";
 export type { SecretScanResult } from "./storage/content-guard.js";
+
+// Tools-logic — corrections export (vendor-neutral, fail-closed-scrubbed egress contract)
+export { exportCorrections, CORRECTION_EXPORT_SCHEMA_VERSION } from "./tools-logic/export-corrections.js";
+export type { CorrectionExport, ExportCorrectionsOptions } from "./tools-logic/export-corrections.js";
 
 // Helpers
 export {
