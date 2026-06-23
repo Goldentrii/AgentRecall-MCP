@@ -1,0 +1,44 @@
+[
+  {
+    "id": "2026-05-12-redline-no-push-without-approval",
+    "date": "2026-05-12",
+    "severity": "p0",
+    "project": "demo-app",
+    "rule": "Never run git push, npm publish, or deploy without explicit human approval — confidence is not permission.",
+    "context": "The agent pushed a version bump to main after tests passed, without being asked to.",
+    "tags": ["git", "redline", "publish-gate"],
+    "weight": 1.0,
+    "active": true,
+    "recurrence_count": 2,
+    "heeded_count": 3,
+    "last_outcome": "heeded"
+  },
+  {
+    "id": "2026-05-20-env-secrets-not-hardcoded",
+    "date": "2026-05-20",
+    "severity": "p1",
+    "project": "demo-app",
+    "rule": "Read API keys from environment variables; never hardcode them in source.",
+    "context": "During a spike the agent hardcoded a key like AKIAIOSFODNN7EXAMPLE into config.ts.",
+    "tags": ["security", "secrets"],
+    "weight": 0.8,
+    "active": true,
+    "recurrence_count": 1,
+    "heeded_count": 1,
+    "last_outcome": "heeded"
+  },
+  {
+    "id": "2026-04-30-use-tabs-not-spaces",
+    "date": "2026-04-30",
+    "severity": "p1",
+    "project": "demo-app",
+    "rule": "Use tabs for indentation in this repo.",
+    "context": "An early style guess that was later reversed.",
+    "tags": ["style"],
+    "weight": 0.4,
+    "active": false,
+    "retracted_at": "2026-05-05",
+    "retract_reason": "Superseded — the repo adopted Prettier with 2-space indentation.",
+    "last_outcome": "retracted"
+  }
+]
