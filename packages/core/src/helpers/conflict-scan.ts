@@ -34,7 +34,7 @@ export interface ConflictScanResult {
 // ---------------------------------------------------------------------------
 
 /** Extract semver-style version tokens: "1.2.3", "v1.2.3", "version 1.2.3" */
-function extractVersionTokens(text: string): Map<string, string> {
+export function extractVersionTokens(text: string): Map<string, string> {
   const result = new Map<string, string>();
   // Capture the word/context before the version number as the key
   const pattern = /(\w[\w.-]{0,30})\s*(?:v|@|version\s+)?(\d+\.\d+\.\d+)/gi;
@@ -58,7 +58,7 @@ const STATUS_WORD_MAP: Record<string, string> = {
 };
 
 /** Return [statusWord, category] pairs found in text. */
-function extractStatusTokens(text: string): Map<string, string> {
+export function extractStatusTokens(text: string): Map<string, string> {
   const result = new Map<string, string>();
   const lower = text.toLowerCase();
   for (const [word, category] of Object.entries(STATUS_WORD_MAP)) {
@@ -75,7 +75,7 @@ function extractStatusTokens(text: string): Map<string, string> {
  *   "status: blocked", "version is 3.4.1", "env = production"
  * Returns a Map<normalised_key, value>.
  */
-function extractKVTokens(text: string): Map<string, string> {
+export function extractKVTokens(text: string): Map<string, string> {
   const result = new Map<string, string>();
 
   // "key: value" or "key = value"

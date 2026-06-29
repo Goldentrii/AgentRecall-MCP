@@ -116,6 +116,58 @@
     <span style="font-size:20px;color:var(--accent);flex-shrink:0;">→</span>
   </a>
 
+  <!-- MAJOR: v3.4.35 -->
+  <section class="hero">
+    <div class="hero-head">
+      <div class="tagrow">
+        <span class="vbadge">v3.4.35</span>
+        <span class="major"><span class="en ">★ Corrections engine</span><span class="zh ">★ 纠正引擎</span></span>
+        <span class="date mono">2026-06-29</span>
+      </div>
+      <h2 class="hero-title"><span class="en ">Corrections, matured</span><span class="zh ">纠正库，成熟化</span></h2>
+      <p class="hero-lede"><span class="en ">The corrections store was a flat pile: every intake wrote a new file, near-duplicates accumulated forever, nothing aged or re-ranked. This release brings it up to the maturity AgentRecall already applies elsewhere — borrowing the <b>real</b> mechanisms from Hindsight (Vectorize's open memory engine) after a source-level audit found ~half its marketing isn't in the OSS code (no "confidence + doubled-penalty" math, no opinion network — the real signal is an integer proof-count). All implemented <b>AR-native</b>: local, file-backed, <b>zero LLM on the storage path</b>. Any action that mutates existing belief is <b>suggest-only</b> unless you opt in.</span><span class="zh ">纠正库过去是一堆扁平文件：每次写入都新建文件，近重复无限堆积，不老化、不重排。这一版把它提升到 AgentRecall 别处早有的成熟度 —— 在源码级审计发现 Hindsight（Vectorize 的开源记忆引擎）约一半 marketing 在 OSS 代码里根本没有之后（没有「confidence + 双倍降权」那套数学、没有 opinion 网络 —— 真实信号是一个整数 proof-count），只借它<b>真实落地</b>的机制。全部<b>AR 原生</b>实现：本地、文件存储、<b>存储路径零 LLM</b>。任何改写既有信念的动作都<b>默认只建议</b>，除非你显式开启。</span></p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <span class="ic">🧩</span>
+        <h3><span class="en ">Consolidation + proof-count</span><span class="zh ">合并 + proof-count</span></h3>
+        <p><span class="en ">A re-stated rule now <b>folds into</b> the existing record (<code>proof_count++</code>, tags merged, stronger severity kept) instead of spawning a duplicate file. Gate is <b>verbatim-only</b> (normalized exact match) — zero risk of merging two distinct rules.</span><span class="zh ">复述的规则现在<b>折叠进</b>已有记录（<code>proof_count++</code>、并 tags、保留更强 severity），不再生成重复文件。合并门是<b>逐字级</b>（规范化精确相等）—— 零风险，绝不把两条不同规则并掉。</span></p>
+        <p class="why"><span class="en ">Why: stop duplicate accumulation at the source; evidence count, not file count.</span><span class="zh ">为什么：在源头掐断重复堆积；看证据计数，不看文件数。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">📊</span>
+        <h3><span class="en ">Evidence-grounded confidence</span><span class="zh ">证据驱动的置信度</span></h3>
+        <p><span class="en "><code>proof_confidence</code> = Beta posterior over (heeded, recurrence): a rule that keeps being honored <b>strengthens</b>; one whose bug keeps recurring <b>weakens</b>. Kept separate from <code>weight</code> (the static authority prior).</span><span class="zh "><code>proof_confidence</code> = (heeded, recurrence) 上的 Beta 后验：一条持续被遵守的规则<b>变强</b>，一条 bug 反复复发的规则<b>变弱</b>。与 <code>weight</code>（静态权威先验）分开。</span></p>
+        <p class="why"><span class="en ">Why: a correction's trust should track whether it actually works, not just its severity.</span><span class="zh ">为什么：一条纠正的可信度应反映它是否真的奏效，而不只是它的 severity。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">🎯</span>
+        <h3><span class="en ">Ranked surfacing</span><span class="zh ">排序露出</span></h3>
+        <p><span class="en ">When P0 corrections exceed the surfacing cap, they're now ordered by <b>severity → proof_confidence → recency → proof_count</b> instead of arbitrary newest-first. The most authoritative, evidence-backed rules win the slot.</span><span class="zh ">当 P0 纠正超过露出上限时，现在按 <b>severity → proof_confidence → recency → proof_count</b> 排序，不再是任意最新优先。最权威、最有证据支撑的规则赢得席位。</span></p>
+      </div>
+      <div class="card flag">
+        <span class="ic">🔒</span>
+        <h3><span class="en ">Supersession + cleanup — suggest-default</span><span class="zh ">取代 + 清理 —— 默认只建议</span></h3>
+        <p><span class="en ">A new correction that <b>contradicts</b> an old one (version / status / key-value) can supersede it; low-signal and stale rules are flagged for review. All of it <b>suggests only</b> — it mutates nothing unless <code>AR_CONSOLIDATE_AUTO=1</code>.</span><span class="zh ">与旧规则<b>矛盾</b>的新纠正（版本 / 状态 / 键值）可取代它；低信号与陈旧规则被标记复查。全部<b>只建议</b> —— 除非 <code>AR_CONSOLIDATE_AUTO=1</code>，否则什么都不改。</span></p>
+        <p class="why"><span class="en ">Why: deleting belief is a deliberate act — the default never does it for you. Scope: catches version/status/key-value contradictions, not arbitrary semantic ones.</span><span class="zh ">为什么：删除信念是一个慎重的动作 —— 默认绝不替你做。范围：抓版本/状态/键值矛盾，抓不到任意语义矛盾。</span></p>
+      </div>
+      <div class="card reflect">
+        <span class="ic">💡</span>
+        <h3><span class="en ">Learning — verify against source, not the README</span><span class="zh ">新知 —— 对着源码核实，不是 README</span></h3>
+        <p><span class="en ">A source-level read of Hindsight found <b>~half its headline mechanisms absent from the OSS engine</b> (the confidence/penalty math, the opinion network, the "4 networks" split). The genuinely borrowable ideas were the humble ones: an integer proof-count and refine-not-overwrite. And AR already had the retrieval engine (RRF + Beta) — it just wasn't pointed at corrections.</span><span class="zh ">对 Hindsight 的源码级阅读发现<b>约一半招牌机制在 OSS 引擎里根本不存在</b>（confidence/penalty 数学、opinion 网络、「4 网络」拆分）。真正可借的是朴素的那些：一个整数 proof-count 和 refine-not-overwrite。而 AR 早就有检索引擎（RRF + Beta）—— 只是没对准 corrections。</span></p>
+        <p class="why"><span class="en ">Why: a competitor's marketing is a hypothesis; its code is the evidence.</span><span class="zh ">为什么：对手的 marketing 是假设，它的代码才是证据。</span></p>
+      </div>
+    </div>
+    <div class="verify">
+      <span class="vlabel"><span class="en ">Verified</span><span class="zh ">已验证</span></span>
+      <span class="pill">build · 0 errors</span>
+      <span class="pill">720 tests · 0 fail</span>
+      <span class="pill">storage path · zero LLM</span>
+      <span class="pill">self-audit · ship-as-is</span>
+    </div>
+    <div class="shipped"><span class="en "><b>Shipped 2026-06-29 (v3.4.35):</b> consolidation + proof-count, evidence-grounded confidence, ranked surfacing are <b>live-wired</b>; supersession + noise/stale review ship as tested, opt-in functions (auto-wiring into session_end is a follow-up). <i>Honest: this batch had an author <b>self-audit</b> (ship-as-is) but the independent round-table review was infra-blocked this session — it is owed and will run before the next release. Consolidation is verbatim-only by design; paraphrase-level merge stays out of the zero-LLM storage path.</i></span><span class="zh "><b>2026-06-29 发布 (v3.4.35)：</b>合并 + proof-count、证据驱动置信度、排序露出已<b>接入生效</b>；取代 + 噪声/陈旧复查作为已测试、可选开启的函数发布（接入 session_end 是后续）。<i>诚实：这批做了作者<b>自审</b>（可发布），但独立 round-table 审查本次被 infra 卡住 —— 这道仍欠着，下个版本前补上。合并按设计是逐字级；paraphrase 级合并不进零-LLM 的存储路径。</i></span></div>
+  </section>
+
   <!-- MAJOR: v3.4.33 -->
   <section class="hero">
     <div class="hero-head">

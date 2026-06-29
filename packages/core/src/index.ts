@@ -223,6 +223,9 @@ export {
   getRejectedStats,
   GATE_VERSION,
   splitSentences,
+  isStaleCorrection,
+  reviewNoiseCorrections,
+  rankCorrections,
 } from "./storage/corrections.js";
 export type {
   CorrectionRecord,
@@ -230,7 +233,12 @@ export type {
   RetractCorrectionResult,
   RejectedCorrectionRecord,
   RejectedStats,
+  NoiseReview,
 } from "./storage/corrections.js";
+
+// Tools-logic — P2 supersession (contradiction → supersede; suggest-default)
+export { detectCorrectionConflicts, reviewSupersessions } from "./tools-logic/supersession.js";
+export type { SupersessionMatch, SupersessionReview } from "./tools-logic/supersession.js";
 
 // Storage — durable intent (save-trigger vocabulary + arbiter)
 export { DURABLE_INTENT_PATTERNS, saveTriggerKind } from "./storage/durable-intent.js";

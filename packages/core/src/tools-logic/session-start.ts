@@ -15,7 +15,7 @@ import { journalDirs } from "../storage/paths.js";
 import { extractSection } from "../helpers/sections.js";
 import { todayISO } from "../storage/fs-utils.js";
 import { readAlignmentLog, extractWatchPatterns, computeDecisionCalibration, type WatchForPattern } from "../helpers/alignment-patterns.js";
-import { readP0Corrections, recordOutcome, getCorrectionKPIs, type CorrectionRecord } from "../storage/corrections.js";
+import { readP0Corrections, recordOutcome, getCorrectionKPIs, rankCorrections, type CorrectionRecord } from "../storage/corrections.js";
 import { readBlindSpots } from "../storage/blind-spots-store.js";
 import { predictCorrection } from "./predict-correction.js";
 import { extractKeywords } from "../helpers/auto-name.js";
@@ -325,8 +325,10 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
     });
   }
 
-  // 7. P0 corrections — always-load behavioral rules (max 10 most recent)
-  const corrections = readP0Corrections(slug).slice(0, 10);
+  // 7. P0 corrections — always-load behavioral rules (max 10).
+  // P5: rank by severity → proof_confidence → recency → proof_count so the most
+  // authoritative, evidence-backed rules win the cap (was: arbitrary newest-10).
+  const corrections = rankCorrections(readP0Corrections(slug), 10);
 
   // P0-B: auto-record "retrieved" outcome for each surfaced correction.
   // Automaticity Law: only automatic instrumentation captures real data.

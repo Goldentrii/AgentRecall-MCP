@@ -57,6 +57,19 @@ export interface CorrectionRecord {
   predict_hits?: number;      // How many predictions later turned into a real recurrence/heeded
   predict_precision?: number; // min(1, predict_hits / predicted_count)
   last_predicted?: string;    // ISO timestamp of most recent prediction
+  /**
+   * Consolidation & lifecycle (2026-06-29). Borrowed from Hindsight's REAL
+   * mechanisms — proof-count evidence grounding, refine-not-overwrite
+   * consolidation, contradiction→supersession, staleness — implemented
+   * AR-native (local, file-backed, no LLM on the storage path). Every field is
+   * optional and defaulted in applyCorrectionDefaults so pre-existing JSON
+   * (which has none of them) normalizes on read with no migration.
+   */
+  proof_count?: number;       // Distinct times this rule was independently observed (on-write consolidation). Default 1.
+  proof_confidence?: number;  // Evidence-grounded score = betaUtility(heeded, recurrence). Default = weight. NOT named `confidence` — collides with the export's documented confidence_basis:"authority-weight".
+  superseded_by?: string;     // id of the correction that replaced this one. Record stays on disk for audit; active:false hides it from surfacing.
+  merged_from?: string[];     // ids folded into this record by on-write consolidation (audit trail).
+  stale?: boolean;            // computeTrend flagged this rule untouched >30d. Informational — corrections are decay-protected.
 }
 
 /**
@@ -105,6 +118,8 @@ export interface CorrectionKPI {
   noise_candidates: Array<{ id: string; rule: string; precision: number }>;
   /** Insights above 0.8 precision with ≥3 retrievals — promote candidates. */
   high_signal: Array<{ id: string; rule: string; precision: number; retrieved: number }>;
+  /** P4: active corrections untouched > STALE_DAYS — review candidates. */
+  stale_candidates: Array<{ id: string; rule: string; last_seen: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -183,18 +198,63 @@ function todayDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * Atomic JSON write — tmp + rename, mode 0600. Prevents truncation on SIGTERM.
+ * Extracted from the three identical inlined copies (writeCorrection /
+ * retractCorrection / recordOutcome) so every correction writer shares one
+ * durable path. Pure side-effect helper; no behavior change vs the originals.
+ */
+function writeRecordAtomic(filepath: string, record: unknown): void {
+  const tmp = `${filepath}.tmp.${process.pid}.${Date.now()}`;
+  fs.writeFileSync(tmp, JSON.stringify(record, null, 2), { encoding: "utf-8", mode: 0o600 });
+  fs.renameSync(tmp, filepath);
+}
+
+/**
+ * Beta posterior mean E[Beta(α,β)] with α=heeded+1, β=recurrence+1 (Laplace).
+ * Mirrors the canonical `betaUtility` in tools-logic/smart-recall.ts — kept INLINE
+ * so the low-level storage layer never imports the recall stack. Returns (0,1):
+ * neutral (no evidence) = 0.5; more heeded → higher; more recurrence → lower.
+ */
+function betaPosterior(heeded: number, recurrence: number): number {
+  return (heeded + 1) / (heeded + recurrence + 2);
+}
+
+/** Days after which an untouched correction is considered stale (P4). */
+const STALE_DAYS = 30;
+
+/**
+ * P4: a correction is stale when its most recent touch (last_retrieved, else
+ * last_outcome, else its date) is older than STALE_DAYS. Pure — `nowMs` is
+ * injectable for tests. INFORMATIONAL ONLY: the corrections room is decay-
+ * protected, so this never archives on its own; it surfaces a review candidate.
+ */
+export function isStaleCorrection(rec: CorrectionRecord, nowMs: number = Date.now()): boolean {
+  const touch = rec.last_retrieved ?? rec.last_outcome ?? rec.date;
+  const t = new Date(touch).getTime();
+  if (Number.isNaN(t)) return false;
+  return nowMs - t > STALE_DAYS * 24 * 60 * 60 * 1000;
+}
+
 function applyCorrectionDefaults(record: CorrectionRecord, holderDefault: string): CorrectionRecord {
   const kind = record.kind ?? "correction";
+  const weight = record.weight ?? defaultWeight(record.severity);
   return {
     ...record,
     holder: record.holder ?? holderDefault,
     kind,
-    weight: record.weight ?? defaultWeight(record.severity),
+    weight,
     active: record.active ?? true,
     // Wave 5: a human correction is authoritative ground truth by default.
     // Non-correction kinds (insight/hunch/fact) are advisory unless explicitly
     // marked authoritative. Honor an explicit value when present.
     authoritative: record.authoritative ?? (kind === "correction"),
+    // Consolidation/lifecycle defaults (2026-06-29). Old records lack these;
+    // they normalize on read with no migration. proof_confidence seeds from the
+    // authority weight so it is meaningful before any outcome has accrued.
+    proof_count: record.proof_count ?? 1,
+    proof_confidence: record.proof_confidence ?? weight,
+    stale: record.stale ?? false,
   };
 }
 
@@ -427,6 +487,28 @@ export function isLikelyRealCorrection(rule: string, _context?: string): { ok: b
 export interface WriteCorrectionResult {
   written: boolean;
   reason?: string;
+  /** P1 consolidation: true when this intake was folded into an existing record. */
+  merged?: boolean;
+  /** id of the written record, or the existing record's id on a merge. */
+  id?: string;
+}
+
+/**
+ * P1 consolidation match key. A new correction folds into an existing ACTIVE one
+ * only when their rule titles are IDENTICAL after normalization (lowercase, all
+ * runs of non-alphanumerics collapsed to a single space, trimmed).
+ *
+ * Deliberately VERBATIM-only. The dominant duplicate source is the SAME correction
+ * captured again across sessions, and exact-match is the ONE gate with ZERO risk
+ * of folding two DISTINCT rules into one. Fuzzy/semantic matching is unsafe on the
+ * zero-LLM storage path because it cannot tell a duplicate from a contradiction:
+ * "use proxy.ts" vs "use middleware.ts" and a "P0" vs "P1" variant differ by a
+ * short/numeric token that any local matcher either inflates (char-trigram) or
+ * drops (sub-3-char token filter) — so it would wrongly merge them. Paraphrase-
+ * level consolidation is left to the optional semantic/LLM path, never here.
+ */
+function normalizeRule(rule: string): string {
+  return (rule ?? "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
 /**
@@ -473,15 +555,41 @@ export function writeCorrection(project: string, correction: CorrectionRecord): 
   const severity = correction.severity ?? detectSeverity(`${correction.rule} ${correction.context}`);
   const record = applyCorrectionDefaults({ ...correction, severity }, todayDate());
 
+  // ── P1: on-write consolidation (refine-not-overwrite) ─────────────────────
+  // Borrow Hindsight's consolidation idea, AR-native: instead of accumulating a
+  // new dated file for a re-stated rule, fold it into the most similar ACTIVE
+  // correction of the SAME kind and bump that record's proof_count. The matched
+  // record keeps its id/date (stable document_id) and absorbs the new tags +
+  // higher severity/authority/weight. High-precision LOCAL gate — no key, no
+  // network — so this never runs an LLM on the storage hot path.
+  const normNew = normalizeRule(record.rule);
+  for (const existing of readActiveCorrections(project)) {
+    if (existing.id === record.id) continue; // never merge into self (same-day re-slug)
+    if ((existing.kind ?? "correction") !== (record.kind ?? "correction")) continue;
+    if (normalizeRule(existing.rule) !== normNew) continue;
+    const merged: CorrectionRecord = {
+      ...existing,
+      proof_count: (existing.proof_count ?? 1) + 1,
+      merged_from: [...(existing.merged_from ?? []), record.id],
+      tags: Array.from(new Set([...(existing.tags ?? []), ...(record.tags ?? [])])),
+      // keep the STRONGER signal on every axis
+      severity: existing.severity === "p0" || record.severity === "p0" ? "p0" : "p1",
+      weight: Math.max(existing.weight ?? 0, record.weight ?? 0),
+      authoritative: Boolean(existing.authoritative || record.authoritative),
+      last_outcome: new Date().toISOString(),
+    };
+    const mfile = `${merged.date}-${slugify(merged.rule || merged.id)}.json`;
+    writeRecordAtomic(path.join(dir, mfile), merged);
+    return { written: true, merged: true, id: merged.id };
+  }
+
   const filename = `${record.date}-${slugify(record.rule || record.id)}.json`;
   const filepath = path.join(dir, filename);
 
   // Atomic write — tmp + rename, mode 0600
-  const tmp = `${filepath}.tmp.${process.pid}.${Date.now()}`;
-  fs.writeFileSync(tmp, JSON.stringify(record, null, 2), { encoding: "utf-8", mode: 0o600 });
-  fs.renameSync(tmp, filepath);
+  writeRecordAtomic(filepath, record);
 
-  return { written: true };
+  return { written: true, merged: false, id: record.id };
 }
 
 /**
@@ -536,7 +644,12 @@ export interface RetractCorrectionResult {
  * The file is rewritten atomically — never deleted. The record remains in
  * _outcomes.jsonl history and can be manually reactivated by editing the JSON.
  */
-export function retractCorrection(project: string, id: string, reason?: string): RetractCorrectionResult {
+export function retractCorrection(
+  project: string,
+  id: string,
+  reason?: string,
+  supersededBy?: string,
+): RetractCorrectionResult {
   const dir = correctionsDir(project);
 
   // Find the correction record by id
@@ -551,14 +664,14 @@ export function retractCorrection(project: string, id: string, reason?: string):
     active: false,
     retracted_at: new Date().toISOString(),
     ...(reason !== undefined ? { retract_reason: reason } : {}),
+    // P2: forward pointer to the correction that replaced this one (audit trail).
+    ...(supersededBy !== undefined ? { superseded_by: supersededBy } : {}),
   };
 
   const filename = `${updated.date}-${slugify(updated.rule || updated.id)}.json`;
   const filepath = path.join(dir, filename);
   // Atomic rewrite — tmp + rename, mode 0600
-  const tmp = `${filepath}.tmp.${process.pid}.${Date.now()}`;
-  fs.writeFileSync(tmp, JSON.stringify(updated, null, 2), { encoding: "utf-8", mode: 0o600 });
-  fs.renameSync(tmp, filepath);
+  writeRecordAtomic(filepath, updated);
 
   return { success: true, id };
 }
@@ -623,12 +736,21 @@ export function recordOutcome(outcome: CorrectionOutcome): void {
     ? Math.min(1, Number((ph / predictDenom).toFixed(3)))
     : undefined;
 
+  // P3: evidence-grounded proof_confidence. With NO outcome evidence yet, keep the
+  // authority prior (weight); once heeded/recurrence accrue, move to the Beta
+  // posterior so a rule that keeps being honored strengthens and one whose bug
+  // keeps recurring weakens. Kept SEPARATE from `precision` (heeded/retrieved) and
+  // from `weight` (static authority) — this is the evidence axis.
+  const heededC = updated.heeded_count ?? 0;
+  const recurC = updated.recurrence_count ?? 0;
+  updated.proof_confidence = (heededC + recurC) > 0
+    ? Number(betaPosterior(heededC, recurC).toFixed(3))
+    : (updated.weight ?? defaultWeight(updated.severity));
+
   // Re-write the JSON file atomically (tmp + rename — prevents truncation on SIGTERM).
   const filename = `${updated.date}-${slugify(updated.rule || updated.id)}.json`;
   const filepath = path.join(dir, filename);
-  const tmp = `${filepath}.tmp.${process.pid}.${Date.now()}`;
-  fs.writeFileSync(tmp, JSON.stringify(updated, null, 2), { encoding: "utf-8", mode: 0o600 });
-  fs.renameSync(tmp, filepath);
+  writeRecordAtomic(filepath, updated);
 }
 
 /**
@@ -874,6 +996,14 @@ export function getCorrectionKPIs(project: string): CorrectionKPI {
     }
   }
 
+  const nowMs = Date.now();
+  const stale: CorrectionKPI["stale_candidates"] = [];
+  for (const r of active) {
+    if (isStaleCorrection(r, nowMs)) {
+      stale.push({ id: r.id, rule: r.rule, last_seen: r.last_retrieved ?? r.last_outcome ?? r.date });
+    }
+  }
+
   return {
     project,
     total: all.length,
@@ -884,5 +1014,61 @@ export function getCorrectionKPIs(project: string): CorrectionKPI {
     precision: retrieved > 0 ? Math.min(1, Number((heeded / retrieved).toFixed(3))) : NaN,
     noise_candidates: noise,
     high_signal: hot,
+    stale_candidates: stale,
   };
+}
+
+export interface NoiseReview {
+  /** Low-signal corrections (precision<0.3, retrieved≥3) proposed for archiving. */
+  suggestions: Array<{ id: string; rule: string; precision: number }>;
+  /** ids actually retracted — non-empty ONLY when auto mode is on. */
+  pruned: string[];
+  /** Whether this call ran in auto-prune mode. */
+  auto: boolean;
+}
+
+/**
+ * P4: review low-signal corrections for archiving. SUGGEST-ONLY by default —
+ * returns candidates and mutates NOTHING. Set AR_CONSOLIDATE_AUTO=1 (or pass
+ * { auto: true }) to actually retract them. This mirrors AR's conservative
+ * posture: deleting belief is a deliberate act, so the default never mutates;
+ * an explicit human (or opt-in flag) triggers the retraction.
+ */
+export function reviewNoiseCorrections(project: string, opts?: { auto?: boolean }): NoiseReview {
+  const auto = opts?.auto ?? (process.env.AR_CONSOLIDATE_AUTO === "1");
+  const suggestions = getCorrectionKPIs(project).noise_candidates;
+  const pruned: string[] = [];
+  if (auto) {
+    for (const c of suggestions) {
+      const res = retractCorrection(project, c.id, "auto-pruned: low signal (precision<0.3, retrieved≥3)");
+      if (res.success) pruned.push(c.id);
+    }
+  }
+  return { suggestions, pruned, auto };
+}
+
+/**
+ * P5: order corrections for surfacing when a cap applies. Today P0s are surfaced
+ * `slice(0, 10)` in newest-first FILENAME order — so when a project has >10 P0s
+ * the ones that survive are arbitrary (just the most-recently-dated). This ranks
+ * by a composite LOCAL score (NO key, NO network) so the most authoritative +
+ * evidence-backed + recently-relevant rules win the cap:
+ *   severity (p0 always above p1) ≫ proof_confidence ≫ recency ≫ proof_count.
+ * Deterministic and stable; pure (Date.now only for recency decay).
+ */
+export function rankCorrections(records: CorrectionRecord[], limit?: number): CorrectionRecord[] {
+  const nowMs = Date.now();
+  const scoreOf = (r: CorrectionRecord): number => {
+    const sev = r.severity === "p0" ? 1 : 0;
+    const conf = r.proof_confidence ?? r.weight ?? 0;
+    const touch = r.last_retrieved ?? r.last_outcome ?? r.date;
+    const t = new Date(touch).getTime();
+    const days = Number.isNaN(t) ? 9999 : Math.max(0, (nowMs - t) / (24 * 60 * 60 * 1000));
+    const recency = Math.exp(-days / 180); // slow decay, matches knowledge half-life
+    const proof = Math.min(1, (r.proof_count ?? 1) / 5);
+    // severity dominates the ordering; the rest breaks ties within a severity tier.
+    return sev * 100 + conf * 10 + recency * 3 + proof;
+  };
+  const sorted = [...records].sort((a, b) => scoreOf(b) - scoreOf(a));
+  return limit !== undefined ? sorted.slice(0, limit) : sorted;
 }
