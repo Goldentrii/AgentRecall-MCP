@@ -15,3 +15,9 @@ supabase/.temp/
 # MCP registry publishing — secrets + downloaded binary (never commit)
 .mcpregistry_*token
 mcp-publisher
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/

@@ -44,10 +44,17 @@ synthesis and cross-session recall.** We do *not* claim AgentRecall adds correct
 - [x] offline assertions: quality gate drops the retracted record; fail-closed scrub
       redacts an AWS key before any `retain`
 - [x] notebook validates as nbformat 4.5; every code cell parses
-- [ ] `pip install -r requirements.txt && HINDSIGHT_LIVE=1 python import_corrections.py --sample`
-      against a running Hindsight — **not run in this PR** (authored without a live instance;
-      same posture as the merged `claude-code-memory` recipe)
-- [ ] confirm `document_id` upsert is idempotent across separate calls (re-run does not duplicate)
+- [x] **LIVE-RUN against `ghcr.io/vectorize-io/hindsight:latest` at `localhost:8888`** —
+      `retain` succeeds (facts extracted), `recall` surfaces the corrected understanding
+      (the push-gate rule is returned for "can I push on my own?"), and a **re-run does not
+      duplicate** — `document_id` upsert is idempotent (distinct source doc ids stable, fact
+      count stable across runs)
+- [~] `reflect` — call signature verified (the `response_schema` call returns
+      `structured_output`, with `.text` empty as documented). Full agentic synthesis was
+      **not** verified against an OpenAI-native backend: it was exercised only through an
+      OpenAI-compatible relay, where reflect's internal retrieval degraded ("missing query
+      parameters"). That is a relay confound, not a recipe bug — but treat full `reflect`
+      synthesis as unverified here.
 
 > Live-run boxes intentionally unchecked — happy to wire this into the notebook test harness
 > if you'd prefer it under `notebooks/`.

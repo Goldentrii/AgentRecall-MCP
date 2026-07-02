@@ -69,7 +69,23 @@ flow through AgentRecall's normal sync scrub. So this recipe:
   cloud egress.
 
 The scrub catches known token *shapes*, not free-form PII (emails, hostnames, JWTs). The
-localhost default is the primary protection.
+localhost default is the primary protection. Matching on *shapes* also makes it deliberately
+aggressive in the other direction: a correction that merely *discusses* a key (text that
+contains an `sk-…`-shaped string) is redacted too. That is the fail-closed trade-off — it
+would rather blunt a rule than leak a secret.
+
+## Limitations
+
+- **Hindsight extracts facts; it never stores your rule text verbatim.** Treat `recall` as
+  *what the bank believes*, not a transcript.
+- **`recall` returns no per-result score** — results are ranked, not scored, so don't write
+  confidence-gating logic against its output. Reinforcement of repeated corrections is
+  Hindsight's native Observations behavior, not something this recipe adds.
+- **Retraction is a one-way door.** The quality gate only skips `active: false` records *on
+  the way in*. A correction retracted in AgentRecall *after* it was already retained is **not**
+  removed by re-running the import — the gate drops it, so it is never re-sent and the upsert
+  never fires. To purge an already-pushed fact, delete it explicitly via Hindsight's directive
+  API (deleting belief is left as a deliberate act, especially for a secret-bearing correction).
 
 ## Files
 

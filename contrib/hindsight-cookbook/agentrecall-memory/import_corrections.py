@@ -58,6 +58,10 @@ def load_corrections(
         return json.loads(fixture.read_text(encoding="utf-8"))
 
     proj_glob = project if project else "*"
+    # `project` names a single directory segment, never a path. Reject separators
+    # and parent refs so a crafted --project can't glob outside <ar_root>/projects/.
+    if project and (os.sep in project or (os.altsep and os.altsep in project) or ".." in project):
+        sys.exit(f"--project must be a single project name, not a path: {project!r}")
     pattern = str(ar_root / "projects" / proj_glob / "corrections" / "*.json")
     records: List[Dict[str, Any]] = []
     for path in sorted(glob.glob(pattern)):
@@ -244,10 +248,13 @@ def import_corrections(records: Iterable[Dict[str, Any]], *, live: bool) -> Dict
         if plan["bank_id"] not in seen_banks:
             try:
                 client.create_bank(bank_id=plan["bank_id"], name=plan["bank_id"], mission="AgentRecall corrections for this project.")
-            except Exception:
-                # Best-effort: create_bank is not guaranteed idempotent, so a
-                # second run (bank already exists) must not abort the import.
-                pass
+            except Exception as exc:
+                # Best-effort + idempotent: a second run hits an already-existing
+                # bank, which must not abort the import. But a *real* failure
+                # (auth, network) would otherwise be swallowed while the summary
+                # still reported success — so surface it on stderr. If the bank
+                # genuinely does not exist, the retain() below raises loudly.
+                print(f"  warn: create_bank({plan['bank_id']!r}) failed: {exc}", file=sys.stderr)
             seen_banks.add(plan["bank_id"])
         client.retain(**plan)
         summary["retained"] += 1

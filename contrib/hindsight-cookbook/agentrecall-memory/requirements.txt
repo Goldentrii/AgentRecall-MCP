@@ -1,1 +1,1 @@
-hindsight-client
+hindsight-client>=0.7.2,<1

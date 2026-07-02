@@ -230,6 +230,90 @@ When defined, any agent (Claude, GPT, Gemini) can read/write the same memory sto
 
 ---
 
+## RMR Program — Phase 0 (2026-07-02) — research/plan artifacts committed as program of record
+
+Two documents committed as the standing program of record before any measurement loop runs:
+
+| Artifact | What |
+|----------|------|
+| `docs/research/agent-memory-landscape-2026-07.md` | Market/literature scan: where AR sits vs Mem0/Zep/Letta/MemGPT, which primitives are commoditised, what the genuine differentiator is (behavioral correction layer + fail-closed export contract). |
+| `docs/proposals/2026-07-02-rmr-orchestration-plan.md` | RMR program orchestration plan: loop cadence (M/C/D/H tracks), agent roles, exit conditions, escalation paths. Program of record for the measurement program. |
+
+No code changes. Committed for traceability — any future agent can read these to understand the measurement intent without reconstructing it from chat.
+
+---
+
+## RMR Program — M1: first RMR/heed baseline (2026-07-02)
+
+First instrumented measurement of recall-match rate and heed compliance across the full corpus. Goal: establish a before-baseline before any changes, with honest flagging of instrument gaps.
+
+**Corpus:** 131/154 sessions (85%), 94 corrections (30 active). 23 sessions excluded (pre-hook era, no structured data).
+
+| Metric | Value | Notes |
+|--------|-------|-------|
+| RMR-proxy (active corrections / 100 sessions) | **0.763** per 100 sessions (154 total) / **0.649** per 100 sessions (131 hook-era) | Proxy only — no ground-truth recall events yet |
+| Heed rate | **96.9%** [61.1–100 bootstrap 95% CI] | Wide CI due to sparse outcome data (1 heeded event recorded); **instrument-optimistic**: `recordOutcome` only fires when the agent explicitly calls `check_action`, so most compliance is invisible |
+| Recurrence detector coverage | **near-blind** — 1 recurrence event ever recorded across all projects | Structural gap: recurrence requires two `recordOutcome` events on the same correction; almost no sessions call `check_action` at all |
+
+**Artifacts:** `scripts/eval/rmr-report.mjs` (rerunnable; reads live AR data) + `scripts/eval/baselines/rmr-baseline-2026-07-02.json` (frozen snapshot).
+
+**Verification:** independently reviewed (code-reviewer, fresh eyes) + verified (counts rerun ±0). 2 HIGH issues fixed before merge: (1) bootstrap CI emitted `NaN` on n=1 — floored to single-obs fallback; (2) recurrence denominator could produce >100% — clamped.
+
+**NEW BUG found during baseline work:** `recordOutcome` has a lost-update race — 3 heeded increments were silently lost. The outcomes `.jsonl` is authoritative; the `heeded_count` denormalized field in the correction record drifts. Fix deferred (D-track); baseline numbers reflect the authoritative `.jsonl` counts, not the stale denormalized field.
+
+**REDLINE:** local commit only — no push, no publish, no version bump.
+
+---
+
+## RMR Program — M2: capture-leak audit (2026-07-02)
+
+Dual-blind rater study to measure how many genuine behavioral corrections actually make it into the AR corrections store. The audit answers: is the hook-no-fire gap real, and how large is it?
+
+**Method:** 59 transcript events sampled; two independent raters + adjudicator for disagreements. Inter-rater agreement: κ_genuine = 0.567 (borderline; documented — genuine/non-genuine boundary is genuinely ambiguous), κ_captured = 0.78 (good; captured/missed is more objective).
+
+| Metric | Value |
+|--------|-------|
+| Events sampled | 59 |
+| Genuine behavioral corrections (adjudicated) | 17 |
+| Captured by AR | 6 |
+| **Durable-correction capture recall** | **35.3% [17.3–58.7 bootstrap 95% CI]** |
+| Root cause of all 11 misses | **hook-no-fire** — `hook-correction` never invoked; agent detected no correction signal |
+
+**Finding:** capture is not a classification bug (the hook correctly classifies when it fires) — it is a coverage bug (the hook fires on too few turns). Sample ratings live in the session scratchpad (not committed; privacy).
+
+**REDLINE:** local commit only. Sample data not committed.
+
+---
+
+## RMR Program — C0: mcp-server npx binary +x hotfix (2026-07-02, issue #26)
+
+`npx agent-recall-mcp` silently dropped the execute bit on the `mcp-server/dist/server.js` binary during the TypeScript build step, breaking the package since v3.4.21 (the `tsc` output was never `chmod +x`'d). The build script only ran `tsc`; the shebang was present but the file was mode `0644`.
+
+| Item | What | Why |
+|------|------|-----|
+| `packages/mcp-server/package.json` build script | `tsc && chmod +x dist/server.js` | `tsc` does not preserve the execute bit; `npm pack` takes the mode as-is |
+| Pack-test verification | `npm pack --dry-run` confirmed `dist/server.js` at `0755` in the tarball | Pack-test is the authoritative check — local `dist/` after `tsc` showed `0644` |
+
+**Verification:** 720 tests green. Independent code-reviewer: APPROVE. Pack-test confirmed correct mode.
+
+**NOTE:** user-visible only after next `npm publish` (held per REDLINE — clean-clone dep-pin verification still pending per Glama scar). Issue #26 triage draft in `docs/proposals/issue-triage-2026-07-02.md` (not posted).
+
+---
+
+## RMR Program — D2: distribution hygiene (2026-07-02)
+
+Repo-URL corrections and draft distribution artifacts. No functional code changes.
+
+| Item | What |
+|------|------|
+| `packages/core/package.json` + `packages/mcp-server/package.json` | `repository.url` updated to `https://github.com/Goldentrii/AgentRecall-MCP` (repo was renamed 2026-06; both package.json still pointed to the old name) |
+| `docs/proposals/issue-triage-2026-07-02.md` | Issue-triage drafts for the backlog surfaced by Phase 0 (issue #26 and related). **NOT posted** — drafts only; human decision gate before any public issue filing. |
+| `smithery.yaml` | Smithery marketplace listing draft. **NOT submitted** — draft only; requires human review + explicit go-ahead before submission. |
+
+**REDLINE:** all artifacts local-only — no push, no submission, no deploy.
+
+---
+
 ## Release — v3.4.34 (2026-06-23) — `ar corrections export` (egress contract for external memory backends)
 
 First-class, vendor-neutral, **fail-closed-scrubbed** export of corrections — backlog item #1 surfaced by the AgentRecall + Hindsight integration round-table (20-agent workflow). Before this, any external memory backend (Hindsight/Mem0/Zep) had to glob `~/.agent-recall/projects/*/corrections/*.json` directly (coupled to internal layout) and re-implement the secret scrub (which drifts and leaks the next token type). And AR's `scrubForCloud` is fail-**open** (returns original on error) — correct for the sync hot-path, wrong for a deliberate export.

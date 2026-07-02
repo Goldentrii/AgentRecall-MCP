@@ -1,0 +1,34 @@
+# Smithery.ai configuration — https://smithery.ai/docs/config#smitheryyaml
+# AgentRecall MCP server: stdio transport, no required config at start time.
+# Supabase credentials (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) are optional;
+# without them the server operates in local-file-only mode.
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      supabaseUrl:
+        type: string
+        description: "Supabase project URL (optional, enables cloud sync)"
+      supabaseKey:
+        type: string
+        description: "Supabase service role key (optional, enables cloud sync)"
+      full:
+        type: boolean
+        default: false
+        description: "Expose all 18 MCP tools instead of the default 5-tool surface"
+    required: []
+  commandFunction: |-
+    (config) => ({
+      command: "npx",
+      args: [
+        "-y",
+        "agent-recall-mcp@latest",
+        ...(config.full ? ["--full"] : [])
+      ],
+      env: {
+        ...(config.supabaseUrl ? { SUPABASE_URL: config.supabaseUrl } : {}),
+        ...(config.supabaseKey ? { SUPABASE_KEY: config.supabaseKey } : {})
+      }
+    })
