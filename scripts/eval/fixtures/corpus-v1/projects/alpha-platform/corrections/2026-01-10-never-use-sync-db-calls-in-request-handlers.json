@@ -1,0 +1,15 @@
+{
+  "id": "2026-01-10-never-use-sync-db-calls-in-request-handlers",
+  "date": "2026-01-10",
+  "severity": "p0",
+  "project": "alpha-platform",
+  "rule": "never use synchronous database calls inside HTTP request handlers",
+  "context": "The handler was blocking the event loop because fs.readFileSync was used inside an Express route. This caused the entire Node.js process to stall under concurrent load. The team spent 4 hours diagnosing the latency spike. Async/await with the async driver must be used for all database operations inside request handlers.",
+  "tags": ["nodejs", "express", "database", "async"],
+  "kind": "correction",
+  "active": true,
+  "weight": 1.0,
+  "authoritative": true,
+  "proof_count": 1,
+  "proof_confidence": 1.0
+}

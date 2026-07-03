@@ -21,7 +21,7 @@
     "83 of 94 corrections (88%) have heeded_count=0. Most are retracted (64 retracted) — they never accumulated outcome evidence before being archived.",
     "The 'recurred' heuristic in session-end.ts requires ≥2 recurrence-marker words in the session summary. This is a high bar; the default is 'heeded'. The single recurrence on record (AgentRecall project) is the only time the heuristic fired."
   ],
-  "corpus_root": "/Users/tongwu/.agent-recall",
+  "corpus_root": "<corpus-root>",
   "projects_scanned": 19,
   "all_project_dirs_scanned": 58,
   "per_project": [

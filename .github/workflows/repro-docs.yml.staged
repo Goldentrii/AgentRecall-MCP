@@ -1,0 +1,113 @@
+name: Repro — docs/eval/REPRODUCE.md (CI Lane 3, STAGED)
+
+# STAGED — NOT active. Wiring into release.yml as a hard pre-publish gate is
+# tongwu's explicit call (REDLINE per spec §7.4). Do not activate this file by
+# renaming it to .yml without that approval.
+#
+# Purpose: fresh container, run ONLY the fenced commands extracted from
+# docs/eval/REPRODUCE.md, assert fixture artifacts match pinned baselines
+# (excluding generated_utc and environment). Executing the docs means the docs
+# cannot rot silently.
+#
+# Trigger: workflow_dispatch (manual) + weekly cron (Friday 02:00 UTC)
+# so docs drift is caught before it becomes stale.
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why are you triggering this manually?"
+        required: false
+        default: "manual repro verification"
+  schedule:
+    - cron: "0 2 * * 5"   # Fridays 02:00 UTC
+
+permissions:
+  contents: read    # minimal token
+
+jobs:
+  repro-docs:
+    runs-on: ubuntu-latest
+    env:
+      TZ: UTC    # matches REPRODUCE.md TZ pin
+    # Fresh container — no caches from other CI lanes — that is the point.
+    # If cached install artifacts were allowed, the "fresh clone" guarantee
+    # would be fiction.
+
+    steps:
+      - name: Checkout (fresh clone)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 20
+          # No cache: key — fresh container, no npm cache. This is intentional.
+
+      # ── REPRODUCE.md Step 1 (install) ──────────────────────────────────────
+      # Fenced block: npm ci
+      - name: npm ci
+        run: npm ci
+
+      # ── REPRODUCE.md Step 2 (build) ───────────────────────────────────────
+      # Fenced block: npm run build
+      - name: npm run build
+        run: npm run build
+
+      # ── REPRODUCE.md Step 3 (fixture validation) ──────────────────────────
+      # Fenced block: node scripts/eval/fixtures/validate-fixture.mjs
+      - name: Validate fixture corpus
+        run: node scripts/eval/fixtures/validate-fixture.mjs
+
+      # ── REPRODUCE.md Step 4 (bench run) ───────────────────────────────────
+      # Fenced block: TZ=UTC node scripts/eval/run-bench.mjs --corpus fixture
+      # Skips gracefully if run-bench.mjs is absent (Worker A dependency).
+      - name: Run bench (fixture)
+        run: |
+          if [ ! -f "scripts/eval/run-bench.mjs" ]; then
+            echo "::notice::run-bench.mjs absent — skipping bench run step (Worker A artefact). REPRODUCE.md Step 4 cannot be verified yet."
+          else
+            TZ=UTC node scripts/eval/run-bench.mjs --corpus fixture
+          fi
+
+      # ── REPRODUCE.md Step 5 (determinism) ─────────────────────────────────
+      # Fenced block: TZ=UTC node scripts/eval/run-bench.mjs --corpus fixture --check-determinism
+      - name: Determinism check
+        run: |
+          if [ ! -f "scripts/eval/run-bench.mjs" ]; then
+            echo "::notice::run-bench.mjs absent — skipping determinism check (Worker A artefact)."
+          else
+            TZ=UTC node scripts/eval/run-bench.mjs --corpus fixture --check-determinism
+          fi
+
+      # ── REPRODUCE.md Step 6 (verify baselines) ────────────────────────────
+      # Fenced block: TZ=UTC node scripts/eval/run-bench.mjs --verify-baselines
+      # STANDALONE verify-only pass (no benchmark run); ignores --corpus.
+      # Excludes generated_utc and environment per spec §7.2.
+      - name: Verify baselines
+        run: |
+          if [ ! -f "scripts/eval/run-bench.mjs" ]; then
+            echo "::notice::run-bench.mjs absent — skipping baseline verification (Worker A artefact)."
+          elif [ ! -d "scripts/eval/baselines" ] || ! ls scripts/eval/baselines/*.json 2>/dev/null | head -1 | grep -q .; then
+            echo "::notice::No baselines found — skipping. Run --update-baselines once run-bench.mjs lands."
+          else
+            TZ=UTC node scripts/eval/run-bench.mjs --verify-baselines
+          fi
+
+      # ── REPRODUCE.md Step 7 (Math.random gate) ────────────────────────────
+      # Fenced block: grep -rnE 'Math\.random\s*\(\s*\)' scripts/eval && exit 1 || echo "no Math.random invocation — pass"
+      # Invocation-syntax match only — doc-comment mentions and run-bench.mjs's
+      # runtime guard monkey-patch are allowed; no -v exclusion pipe (evasion-proof).
+      - name: Math.random gate
+        run: grep -rnE 'Math\.random\s*\(\s*\)' scripts/eval && exit 1 || echo "no Math.random invocation — pass"
+
+      # ── Upload repro artifacts for audit trail ─────────────────────────────
+      # SECURITY: NEVER glob the whole baselines dir — real-corpus baselines
+      # embed real project slugs. Upload only the fixture-derived baseline.
+      - name: Upload repro artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: repro-docs-result-${{ github.run_id }}
+          path: |
+            scripts/eval/baselines/correction-transfer-fixture-baseline.json
+          if-no-files-found: warn
+          retention-days: 90

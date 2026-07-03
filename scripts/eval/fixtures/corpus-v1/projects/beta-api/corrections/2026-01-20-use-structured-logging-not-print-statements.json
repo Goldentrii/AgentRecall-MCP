@@ -1,0 +1,15 @@
+{
+  "id": "2026-01-20-use-structured-logging-not-print-statements",
+  "date": "2026-01-20",
+  "severity": "p1",
+  "project": "beta-api",
+  "rule": "use structured logging with the logger module — never print statements in service code",
+  "context": "Debugging code was pushed to staging with bare print() statements throughout the request handlers. These bypass the centralized log aggregator and make distributed tracing impossible. All logging must go through the shared logger module which adds request_id, service_name, and severity fields automatically.",
+  "tags": ["logging", "structured", "observability", "print", "debugging"],
+  "kind": "correction",
+  "active": true,
+  "weight": 0.7,
+  "authoritative": true,
+  "proof_count": 1,
+  "proof_confidence": 0.7
+}

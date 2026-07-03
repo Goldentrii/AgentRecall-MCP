@@ -1,0 +1,15 @@
+{
+  "id": "2026-04-05-redaction-kills-leadin-case",
+  "date": "2026-04-05",
+  "severity": "p1",
+  "project": "beta-api",
+  "rule": "always use parameterized queries for SQL — never string interpolation",
+  "context": "always use parameterized queries for SQL — never string interpolation",
+  "tags": ["sql", "injection", "security", "parameterized"],
+  "kind": "correction",
+  "active": true,
+  "weight": 0.7,
+  "authoritative": true,
+  "proof_count": 1,
+  "proof_confidence": 0.7
+}

@@ -1,0 +1,15 @@
+{
+  "id": "2026-02-10-always-close-db-connections-in-finally-blocks",
+  "date": "2026-02-10",
+  "severity": "p0",
+  "project": "beta-api",
+  "rule": "always close database connections in finally blocks — never rely on garbage collection",
+  "context": "The connection pool was being exhausted under load because connections opened in try blocks were never closed when an exception was raised in the handler. The pattern must always be: open connection, try { ... } finally { connection.close() }. Relying on GC to close connections is wrong in Python — the pool becomes exhausted within minutes of sustained traffic.",
+  "tags": ["database", "connection", "pool", "finally", "python", "exception"],
+  "kind": "correction",
+  "active": true,
+  "weight": 1.0,
+  "authoritative": true,
+  "proof_count": 1,
+  "proof_confidence": 1.0
+}

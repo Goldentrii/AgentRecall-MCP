@@ -1,0 +1,14 @@
+{
+  "id": "missing-date-excluded-case",
+  "severity": "p1",
+  "project": "gamma-cli",
+  "rule": "use the config module to load settings — never hardcode configuration values",
+  "context": "This record intentionally omits the date field to exercise the corpus count rule (§2.2): a record without a valid date is excluded from n_counted. It must appear in excluded[] with reason missing_date.",
+  "tags": ["test-excluded", "config"],
+  "kind": "correction",
+  "active": true,
+  "weight": 0.7,
+  "authoritative": false,
+  "proof_count": 1,
+  "proof_confidence": 0.7
+}

@@ -427,6 +427,28 @@ function aggregatePooled(perProject, sessionsAllProjects) {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
+// Artifact sanitization — no local absolute paths in the published baseline
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * Baseline artifacts are destined to become PUBLIC baselines, so the JSON must
+ * not leak local absolute paths. Replaces every occurrence of the corpus root
+ * with the literal placeholder "<corpus-root>", then any remaining home-dir
+ * prefix with "<home>". Applied to the SERIALIZED artifact string so nothing
+ * anywhere in the structure can slip through (future fields included). Console
+ * output keeps real paths — ONLY the JSON artifact (file + --json stdout) is
+ * sanitized.
+ */
+function sanitizeArtifactJson(json, root) {
+  const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let out = json;
+  if (root) out = out.replace(new RegExp(escapeRe(root), "g"), "<corpus-root>");
+  const home = os.homedir();
+  if (home) out = out.replace(new RegExp(escapeRe(home), "g"), "<home>");
+  return out;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 // Report rendering (same visual style as predict-loo.mjs)
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -680,6 +702,7 @@ function main() {
         "summary. This is a high bar; the default is 'heeded'. The single recurrence on record " +
         "(AgentRecall project) is the only time the heuristic fired.",
     ],
+    // Sanitized to "<corpus-root>" in the emitted JSON (public-baseline hygiene).
     corpus_root: root,
     projects_scanned: projects.length,
     all_project_dirs_scanned: allProjectDirs.length,
@@ -687,10 +710,14 @@ function main() {
     pooled,
   };
 
+  // The artifact JSON (file AND --json stdout) never carries local absolute
+  // paths — see sanitizeArtifactJson. The human console report keeps real paths.
+  const artifactJson = sanitizeArtifactJson(JSON.stringify(artifact, null, 2), root);
+
   if (!noArtifact) {
     try {
       fs.mkdirSync(path.dirname(ARTIFACT_PATH), { recursive: true });
-      fs.writeFileSync(ARTIFACT_PATH, JSON.stringify(artifact, null, 2), {
+      fs.writeFileSync(ARTIFACT_PATH, artifactJson, {
         encoding: "utf-8",
         mode: 0o600,
       });
@@ -700,7 +727,7 @@ function main() {
   }
 
   if (asJson) {
-    process.stdout.write(JSON.stringify(artifact, null, 2) + "\n");
+    process.stdout.write(artifactJson + "\n");
   } else {
     process.stdout.write(renderReport(pooled, perProject, root) + "\n");
     if (!noArtifact) {

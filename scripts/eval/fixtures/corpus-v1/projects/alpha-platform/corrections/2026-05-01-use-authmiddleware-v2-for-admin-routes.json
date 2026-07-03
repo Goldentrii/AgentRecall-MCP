@@ -1,0 +1,15 @@
+{
+  "id": "2026-05-01-use-authmiddleware-v2-for-admin-routes",
+  "date": "2026-05-01",
+  "severity": "p0",
+  "project": "alpha-platform",
+  "rule": "use AuthMiddleware v2 with RBAC for all admin routes — never v1",
+  "context": "AuthMiddleware v1 is deprecated and does not enforce RBAC. All admin routes must migrate to AuthMiddleware v2 which includes role-based access control. The v1 middleware only checked token validity, not role permissions. Migration: replace `auth.v1()` with `auth.v2({ roles: ['admin'] })` in route definitions.",
+  "tags": ["auth", "middleware", "jwt", "admin", "routes", "rbac"],
+  "kind": "correction",
+  "active": true,
+  "weight": 1.0,
+  "authoritative": true,
+  "proof_count": 2,
+  "proof_confidence": 1.0
+}

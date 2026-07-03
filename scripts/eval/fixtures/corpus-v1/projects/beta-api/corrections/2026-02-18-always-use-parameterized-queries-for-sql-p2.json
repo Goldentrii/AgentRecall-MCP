@@ -1,0 +1,15 @@
+{
+  "id": "2026-02-18-always-use-parameterized-queries-for-sql-p2",
+  "date": "2026-02-18",
+  "severity": "p0",
+  "project": "beta-api",
+  "rule": "never interpolate user input into SQL queries — always use parameterized queries with db.execute()",
+  "context": "Second recurrence: a search endpoint built its SQL using string concatenation with search terms from the request body. Pattern is the same as January. The only approved pattern is: `db.execute('SELECT ... WHERE col = ?', [value])`. String building with any user-controlled value is categorically forbidden in query code.",
+  "tags": ["sql", "injection", "security", "parameterized", "queries", "search"],
+  "kind": "correction",
+  "active": true,
+  "weight": 1.0,
+  "authoritative": true,
+  "proof_count": 2,
+  "proof_confidence": 1.0
+}

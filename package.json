@@ -11,6 +11,7 @@
     "build": "npm run build -w packages/core && npm run build -w packages/mcp-server && npm run build -w packages/sdk && npm run build -w packages/cli",
     "test": "npm test -w packages/core && npm test -w packages/mcp-server && npm test -w packages/sdk && npm test -w packages/cli",
     "clean": "rm -rf packages/*/dist packages/*/*.tsbuildinfo",
-    "lint": "tsc --noEmit -p packages/core && tsc --noEmit -p packages/mcp-server && tsc --noEmit -p packages/sdk && tsc --noEmit -p packages/cli"
+    "lint": "tsc --noEmit -p packages/core && tsc --noEmit -p packages/mcp-server && tsc --noEmit -p packages/sdk && tsc --noEmit -p packages/cli",
+    "bench": "node scripts/eval/run-bench.mjs"
   }
 }

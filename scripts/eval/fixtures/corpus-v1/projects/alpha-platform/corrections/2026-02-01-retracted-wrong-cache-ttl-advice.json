@@ -1,0 +1,17 @@
+{
+  "id": "2026-02-01-retracted-wrong-cache-ttl-advice",
+  "date": "2026-02-01",
+  "severity": "p1",
+  "project": "alpha-platform",
+  "rule": "set Redis cache TTL to 300 seconds for session data",
+  "context": "Believed that 300 seconds was the correct session TTL based on an initial review of the auth requirements. This was later found to be incorrect — the actual requirement is 3600 seconds for compliance reasons. This record is retracted.",
+  "tags": ["redis", "cache", "session", "ttl"],
+  "kind": "correction",
+  "active": false,
+  "retracted_at": "2026-02-28T12:00:00Z",
+  "retract_reason": "wrong TTL value — actual requirement is 3600s; superseded by the compliance audit correction",
+  "weight": 0.7,
+  "authoritative": false,
+  "proof_count": 1,
+  "proof_confidence": 0.7
+}

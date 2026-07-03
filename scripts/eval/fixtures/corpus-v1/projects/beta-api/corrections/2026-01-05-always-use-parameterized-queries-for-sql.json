@@ -1,0 +1,15 @@
+{
+  "id": "2026-01-05-always-use-parameterized-queries-for-sql",
+  "date": "2026-01-05",
+  "severity": "p0",
+  "project": "beta-api",
+  "rule": "always use parameterized queries for SQL — never string interpolation",
+  "context": "A developer used f-string interpolation to build a SQL WHERE clause with user input. The code was: `query = f'SELECT * FROM orders WHERE user_id = {user_id}'`. This is a textbook SQL injection. All queries must use parameterized form with the db.execute(query, params) API.",
+  "tags": ["sql", "injection", "security", "parameterized", "queries"],
+  "kind": "correction",
+  "active": true,
+  "weight": 1.0,
+  "authoritative": true,
+  "proof_count": 1,
+  "proof_confidence": 1.0
+}

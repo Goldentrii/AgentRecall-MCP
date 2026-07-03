@@ -1,0 +1,15 @@
+{
+  "id": "2026-05-10-always-set-resource-limits-on-containers-p2",
+  "date": "2026-05-10",
+  "severity": "p1",
+  "project": "delta-infra",
+  "rule": "always add cpu and memory resource limits to every Kubernetes container spec before merging",
+  "context": "Another container without resource limits was merged into the cluster manifest. The March correction documented this. Adding a kube-score CI check that fails any manifest missing resource limits on containers. Existing manifests must be updated in a follow-up PR.",
+  "tags": ["kubernetes", "containers", "resources", "limits", "memory", "cpu", "ci", "kube-score"],
+  "kind": "correction",
+  "active": true,
+  "weight": 0.7,
+  "authoritative": true,
+  "proof_count": 2,
+  "proof_confidence": 0.7
+}

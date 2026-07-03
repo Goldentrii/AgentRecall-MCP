@@ -1,0 +1,18 @@
+{
+  "id": "2026-04-01-superseded-old-auth-middleware",
+  "date": "2026-04-01",
+  "severity": "p0",
+  "project": "alpha-platform",
+  "rule": "use AuthMiddleware v1 to protect all admin routes",
+  "context": "All admin routes must be protected with AuthMiddleware v1. This ensures JWT validation and role checking happen at the gateway layer before the handler runs.",
+  "tags": ["auth", "middleware", "jwt", "admin", "routes"],
+  "kind": "correction",
+  "active": false,
+  "retracted_at": "2026-05-01T12:00:00Z",
+  "retract_reason": "AuthMiddleware v1 deprecated; use AuthMiddleware v2 with RBAC",
+  "superseded_by": "2026-05-01-use-authmiddleware-v2-for-admin-routes",
+  "weight": 1.0,
+  "authoritative": true,
+  "proof_count": 1,
+  "proof_confidence": 1.0
+}

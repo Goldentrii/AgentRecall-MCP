@@ -1,0 +1,16 @@
+{
+  "_note": "no literal secret patterns present by design — prose mentions access keys but contains no AKIA/key literal (security-reviewed 2026-07-03)",
+  "id": "2026-01-08-always-use-iam-roles-not-access-keys",
+  "date": "2026-01-08",
+  "severity": "p0",
+  "project": "delta-infra",
+  "rule": "always use IAM roles for service authentication — never hardcode access keys in deployment configs",
+  "context": "A long-term access key was found hardcoded in the container environment variables in the deployment manifest. This is a critical security violation. All cloud service authentication must use IAM instance roles or workload identity federation. Secrets must never appear in manifests, Dockerfiles, or environment variable blocks in CI configs.",
+  "tags": ["iam", "security", "credentials", "cloud", "deployment", "secrets"],
+  "kind": "correction",
+  "active": true,
+  "weight": 1.0,
+  "authoritative": true,
+  "proof_count": 1,
+  "proof_confidence": 1.0
+}

@@ -535,8 +535,12 @@ for safety:
 - **Tier 0 (required for any headline):** pure-function scoring on recorded fields, zero-LLM /
   zero-network / zero-key. Contract: same `corpus_hash` + same `config` ⇒ **byte-identical**
   `metrics` + `per_item`. Verified: `scripts/eval/*.mjs` contain **zero** `Math.random`; the
-  `NEG_PER_LEADIN` sample is a deterministic stride. Codify as law: a `grep -rn "Math.random"
-  scripts/eval && exit 1` CI gate.
+  `NEG_PER_LEADIN` sample is a deterministic stride. Codify as law with a CI gate matching
+  **invocation syntax only**: `grep -rnE 'Math\.random\s*\(\s*\)' scripts/eval && exit 1`
+  — the earlier plain-substring form false-triggered on doc comments and the runtime guard
+  (verified 2026-07-03), and an exclusion-pipe variant is evadable by planting the exclusion
+  string on a violating line. Second layer: run-bench's runtime monkey-patch throws on ANY
+  call (catches bare-reference aliasing like `arr.sort(Math.random)` that line-grep cannot).
 - **Tier 1 (allowed):** seeded PRNG only (`mulberry32(corpus_hash ⊕ benchmark_version)`);
   `Math.random` banned in `scripts/eval/**`.
 - **Tier 2 (LLM-judge — deferred, not in v1 CI):** pinned judge snapshot ID, temperature 0,

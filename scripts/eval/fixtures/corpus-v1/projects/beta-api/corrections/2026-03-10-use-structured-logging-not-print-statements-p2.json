@@ -1,0 +1,15 @@
+{
+  "id": "2026-03-10-use-structured-logging-not-print-statements-p2",
+  "date": "2026-03-10",
+  "severity": "p1",
+  "project": "beta-api",
+  "rule": "always use the logger module for structured logging — remove all print and console.log statements before merging",
+  "context": "Third PR in a row containing print statements in service code. The structured logging requirement was documented in January but is still being missed. Adding a CI lint rule to block merges with bare print/console.log in service directories. Immediate action: strip all prints from the reporting-service handlers.",
+  "tags": ["logging", "structured", "observability", "print", "debugging", "ci", "lint"],
+  "kind": "correction",
+  "active": true,
+  "weight": 0.7,
+  "authoritative": true,
+  "proof_count": 2,
+  "proof_confidence": 0.7
+}

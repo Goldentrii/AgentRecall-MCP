@@ -1,0 +1,15 @@
+{
+  "id": "2026-01-22-always-validate-pagination-cursor-before-db-query",
+  "date": "2026-01-22",
+  "severity": "p0",
+  "project": "alpha-platform",
+  "rule": "always validate and sanitize the pagination cursor before using it in a database query",
+  "context": "An unsanitized cursor value was passed directly to the SQL query via string interpolation. The cursor came from a URL query parameter and was never validated. A crafted cursor value caused a SQL injection. Always parse and validate cursor tokens through the cursor-codec library before any query.",
+  "tags": ["sql", "pagination", "security", "injection", "validation"],
+  "kind": "correction",
+  "active": true,
+  "weight": 1.0,
+  "authoritative": true,
+  "proof_count": 1,
+  "proof_confidence": 1.0
+}

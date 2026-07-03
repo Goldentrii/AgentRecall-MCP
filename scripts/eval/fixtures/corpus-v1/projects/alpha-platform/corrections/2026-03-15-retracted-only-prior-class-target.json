@@ -1,0 +1,15 @@
+{
+  "id": "2026-03-15-retracted-only-prior-class-target",
+  "date": "2026-03-15",
+  "severity": "p1",
+  "project": "alpha-platform",
+  "rule": "always set Redis cache TTL to 3600 seconds for user session tokens",
+  "context": "The session TTL must be 3600 seconds. The earlier advice of 300 seconds was from before the compliance audit. All session token cache entries should use the SessionCachePolicy.TTL constant which is set to 3600.",
+  "tags": ["redis", "cache", "session", "ttl", "compliance"],
+  "kind": "correction",
+  "active": true,
+  "weight": 0.7,
+  "authoritative": true,
+  "proof_count": 1,
+  "proof_confidence": 0.7
+}

@@ -1,0 +1,653 @@
+{
+  "schema_version": "bench-result/v1",
+  "benchmark": "correction-transfer",
+  "benchmark_version": "correction-transfer-v1-2026-07-02",
+  "generated_utc": "2026-07-03T10:53:49.975Z",
+  "corpus": {
+    "corpus_hash": "a59af49114e5a8899d7b8c02fbac4486181d271af7f5cad54df1c495d98089f5",
+    "corpus_hash_basis": "sha256 tree over canonicalJson of corrections-export/v1 records (includeRetracted:true), computed pre-harvest — the §4.1 ingestion projection",
+    "n_on_disk": 26,
+    "n_on_disk_basis": "exportCorrections({includeRetracted:true}) record count",
+    "raw_file_count": 26,
+    "reader_disagreement": null,
+    "n_counted": 23,
+    "n_active_counted": 21,
+    "n_retracted_counted": 2,
+    "n_scoreable": 20,
+    "scored_set": "active-counted (all per_item rows; lead-in-unusable rows flagged redaction_survived:false, counted in denominators, never fired)",
+    "prior_universe": "all-counted-including-retracted (harvested CTIs; a prior contributes recorded fields only, its own lead-in quality is irrelevant)",
+    "prior_join": "same-project same-class (cluster-signature overlap >= MIN_OVERLAP; predict-loo's join per §2.1 — the §3.2 pseudocode is project-silent; the unscoped cross-project reading was tested and rejected: generic rule tokens collide across projects, diluting deriveBlindSpots trigger sets below MIN_OVERLAP and structurally zeroing the keyword path while inflating `predictable`)",
+    "reader_note": "Denominators here are NOT comparable to predict-loo's: predict-loo raw-reads every project JSON (silently dropping rule/date fails) and scores ALL records incl. retracted as targets with per-project priors; correction-transfer ingests via exportCorrections (§4.1), scores active-counted targets only, and uses a cross-project all-counted prior universe. Different readers, different denominators — by construction, both published (§2.2).",
+    "excluded": [
+      {
+        "id": "missing-both-excluded-case",
+        "project": "delta-infra",
+        "reason": "missing_rule",
+        "disposition": "dropped_from_corpus"
+      },
+      {
+        "id": "missing-date-excluded-case",
+        "project": "gamma-cli",
+        "reason": "missing_date",
+        "disposition": "dropped_from_corpus"
+      },
+      {
+        "id": "missing-rule-excluded-case",
+        "project": "gamma-cli",
+        "reason": "missing_rule",
+        "disposition": "dropped_from_corpus"
+      },
+      {
+        "id": "2026-02-01-retracted-wrong-cache-ttl-advice",
+        "project": "alpha-platform",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-01-superseded-old-auth-middleware",
+        "project": "alpha-platform",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-05-redaction-kills-leadin-case",
+        "project": "beta-api",
+        "reason": "no_usable_leadin",
+        "disposition": "counted_not_fired"
+      }
+    ],
+    "rejected_lines": null,
+    "active_approximation": "export-time",
+    "manifest": [
+      {
+        "project": "alpha-platform",
+        "file": "2026-01-10-never-use-sync-db-calls-in-request-handlers.json",
+        "sha256": "42c7fcfd9bdb57aec4f936032de7526db3e68d323847735b70eca0c4397393cf"
+      },
+      {
+        "project": "alpha-platform",
+        "file": "2026-01-22-always-validate-pagination-cursor-before-db-query.json",
+        "sha256": "ea424f2282e3d54c4e56806547ec5f12a743ec8e470b606f20282b68bf6d861f"
+      },
+      {
+        "project": "alpha-platform",
+        "file": "2026-02-01-retracted-wrong-cache-ttl-advice.json",
+        "sha256": "8b1260d4f9c55a3366e9a71d3a4126c4bdd57edb3f1426ddba9db1f6c1c050a6"
+      },
+      {
+        "project": "alpha-platform",
+        "file": "2026-02-14-never-use-sync-db-calls-in-request-handlers-p2.json",
+        "sha256": "4fac8d4f0131bd999713d0554e8506da02464a6fed4eb7239e48bb0eaab60faa"
+      },
+      {
+        "project": "alpha-platform",
+        "file": "2026-03-05-always-validate-pagination-cursor-before-db-query-p2.json",
+        "sha256": "f92e4b8b571f78ffd6861f88e1b05844e2811c0ca2df281ba27751d5403af3b1"
+      },
+      {
+        "project": "alpha-platform",
+        "file": "2026-03-15-retracted-only-prior-class-target.json",
+        "sha256": "0defb93f198afd8ad9c9e46e7eb9f7800d7153338418993caadceecba7f4ac71"
+      },
+      {
+        "project": "alpha-platform",
+        "file": "2026-03-20-never-use-sync-db-calls-in-request-handlers-p3.json",
+        "sha256": "49fdabb49e5606f8a3160d39ae237326c0ec5a80ca63292f9d1fd5cbe276cdbf"
+      },
+      {
+        "project": "alpha-platform",
+        "file": "2026-04-01-superseded-old-auth-middleware.json",
+        "sha256": "dfe1d6d2069493b20e5e7495b75b05be6638b60efd018a84c30f105a51c996e1"
+      },
+      {
+        "project": "alpha-platform",
+        "file": "2026-05-01-use-authmiddleware-v2-for-admin-routes.json",
+        "sha256": "82c672a0c6a6fcfe298ad6cf96a6c69a09c543d119fd68fb1168ab348be47d9f"
+      },
+      {
+        "project": "beta-api",
+        "file": "2026-01-05-always-use-parameterized-queries-for-sql.json",
+        "sha256": "b1665663f69db349aa68194781d0ec096c09a0265b929e1fbcb1adcf9066dbd9"
+      },
+      {
+        "project": "beta-api",
+        "file": "2026-01-20-use-structured-logging-not-print-statements.json",
+        "sha256": "1d5438d16a4a94e1776553162f87d91002f46fdfaf73bff82915dbf8f7d0c70a"
+      },
+      {
+        "project": "beta-api",
+        "file": "2026-02-10-always-close-db-connections-in-finally-blocks.json",
+        "sha256": "f5666534a5399428b55bc441ae30f31896ecd1bb763267c57ea2001a8b958c0a"
+      },
+      {
+        "project": "beta-api",
+        "file": "2026-02-18-always-use-parameterized-queries-for-sql-p2.json",
+        "sha256": "6189437226d334d3430f0d27e8d57388dcee771df026099f2e04b912ac822bbe"
+      },
+      {
+        "project": "beta-api",
+        "file": "2026-03-10-use-structured-logging-not-print-statements-p2.json",
+        "sha256": "ac13d9c2ede1d63a9570f25847e2fabd0349c8751138343a2f4ca29c13dca3a8"
+      },
+      {
+        "project": "beta-api",
+        "file": "2026-04-05-redaction-kills-leadin-case.json",
+        "sha256": "c82c0bdd9867bf3a73fec878ae29ac1c46bd108ff0840b7fee591e2d04e1a2a8"
+      },
+      {
+        "project": "delta-infra",
+        "file": "2026-01-08-always-use-iam-roles-not-access-keys.json",
+        "sha256": "8829553609fd675d4af1714f7058015b7e0e3e9ba8f27f8bfdd83b82dc5ab6c8"
+      },
+      {
+        "project": "delta-infra",
+        "file": "2026-02-20-always-use-iam-roles-not-access-keys-p2.json",
+        "sha256": "09d36659344daf233a1acdcf183fdc9fbc4c86afc7602ed940a9229a286619a2"
+      },
+      {
+        "project": "delta-infra",
+        "file": "2026-03-18-always-set-resource-limits-on-containers.json",
+        "sha256": "8d91743a206dbd325e350e842cfe86c28dc049d834ebf6b6c5f3058a94fd0cb6"
+      },
+      {
+        "project": "delta-infra",
+        "file": "2026-05-10-always-set-resource-limits-on-containers-p2.json",
+        "sha256": "52b5f552be64d58d5a5f2405560926b90ccdc02e999bae7e4660e6fe3992759f"
+      },
+      {
+        "project": "delta-infra",
+        "file": "missing-both-excluded-case.json",
+        "sha256": "8c9a3fe06ccfcf92de9da3cc8df664ab2ac9d5dab9094c6c943acc24cb863640"
+      },
+      {
+        "project": "gamma-cli",
+        "file": "2026-01-15-always-add-help-text-to-every-cli-flag.json",
+        "sha256": "d0450333049209846a915957cd0d2cce78d28bc08c7af9b6680b4d63f1f43820"
+      },
+      {
+        "project": "gamma-cli",
+        "file": "2026-02-25-always-add-help-text-to-every-cli-flag-p2.json",
+        "sha256": "eb0fd34ec30c6aa7625490feef7312208156424699c7a52b99217e28a2d7f443"
+      },
+      {
+        "project": "gamma-cli",
+        "file": "2026-03-12-never-call-os-exit-in-library-functions.json",
+        "sha256": "ee552e35b40b1ddfa3ca329e76756905bbf190089bc37e90573ba07b734e4608"
+      },
+      {
+        "project": "gamma-cli",
+        "file": "2026-04-20-never-call-os-exit-in-library-functions-p2.json",
+        "sha256": "919e7a3cff41cd25443889b57f65be9bb8708dfa2e523136970eae865aca1fd8"
+      },
+      {
+        "project": "gamma-cli",
+        "file": "missing-date-excluded-case.json",
+        "sha256": "a482ff683ec1a6b6f8747e8c649deec29c76f1c9abe184697a8b104fcba71e30"
+      },
+      {
+        "project": "gamma-cli",
+        "file": "missing-rule-excluded-case.json",
+        "sha256": "d466993f13e737291704b1c9b85f1d3d8d485ac4d468b671c299b05e27f5eaf8"
+      }
+    ]
+  },
+  "config": {
+    "cli_args": [
+      "--corpus",
+      "fixture",
+      "--update-baselines"
+    ],
+    "semantic": false,
+    "MIN_OVERLAP": 2,
+    "MAX_RISKS": 3,
+    "NEG_PER_LEADIN": 5,
+    "matchFn": "keyword-default"
+  },
+  "environment": {
+    "node": "v24.18.0",
+    "platform": "darwin-arm64",
+    "tz": "UTC",
+    "repo_commit": "abf8e0b",
+    "core_version": "3.4.35"
+  },
+  "denominators": {
+    "theoretical": 15,
+    "achievable": 14
+  },
+  "metrics": {
+    "recall_achievable": {
+      "value": 0.14285714285714285,
+      "num": 2,
+      "den": 14,
+      "wilson95": [
+        0.040093073737921175,
+        0.39941907763863693
+      ]
+    },
+    "recall_theoretical": {
+      "value": 0.13333333333333333,
+      "num": 2,
+      "den": 15,
+      "wilson95": [
+        0.0373604698913593,
+        0.3788249920651624
+      ]
+    },
+    "precision": {
+      "value": 1,
+      "num": 2,
+      "den": 2,
+      "wilson95": [
+        0.34237195288961925,
+        1
+      ]
+    },
+    "ffr": {
+      "value": 0.09090909090909091,
+      "num": 1,
+      "den": 11,
+      "wilson95": [
+        0.01623175226282597,
+        0.3773646254862038
+      ],
+      "unit": "lead-in",
+      "pair_level": {
+        "value": 0.02702702702702703,
+        "num": 1,
+        "den": 37,
+        "wilson95": [
+          0.00478685105490774,
+          0.13824378437563367
+        ]
+      }
+    }
+  },
+  "per_item": [
+    {
+      "id": "2026-01-10-never-use-sync-db-calls-in-request-handlers",
+      "item_id": "ede7d4d71179a4ae",
+      "project": "alpha-platform",
+      "date": "2026-01-10",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-01-22-always-validate-pagination-cursor-before-db-query",
+      "item_id": "f1e1d213f5fda228",
+      "project": "alpha-platform",
+      "date": "2026-01-22",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-02-14-never-use-sync-db-calls-in-request-handlers-p2",
+      "item_id": "a17d824b8f9ba2c8",
+      "project": "alpha-platform",
+      "date": "2026-02-14",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": true,
+      "via": "keyword",
+      "hit": true,
+      "anchor_id": "2026-01-10-never-use-sync-db-calls-in-request-handlers",
+      "anchor_item_id": "ede7d4d71179a4ae",
+      "anti_self_confirm": true,
+      "lead_time_days": 35,
+      "neg_fires": 0,
+      "neg_units": 1
+    },
+    {
+      "id": "2026-03-05-always-validate-pagination-cursor-before-db-query-p2",
+      "item_id": "ea1dc267bc6efe14",
+      "project": "alpha-platform",
+      "date": "2026-03-05",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 1
+    },
+    {
+      "id": "2026-03-15-retracted-only-prior-class-target",
+      "item_id": "174fca0f6bade21d",
+      "project": "alpha-platform",
+      "date": "2026-03-15",
+      "predictable": true,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-03-20-never-use-sync-db-calls-in-request-handlers-p3",
+      "item_id": "e1fdf99918f394b6",
+      "project": "alpha-platform",
+      "date": "2026-03-20",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 1
+    },
+    {
+      "id": "2026-05-01-use-authmiddleware-v2-for-admin-routes",
+      "item_id": "9871df2425abdbcc",
+      "project": "alpha-platform",
+      "date": "2026-05-01",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 1
+    },
+    {
+      "id": "2026-01-05-always-use-parameterized-queries-for-sql",
+      "item_id": "7d2e66fe941e647b",
+      "project": "beta-api",
+      "date": "2026-01-05",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-01-20-use-structured-logging-not-print-statements",
+      "item_id": "299767dc3cdc479b",
+      "project": "beta-api",
+      "date": "2026-01-20",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 1,
+      "neg_units": 1
+    },
+    {
+      "id": "2026-02-10-always-close-db-connections-in-finally-blocks",
+      "item_id": "6093f5b4261d123c",
+      "project": "beta-api",
+      "date": "2026-02-10",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 1
+    },
+    {
+      "id": "2026-02-18-always-use-parameterized-queries-for-sql-p2",
+      "item_id": "9571f0c2ea1bea35",
+      "project": "beta-api",
+      "date": "2026-02-18",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 1
+    },
+    {
+      "id": "2026-03-10-use-structured-logging-not-print-statements-p2",
+      "item_id": "9bb15bd0d1da6420",
+      "project": "beta-api",
+      "date": "2026-03-10",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 1
+    },
+    {
+      "id": "2026-04-05-redaction-kills-leadin-case",
+      "item_id": "5c9c6b5676786aec",
+      "project": "beta-api",
+      "date": "2026-04-05",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": false,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-01-08-always-use-iam-roles-not-access-keys",
+      "item_id": "832a9d3976e18987",
+      "project": "delta-infra",
+      "date": "2026-01-08",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-02-20-always-use-iam-roles-not-access-keys-p2",
+      "item_id": "9a16c5feb3e539b3",
+      "project": "delta-infra",
+      "date": "2026-02-20",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": true,
+      "via": "keyword",
+      "hit": true,
+      "anchor_id": "2026-01-08-always-use-iam-roles-not-access-keys",
+      "anchor_item_id": "832a9d3976e18987",
+      "anti_self_confirm": true,
+      "lead_time_days": 43,
+      "neg_fires": 0,
+      "neg_units": 1
+    },
+    {
+      "id": "2026-03-18-always-set-resource-limits-on-containers",
+      "item_id": "6c848aa1ed749ce6",
+      "project": "delta-infra",
+      "date": "2026-03-18",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 1
+    },
+    {
+      "id": "2026-05-10-always-set-resource-limits-on-containers-p2",
+      "item_id": "a55d0260a1d9ae17",
+      "project": "delta-infra",
+      "date": "2026-05-10",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-01-15-always-add-help-text-to-every-cli-flag",
+      "item_id": "aeb3cd2541f918f5",
+      "project": "gamma-cli",
+      "date": "2026-01-15",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-02-25-always-add-help-text-to-every-cli-flag-p2",
+      "item_id": "42a78f23ddf2c1b6",
+      "project": "gamma-cli",
+      "date": "2026-02-25",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-03-12-never-call-os-exit-in-library-functions",
+      "item_id": "f8a09194f374932d",
+      "project": "gamma-cli",
+      "date": "2026-03-12",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-04-20-never-call-os-exit-in-library-functions-p2",
+      "item_id": "4f99b9c797967a10",
+      "project": "gamma-cli",
+      "date": "2026-04-20",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 1
+    }
+  ],
+  "hits": 2,
+  "predictions_fired": 2,
+  "lead_time": null,
+  "neg_trials_leadin": 11,
+  "neg_fires_leadin": 1,
+  "neg_trials_pair": 37,
+  "neg_fires_pair": 1,
+  "anti_self_confirm_hits": 2
+}

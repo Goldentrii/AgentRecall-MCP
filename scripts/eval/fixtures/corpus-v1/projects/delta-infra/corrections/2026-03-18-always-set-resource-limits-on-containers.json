@@ -1,0 +1,15 @@
+{
+  "id": "2026-03-18-always-set-resource-limits-on-containers",
+  "date": "2026-03-18",
+  "severity": "p1",
+  "project": "delta-infra",
+  "rule": "always set resource limits on all container specs — never deploy containers without cpu and memory limits",
+  "context": "A container without resource limits was deployed and consumed all available memory on the node, causing an OOM kill of other services. All container specs in Kubernetes manifests must include resources.limits.cpu and resources.limits.memory. The platform default limits are too permissive for the shared cluster; every service must set explicit values.",
+  "tags": ["kubernetes", "containers", "resources", "limits", "memory", "cpu", "oom"],
+  "kind": "correction",
+  "active": true,
+  "weight": 0.7,
+  "authoritative": true,
+  "proof_count": 1,
+  "proof_confidence": 0.7
+}

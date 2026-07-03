@@ -1,0 +1,15 @@
+{
+  "id": "2026-03-05-always-validate-pagination-cursor-before-db-query-p2",
+  "date": "2026-03-05",
+  "severity": "p0",
+  "project": "alpha-platform",
+  "rule": "always validate pagination cursor values through cursor-codec before any SQL query",
+  "context": "Second incident: a new API endpoint was added without going through the cursor-codec validation layer. The raw cursor was decoded with atob() and used directly in a WHERE clause. This is the January SQL injection pattern repeated. All pagination endpoints must route cursor values through cursor-codec.decode() which includes schema validation.",
+  "tags": ["sql", "pagination", "security", "injection", "validation", "cursor-codec"],
+  "kind": "correction",
+  "active": true,
+  "weight": 1.0,
+  "authoritative": true,
+  "proof_count": 2,
+  "proof_confidence": 1.0
+}

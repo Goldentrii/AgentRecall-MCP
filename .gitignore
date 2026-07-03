@@ -21,3 +21,6 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# Real-corpus eval data — contains real user paths/names/project slugs; never commit
+scripts/eval/fixtures/loop8-labeled-rejects.json

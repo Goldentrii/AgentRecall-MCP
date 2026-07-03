@@ -1,0 +1,8 @@
+{
+  "schema_version": "bench-fixture/v1",
+  "corpus_hash": "a59af49114e5a8899d7b8c02fbac4486181d271af7f5cad54df1c495d98089f5",
+  "corpus_hash_basis": "sha256 tree over canonicalJson of corrections-export/v1 records (includeRetracted:true), computed pre-harvest — the §4.1 ingestion projection",
+  "n": 26,
+  "n_counted": 23,
+  "provenance": "synthetic, hand-audited, secrets-free"
+}

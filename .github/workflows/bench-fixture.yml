@@ -1,0 +1,133 @@
+name: Bench — Fixture Corpus (CI Lane 2)
+
+# Runs on every PR into main and on pushes to main.
+# Keyless. Target runtime: ~1 min.
+#
+# GATES (CAN-claim set only, §7.4 of the spec):
+#   - Harness determinism (double-run byte-diff)
+#   - FFR=0 on negatives (zero false fires on the fixture corpus)
+#   - assertBlindCut fires correctly (structural guarantee)
+#   - Schema / corpus-hash validity (verifyBaseline)
+#   - Math.random banned in scripts/eval/** (grep gate)
+#
+# NEVER gates a recall or RMR value — at 0/achievable the recall gate would be
+# a gate on noise (Wilson [0, 0.324]); a green recall gate on a thin corpus is
+# the LoCoMo-74% trap in reverse.
+#
+# SKIP POLICY: if scripts/eval/run-bench.mjs or the fixture corpus is absent the
+# workflow exits neutral with a clear message so Worker A can land independently.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read    # minimal token; no write scope
+
+concurrency:
+  group: bench-fixture-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bench-fixture:
+    runs-on: ubuntu-latest
+    env:
+      TZ: UTC    # pin for day-bucketing determinism (toLocaleDateString("sv") is TZ-sensitive)
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install (clean, from lockfile)
+        run: npm ci
+
+      - name: Build all packages
+        run: npm run build
+
+      # ── Graceful skip if Worker A artefacts are absent ─────────────────────
+      - name: Check prerequisite artefacts
+        id: prereqs
+        run: |
+          MISSING=""
+          if [ ! -f "scripts/eval/run-bench.mjs" ]; then
+            MISSING="${MISSING} run-bench.mjs"
+          fi
+          if [ ! -d "scripts/eval/fixtures/corpus-v1/projects" ]; then
+            MISSING="${MISSING} corpus-v1"
+          fi
+          if [ -n "$MISSING" ]; then
+            echo "SKIP=true" >> "$GITHUB_OUTPUT"
+            echo "MISSING_LIST=${MISSING}" >> "$GITHUB_OUTPUT"
+          else
+            echo "SKIP=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip notice (artefacts absent)
+        if: steps.prereqs.outputs.SKIP == 'true'
+        run: |
+          echo "::notice::bench-fixture skipping — artefacts not yet present: ${{ steps.prereqs.outputs.MISSING_LIST }}"
+          echo "Worker A (run-bench.mjs) lands in parallel. This workflow will gate on the next run once artefacts exist."
+
+      # ── Fixture corpus validation (standalone, no run-bench dependency) ─────
+      - name: Validate fixture corpus shape
+        if: steps.prereqs.outputs.SKIP != 'true'
+        run: node scripts/eval/fixtures/validate-fixture.mjs
+
+      # ── Math.random ban ────────────────────────────────────────────────────
+      # Matches INVOCATION syntax only (`Math.random()`, incl. spaced form) so
+      # doc-comment mentions and run-bench.mjs's runtime guard monkey-patch
+      # (`Math.random = () => { throw ... }`) do not false-trigger. No -v
+      # exclusion pipe — an exclusion string on a violating line must not be
+      # able to evade the gate. Aliased references (e.g. `arr.sort(Math.random)`)
+      # are covered by the runtime guard, not this static tripwire.
+      - name: Gate — Math.random invocations banned in scripts/eval
+        if: steps.prereqs.outputs.SKIP != 'true'
+        run: |
+          if grep -rnE 'Math\.random\s*\(\s*\)' scripts/eval; then
+            echo "::error::Math.random() invocation found in scripts/eval — Tier-0 determinism requires a seeded PRNG (see docs/eval/DETERMINISM.md)"
+            exit 1
+          fi
+          echo "Math.random gate passed — no invocations found (comment mentions and the runtime guard are allowed)."
+
+      # ── Fixture benchmark run ──────────────────────────────────────────────
+      - name: Run bench (fixture corpus)
+        if: steps.prereqs.outputs.SKIP != 'true'
+        run: node scripts/eval/run-bench.mjs --corpus fixture
+
+      # ── Determinism check (double-run byte-diff) ───────────────────────────
+      - name: Gate — determinism (double-run byte-diff)
+        if: steps.prereqs.outputs.SKIP != 'true'
+        run: node scripts/eval/run-bench.mjs --corpus fixture --check-determinism
+
+      # ── Baseline verification ──────────────────────────────────────────────
+      # --verify-baselines is a STANDALONE verify-only pass (no benchmark run);
+      # it ignores --corpus, so none is passed.
+      - name: Gate — verify all baselines
+        if: steps.prereqs.outputs.SKIP != 'true'
+        run: |
+          if [ -d "scripts/eval/baselines" ] && ls scripts/eval/baselines/*.json 2>/dev/null | head -1 | grep -q .; then
+            node scripts/eval/run-bench.mjs --verify-baselines
+          else
+            echo "::notice::No baseline files found in scripts/eval/baselines/ — skipping verifyBaseline gate. Run with --update-baselines once run-bench.mjs is ready."
+          fi
+
+      # ── Upload result artifacts ────────────────────────────────────────────
+      # SECURITY: NEVER glob the whole baselines dir — real-corpus baselines
+      # (e.g. rmr-baseline-2026-07-02.json) embed real project slugs and must
+      # not ride along on a public artifact. Upload ONLY the fixture-derived
+      # baseline (explicit filename) + the synthetic fixture corpus.
+      - name: Upload bench artifacts
+        if: steps.prereqs.outputs.SKIP != 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bench-fixture-result-${{ github.sha }}
+          path: |
+            scripts/eval/baselines/correction-transfer-fixture-baseline.json
+            scripts/eval/fixtures/corpus-v1/
+          if-no-files-found: warn
+          retention-days: 30

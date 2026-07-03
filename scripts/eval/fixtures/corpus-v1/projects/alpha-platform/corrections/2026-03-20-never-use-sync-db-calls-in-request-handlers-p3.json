@@ -1,0 +1,15 @@
+{
+  "id": "2026-03-20-never-use-sync-db-calls-in-request-handlers-p3",
+  "date": "2026-03-20",
+  "severity": "p0",
+  "project": "alpha-platform",
+  "rule": "never block the request handler event loop with synchronous database or I/O calls",
+  "context": "Third recurrence: synchronous file read inside a middleware function. All three incidents share the same root pattern — synchronous blocking in async handler code. Adding a linting rule (no-sync-db-calls) to the CI pipeline to prevent future occurrences.",
+  "tags": ["nodejs", "express", "database", "async", "middleware", "linting"],
+  "kind": "correction",
+  "active": true,
+  "weight": 1.0,
+  "authoritative": true,
+  "proof_count": 3,
+  "proof_confidence": 1.0
+}

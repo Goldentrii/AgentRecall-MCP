@@ -1,0 +1,15 @@
+{
+  "id": "2026-04-20-never-call-os-exit-in-library-functions-p2",
+  "date": "2026-04-20",
+  "severity": "p0",
+  "project": "gamma-cli",
+  "rule": "never call sys.exit or os.exit in library code — raise exceptions instead and let main() handle exit codes",
+  "context": "Recurrence in the plugin loader module: a missing plugin file caused sys.exit(2) to be called from deep inside the loader. This skipped finally blocks in three callers and left temp files uncleaned. The March correction documented this pattern. Raise PluginNotFoundError instead; the CLI main() catches all PluginError subclasses and maps them to exit codes.",
+  "tags": ["python", "exit", "finally", "exceptions", "library", "cleanup", "plugins"],
+  "kind": "correction",
+  "active": true,
+  "weight": 1.0,
+  "authoritative": true,
+  "proof_count": 2,
+  "proof_confidence": 1.0
+}

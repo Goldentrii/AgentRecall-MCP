@@ -1,0 +1,3 @@
+{"correction_id":"2026-01-08-always-use-iam-roles-not-access-keys","project":"delta-infra","kind":"retrieved","at":"2026-02-15T12:00:00Z","evidence":"loaded before new service deployment work"}
+{"correction_id":"2026-01-08-always-use-iam-roles-not-access-keys","project":"delta-infra","kind":"heeded","at":"2026-02-15T12:00:00Z","evidence":"agent used instance role annotation instead of hardcoded keys"}
+{"correction_id":"2026-03-18-always-set-resource-limits-on-containers","project":"delta-infra","kind":"retrieved","at":"2026-04-20T12:00:00Z","evidence":"loaded before container spec review"}

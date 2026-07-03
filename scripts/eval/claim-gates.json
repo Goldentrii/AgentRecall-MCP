@@ -1,0 +1,123 @@
+{
+  "schema_version": "claim-gates/v1",
+  "description": "Machine-enforced minimum-n rules (spec §2.6). Thresholds are recomputed per run against live n_counted — corpus grows daily. Renderer prints 'CANNOT CLAIM (n=X < gate Y)' literally when n is below gate.",
+  "gates": [
+    {
+      "id": "recall_15pp",
+      "claim": "transfer_recall point estimate ±15pp",
+      "metric": "recall_achievable",
+      "unit": "classes",
+      "min_n_field": "denominators.achievable",
+      "min_n": 39,
+      "rationale": "±15pp at 95% confidence requires n≥39 classes"
+    },
+    {
+      "id": "recall_10pp",
+      "claim": "transfer_recall point estimate ±10pp",
+      "metric": "recall_achievable",
+      "unit": "classes",
+      "min_n_field": "denominators.achievable",
+      "min_n": 93,
+      "rationale": "±10pp at 95% confidence requires n≥93 classes"
+    },
+    {
+      "id": "recall_5pp",
+      "claim": "transfer_recall point estimate ±5pp",
+      "metric": "recall_achievable",
+      "unit": "classes",
+      "min_n_field": "denominators.achievable",
+      "min_n": 381,
+      "rationale": "±5pp at 95% confidence requires n≥381 classes"
+    },
+    {
+      "id": "ffr_5pct",
+      "claim": "FFR ≤ 5%",
+      "metric": "ffr",
+      "unit": "zero-fire independent negatives (lead-in level)",
+      "min_n_field": "ffr_neg_leadin_units",
+      "min_n": 59,
+      "rationale": "59 zero-fire independent negatives needed: 1 - 0.05^(1/59) ≈ 4.95%"
+    },
+    {
+      "id": "ffr_2pct",
+      "claim": "FFR ≤ 2%",
+      "metric": "ffr",
+      "unit": "zero-fire independent negatives (lead-in level)",
+      "min_n_field": "ffr_neg_leadin_units",
+      "min_n": 149,
+      "rationale": "149 zero-fire independent negatives required"
+    },
+    {
+      "id": "ffr_1pct",
+      "claim": "FFR ≤ 1%",
+      "metric": "ffr",
+      "unit": "zero-fire independent negatives (lead-in level)",
+      "min_n_field": "ffr_neg_leadin_units",
+      "min_n": 299,
+      "rationale": "299 zero-fire independent negatives required"
+    },
+    {
+      "id": "memory_beats_baseline",
+      "claim": "memory ON beats OFF",
+      "metric": "discordant_pairs",
+      "unit": "discordant pairs all same direction",
+      "min_n_field": "discordant_pairs",
+      "min_n": 6,
+      "rationale": "exact McNemar 2·0.5^6=0.031; 5→0.0625 NOT significant"
+    },
+    {
+      "id": "matcher_a_beats_b",
+      "claim": "matcher A beats matcher B",
+      "metric": "fisher_exact_pvalue",
+      "unit": "Fisher exact two-sided p ≤ 0.05",
+      "min_n_field": "denominators.achievable",
+      "min_n": 1,
+      "rationale": "Fisher exact valid at any n; claim only when p≤0.05"
+    },
+    {
+      "id": "lead_time_summary",
+      "claim": "lead-time summary",
+      "metric": "lead_time",
+      "unit": "hits",
+      "min_n_field": "hits",
+      "min_n": 5,
+      "rationale": "need ≥5 hits to report lead-time summary"
+    },
+    {
+      "id": "power_10_to_50",
+      "claim": "80%-power detectable 10%→50% uplift (unpaired)",
+      "metric": "recall_achievable",
+      "unit": "classes per arm",
+      "min_n_field": "denominators.achievable",
+      "min_n": 20,
+      "rationale": "20 classes/arm for 80% power to detect 10%→50%"
+    },
+    {
+      "id": "power_30_to_60",
+      "claim": "80%-power detectable 30%→60% uplift (unpaired)",
+      "metric": "recall_achievable",
+      "unit": "classes per arm",
+      "min_n_field": "denominators.achievable",
+      "min_n": 42,
+      "rationale": "42 classes/arm for 80% power to detect 30%→60%"
+    }
+  ],
+  "fixed_footer": {
+    "_comment": "Claim TEXT only — corpus-specific NUMBERS are rendered live from the result by renderFixedFooter (hardcoded counts go stale the day the corpus grows).",
+    "cannot_claim": [
+      "any transfer-recall point estimate as a headline",
+      "any system/matcher ranking",
+      "any RMR trend over time",
+      "any marketing percentage ('X% fewer repeated mistakes')",
+      "any cross-surface transfer claim (OQ-6 unmeasured)",
+      "FFR below any marketing threshold (n below every FFR gate at current density — see gate rows above; live Wilson bound printed below)"
+    ],
+    "can_claim": [
+      "the pipeline exists and is anti-gamed by construction",
+      "metric definitions are frozen and versioned",
+      "the FFR Wilson upper bound at the printed n (an instrument reading, not a marketing number)",
+      "achievable recall as a diagnostic of corpus density (a low number is a valid result)",
+      "Fisher exact two-sided p = 0.48 for semantic vs keyword (historical; no evidence of matcher difference; independently corroborates embeddings-declined decision)"
+    ]
+  }
+}

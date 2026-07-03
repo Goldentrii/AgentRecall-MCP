@@ -5,6 +5,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { VERSION, setRoot } from "agent-recall-core";
 import type { Importance, WalkDepth } from "agent-recall-core";
+import { detectCorrection } from "./utils/correction-detector.js";
 
 const args = process.argv.slice(2);
 
@@ -1064,31 +1065,7 @@ async function main(): Promise<void> {
         return Math.abs(h).toString(36).slice(0, 8);
       }
 
-      const CORRECTION_PATTERNS = [
-        // English patterns
-        /\bthat'?s\s+wrong\b/i,
-        /\byou\s+(missed|didn'?t|forgot|skipped)\b/i,
-        /\bnot\s+what\s+i\s+(asked|wanted|meant|said)\b/i,
-        /\bagain\s+you\b/i,
-        /\bstop\s+(doing|adding|making)\b/i,
-        /\bwrong\s+(approach|direction|file|function)\b/i,
-        /\bi\s+said\b.*\bnot\b/i,
-        /\bdon'?t\s+(do\s+that|change|delete|add)\b/i,
-        /\bno[,!.]\s+(don'?t|that|you|i\s+meant)\b/i,
-        // Chinese patterns
-        /不对/,
-        /错了/,
-        /不要这样/,
-        /不是这个/,
-        /你搞错了/,
-        /我说的不是/,
-        /别这样做/,
-        /重新来/,
-        /你忘了/,
-        /不是我要的/,
-        /搞反了/,
-        /方向不对/,
-      ];
+      // Detection logic lives in ./utils/correction-detector.ts (detectCorrection)
 
       try {
         const chunks: Buffer[] = [];
@@ -1112,31 +1089,10 @@ async function main(): Promise<void> {
           prompt = raw; // fallback: treat raw input as the prompt
         }
 
-        // Behavioral correction signals — frequency/repetition language that implies a pattern,
-        // not a one-time task redirect. Only behavioral corrections are stored as rules.
-        // Task corrections ("no, use the blue button") are ephemeral and should NOT persist
-        // across sessions as P0 mandates.
-        const BEHAVIORAL_SIGNALS = [
-          /\bagain\b/i,             // "you did it again"
-          /\bkeep\s+\w+ing\b/i,    // "you keep doing..."
-          /\balways\b/i,            // "you always add..."
-          /\bevery\s+time\b/i,      // "every time you..."
-          /\byou\s+still\b/i,       // "you still..."
-          /\bhow\s+many\s+times\b/i,
-          /\bi\s+told\s+you\b/i,    // "I told you already"
-          /\bnever\s+do\b/i,         // "never do this" = rule
-          /\bdon'?t\s+ever\b/i,
-          /\btend\s+to\b/i,          // "you tend to..."
-          /\bthis\s+is\s+a\s+(?:rule|pattern)\b/i,
-          /\bremember\s+(?:this\s+rule|for\s+next\s+time)\b/i,
-          // Chinese frequency/behavioral signals
-          /你总是/, /每次/, /又来了/, /反复/, /多少次/, /你老是/, /一直都/, /还是在做/,
-        ];
-        const isBehavioral = BEHAVIORAL_SIGNALS.some((p) => p.test(prompt));
-
-        const isCorrection = CORRECTION_PATTERNS.some((p) => p.test(prompt));
-        // Only store if it's a correction AND has behavioral signals (repeating pattern, not task redirect)
-        if (isCorrection && isBehavioral && prompt.length > 3) {
+        // Two-gate capture: correction signal + durability signal (and the >3
+        // char floor) are all enforced inside detectCorrection().
+        const detection = detectCorrection(prompt);
+        if (detection.captured) {
           // Per-message dedup: skip if exact same prompt was already processed
           const promptHash = quickHash(prompt);
           if (seenEntries.some(e => e.hash === promptHash)) {
@@ -1241,21 +1197,10 @@ async function main(): Promise<void> {
 
             // Only process feedback if surfaced items are recent (< 10 min)
             if (age < 600_000 && Array.isArray(prevSurfaced.items) && prevSurfaced.items.length > 0) {
-              // Reuse the same CORRECTION_PATTERNS from hook-correction
-              const CORRECTION_PATTERNS = [
-                // English
-                /\bthat'?s\s+wrong\b/i, /\byou\s+(missed|didn'?t|forgot|skipped)\b/i,
-                /\bnot\s+what\s+i\s+(asked|wanted|meant|said)\b/i, /\bagain\s+you\b/i,
-                /\bstop\s+(doing|adding|making)\b/i, /\bwrong\s+(approach|direction|file|function)\b/i,
-                /\bi\s+said\b.*\bnot\b/i, /\bdon'?t\s+(do\s+that|change|delete|add)\b/i,
-                /\bno[,!.]\s+(don'?t|that|you|i\s+meant)\b/i,
-                // Chinese
-                /不对/, /错了/, /不要这样/, /不是这个/, /你搞错了/,
-                /我说的不是/, /别这样做/, /重新来/, /你忘了/, /不是我要的/,
-                /搞反了/, /方向不对/,
-              ];
-
-              const isCorrection = CORRECTION_PATTERNS.some(p => p.test(prompt));
+              // Deliberately correction-gate ONLY (asymmetric vs hook-correction, by
+              // design): any pushback right after a recall marks the surfaced items
+              // not-useful — the durability (behavioral) gate is irrelevant for feedback.
+              const isCorrection = detectCorrection(prompt).correctionHit !== null;
 
               // Build feedback array
               const feedback = prevSurfaced.items!.map((item: { id: string; title: string }) => ({

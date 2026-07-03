@@ -985,6 +985,81 @@ SEO/GEO launch across all major MCP discovery channels.
 
 ---
 
+## RMR Program — C1: correction detector (2026-07-03)
+
+Closed the M2 capture-leak gap: 11 genuine behavioral corrections reached `hook-correction` but were silently dropped. Root-cause split: 10/11 were blocked by the behavioral-gate (over-strict — required 2 of 6 signals when 1 strong signal is sufficient), and 9/11 were not matched by any lexical pattern (indirect phrasing like "I told you" / "again you…" / "every time you" absent from the pattern list).
+
+**Implementation — `packages/cli/src/utils/correction-detector.ts`:**
+
+- **Single-gate invariant** — `detectCorrection()` fires if ≥1 pattern hits OR ≥1 behavioral signal hits (was AND logic). One unambiguous signal is enough.
+- **+13 correction patterns** — adds indirect phrasings, Chinese variants, past-tense complaints, and "I told you"/"you keep"/"you always" family; then **4 narrowed** after independent reviewer found 77% FP rate on a 13-record daily-traffic sample (broad `again` / `no more` removed; replaced with anchored forms like `again you` / `no more X`).
+- **+12 behavioral signals** — frustration markers, repetition signals, meta-complaints ("why do you", "how many times"), negation-of-prior ("wasn't", "that's not what").
+- Wired into both `hook-correction` and `hook-ambient`.
+
+**Results:**
+- Replay on 11 M2 misses: **8/11 now captured**. E10/E41/E57 are honest non-captures (E10: pure question, no rule signal; E41: task instruction, not behavioral; E57: acknowledgment only).
+- FP check: 0/31 original guard set + 0/13 new daily-traffic set.
+- 738 tests green.
+- Independent review cycle: REVISE → fixed (2 HIGH: pattern too-broad + signal false-positive edge cases) → verifier PASS 6/6. Live immediately via the restored hooks.
+
+---
+
+## RMR Program — B2: offline correction-transfer benchmark — HeedBench v1 offline tier (2026-07-03)
+
+First offline, deterministic, CI-runnable measurement of correction transfer: given a correction store snapshot, how many predictions-that-fired actually match a real captured correction?
+
+**New modules (scripts/eval/, ~2.8K lines):**
+
+| Module | What |
+|--------|------|
+| `bench-artifact.mjs` | Artifact writer/reader/verifier — schema `correction-transfer/v2`, corpus_hash recompute, metric drift check |
+| `harvest.mjs` | Correction ingestion + export pipeline — reads live AR store, scrubs, deduplicates |
+| `correction-transfer.mjs` | Scorer — predict-loo leave-one-out, keyword path scoring, project-scoped prior joins |
+| `claim-gates.mjs` + `claim-gates.json` | Entry-condition gate — ≥1 hit required before artifact is accepted (evasion-resistant `Math.random` gate) |
+| `run-bench.mjs` | CLI driver — `--corpus fixture|real`, `--verify-baselines`, `--update-baselines`, `--check-determinism`, `--anonymize-slugs` |
+
+**Fixture corpus (`scripts/eval/fixtures/corpus-v1/`, 26 records + lock):**
+
+Synthetic corpus designed to exercise the scorer edge cases. Fixture results: `fired=2 hits=2 RECALL* 2/14 [4.0–39.9%]`, exact-match + byte-identical determinism (§7.3 verified).
+
+**Real corpus honest numbers:** `0/4 achievable` — only 4 corrections in the real store have prediction-path items that fired at all; 0 matched. Accounting invariant: `95 = 31 (not predictable) + 3 (predictable, not achievable) + 61 (achievable, not fired)`, itemized in the artifact.
+
+**Scorer-join bug (reviewer-driven):** Independent code-reviewer's "hits must be >0" check against the fixture triggered a deep investigation. Found: `correction-transfer.mjs` was joining priors across all projects when building the predict-loo structure — structurally unfireable keyword paths (cross-project class merging) and inflated `predictable` counts. Fixed to project-scoped joins matching predict-loo's own structural construction. Stamped as `corpus.prior_join: "project-scoped"` in the artifact schema.
+
+**Security round:**
+- CTI writes now fail-closed scrubbed (not just guarded at egress).
+- CI artifact upload glob narrowed — was leaking real project slugs in filenames.
+- `loop8-labeled-rejects.json` de-tracked + `.gitignore`'d. File remains in public git history — human decision pending on next push.
+- `--anonymize-slugs` flag added to `run-bench.mjs` for future CI use.
+
+**CI lane:**
+- `bench-fixture.yml` — SHA-pinned, fixture-only, artifact uploaded (glob narrowed). Live.
+- `repro-docs.yml.staged` — staged (not active); documents the reproducibility claim for the real corpus.
+
+**docs/eval/**: `DETERMINISM.md`, `REPRODUCE.md`, `BENCH-RESULT-SCHEMA.md` committed as companion references.
+
+**Verification:** dual independent review (code REVISE→fixed; security NOT-READY→fixed) + final verifier PASS (11 checks including evasion-resistant Math.random gate re-verify).
+
+---
+
+## RMR Program — ops: settings.json profile-swap incident (2026-07-03)
+
+A provider profile swap wholesale-replaced `~/.claude/settings.json`, wiping hooks and MCP server registrations. No code was lost — everything is committed — but the running harness was silently broken (hooks not firing, `aam` + `linear` MCP servers gone) until the orchestrator caught the discrepancy.
+
+**What was restored:**
+
+| Item | How |
+|------|-----|
+| `hook-correction`, `hook-ambient`, `hook-end`, `hook-start` hooks | Schema-validated re-entry into `settings.json` |
+| `aam` MCP server | `claude mcp add-json aam ...` |
+| `linear` MCP server | `claude mcp add-json linear ...` |
+
+**Post-swap verification checklist recorded** in `docs/proposals/c1-config-change.md`: after any settings change, verify hooks are present in `settings.json`, run a smoke-correction through `hook-correction`, and confirm MCP server list.
+
+**Root cause:** profile swap operation has no diff/merge step — it replaces the file. Any hooks or MCP entries added outside the profile source are silently lost. Human awareness noted; no automated fix at this time.
+
+---
+
 ## Design Principles (from the review session, 2026-04-17)
 
 1. **Hooks over discretion** — critical saves must be harness-enforced, not agent-decided

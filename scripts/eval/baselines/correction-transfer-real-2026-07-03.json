@@ -1,0 +1,1609 @@
+{
+  "schema_version": "bench-result/v1",
+  "benchmark": "correction-transfer",
+  "benchmark_version": "correction-transfer-v1-2026-07-02",
+  "generated_utc": "2026-07-03T10:54:03.755Z",
+  "corpus": {
+    "corpus_hash": "7cd8e5503be0c7c997992afd2f15a6828a48f008633720b4f034edb46894a41c",
+    "corpus_hash_basis": "sha256 tree over canonicalJson of corrections-export/v1 records (includeRetracted:true), computed pre-harvest — the §4.1 ingestion projection",
+    "n_on_disk": 96,
+    "n_on_disk_basis": "exportCorrections({includeRetracted:true}) record count",
+    "raw_file_count": 96,
+    "reader_disagreement": null,
+    "n_counted": 93,
+    "n_active_counted": 32,
+    "n_retracted_counted": 61,
+    "n_scoreable": 22,
+    "scored_set": "active-counted (all per_item rows; lead-in-unusable rows flagged redaction_survived:false, counted in denominators, never fired)",
+    "prior_universe": "all-counted-including-retracted (harvested CTIs; a prior contributes recorded fields only, its own lead-in quality is irrelevant)",
+    "prior_join": "same-project same-class (cluster-signature overlap >= MIN_OVERLAP; predict-loo's join per §2.1 — the §3.2 pseudocode is project-silent; the unscoped cross-project reading was tested and rejected: generic rule tokens collide across projects, diluting deriveBlindSpots trigger sets below MIN_OVERLAP and structurally zeroing the keyword path while inflating `predictable`)",
+    "reader_note": "Denominators here are NOT comparable to predict-loo's: predict-loo raw-reads every project JSON (silently dropping rule/date fails) and scores ALL records incl. retracted as targets with per-project priors; correction-transfer ingests via exportCorrections (§4.1), scores active-counted targets only, and uses a cross-project all-counted prior universe. Different readers, different denominators — by construction, both published (§2.2).",
+    "excluded": [
+      {
+        "id": "2026-04-22-",
+        "project": "claude",
+        "reason": "missing_rule",
+        "disposition": "dropped_from_corpus"
+      },
+      {
+        "id": "2026-04-21-",
+        "project": "tongwu",
+        "reason": "missing_rule",
+        "disposition": "dropped_from_corpus"
+      },
+      {
+        "id": "2026-05-06-",
+        "project": "tongwu",
+        "reason": "missing_rule",
+        "disposition": "dropped_from_corpus"
+      },
+      {
+        "id": "2026-04-30-not-needed",
+        "project": "aam",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-30-that-flag-doesn-t-exist",
+        "project": "aam",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-09-confirmed",
+        "project": "aam",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-20-yes-you-are-right",
+        "project": "AgentRecall",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-21-i-think-the-number-system-is-a",
+        "project": "AgentRecall",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-22-agentrecall-local-test-report-",
+        "project": "AgentRecall",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-22-no-that-s-wrong",
+        "project": "AgentRecall",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-24--projects-agentrecall-orchestr",
+        "project": "AgentRecall",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-30-3",
+        "project": "AgentRecall",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-01-we-can-do-1-2-but-not-3-we-nee",
+        "project": "AgentRecall",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-06--task-notification-",
+        "project": "AgentRecall",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-08-okay-really-good",
+        "project": "AgentRecall",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-11-actually-the-dream-is-already-",
+        "project": "AgentRecall",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-13-root-cause-is-mac-sleep-mode-e",
+        "project": "AgentRecall",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-23--task-notification-",
+        "project": "AgentRecall",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-06-10-this-is-the-fb-from-fable-cli-",
+        "project": "AgentRecall",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-08-user-agreed-cli-is-great-for-t",
+        "project": "apqc",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-08-user-tested-both-versions-and-",
+        "project": "apqc",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-22-4-22-apqc-dashboard-discussion",
+        "project": "APQC-Process Automation",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-28-li-haoyu",
+        "project": "APQC-Process-Automation",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-04-okay-i-see-because-you-told-me",
+        "project": "claude",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-13-actually-i-would-say-this-meth",
+        "project": "d234ebb2-f31b-4d40-a601-7de39085fc4e",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-06--agentrecall-dreaming-agent",
+        "project": "default",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-20-sub2api-wei-shaw-sub2api-alrea",
+        "project": "eu-ai-gateway",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-20-sub2api-wei-shaw-sub2api-alrea",
+        "project": "eu-ai-gateway",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-20-wrong-repo",
+        "project": "eu-ai-gateway",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-20-wrong-repo",
+        "project": "eu-ai-gateway",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-27-correct-repo-is-novadalabs-pri",
+        "project": "eu-ai-gateway",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-27-correct-repo-is-novadalabs-pri",
+        "project": "eu-ai-gateway",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-28-but-i-still-didn-t-get-how-we-",
+        "project": "mcp",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-06-wrong-layer-htmls-are-generate",
+        "project": "novada-intel",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-26-i-sent-to-all-4-recipients-on-",
+        "project": "novada-intel",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-26-root-cause-was-not-the-retry-l",
+        "project": "novada-intel",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-20--task-notification-",
+        "project": "novada-mcp",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-04-codex-has-zero-context-memory",
+        "project": "novada-proxy",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-08-the-407-header-diagnosis-was-w",
+        "project": "novada-proxy-extension",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-27-4-27-process",
+        "project": "novada-tech-group",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-06-03-keyless-paths-template-render-",
+        "project": "plywood",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-06-03-plywood-announcement",
+        "project": "plywood",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-06-03-when-ar-is-absent-emit-a-one-t",
+        "project": "plywood",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-30-no-signup-credit-at-all-anti-a",
+        "project": "prismma-gateway",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-06-02-compliance-is-our-safety-blank",
+        "project": "prismma-gateway",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-06-07-customers-cannot-access-sub2ap",
+        "project": "prismma-gateway",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-27-this-is-the-feedback-on-1",
+        "project": "proxy4agent",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-28--image-4-actually-you-didn-t-c",
+        "project": "proxy4agent",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-28--image-7-proxy-address",
+        "project": "proxy4agent",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-28-rename-everything-to-novada-pr",
+        "project": "proxy4agent",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-01-okay-that-s-why-you-say-naming",
+        "project": "proxy4agent",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-04-good-this-is-a-really-good-loo",
+        "project": "proxy4agent",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-18--mission-genome-os-comprehensi",
+        "project": "tongwu",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-21-fudong-account-entire-tech-tea",
+        "project": "tongwu",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-21-trust-already-built-they-alrea",
+        "project": "tongwu",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-04-23-the-product-worked-all-along",
+        "project": "tongwu",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-04-i-think-the-next-step-is-still",
+        "project": "tongwu",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-08-file-users-tongwu-projects-nov",
+        "project": "tongwu",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-11--",
+        "project": "tongwu",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-12--aam-apqc",
+        "project": "tongwu",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-12--image-2-okay-i-would-say-now-",
+        "project": "tongwu",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-13--hand-off-structure-hand",
+        "project": "tongwu",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-13-brightdata-comparison-was-alre",
+        "project": "tongwu",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-18-this-is-the-conversation-can-y",
+        "project": "tongwu",
+        "reason": "retracted",
+        "disposition": "prior_only"
+      },
+      {
+        "id": "2026-05-11-confirmed-user-also-corrected-",
+        "project": "aam",
+        "reason": "thin_context",
+        "disposition": "counted_not_fired"
+      },
+      {
+        "id": "2026-05-20-one-version-bump-per-release-n",
+        "project": "agentrecall",
+        "reason": "thin_context",
+        "disposition": "counted_not_fired"
+      },
+      {
+        "id": "2026-06-18-not-move-to-linear-build-a-new",
+        "project": "AgentRecall",
+        "reason": "thin_context",
+        "disposition": "counted_not_fired"
+      },
+      {
+        "id": "2026-06-23-could-you-please-use-chinese-t",
+        "project": "AgentRecall",
+        "reason": "thin_context",
+        "disposition": "counted_not_fired"
+      },
+      {
+        "id": "2026-07-03-you-always-miss-the-point-plea",
+        "project": "AgentRecall",
+        "reason": "no_usable_leadin",
+        "disposition": "counted_not_fired"
+      },
+      {
+        "id": "2026-05-23-firecrawl-live-test-is-done-50",
+        "project": "novada-mcp",
+        "reason": "thin_context",
+        "disposition": "counted_not_fired"
+      },
+      {
+        "id": "2026-06-30-we-need-a-persistent-high-qual",
+        "project": "novada-mcp",
+        "reason": "no_usable_leadin",
+        "disposition": "counted_not_fired"
+      },
+      {
+        "id": "2026-07-02-user-wanted-a-light-theme-then",
+        "project": "novada-mcp",
+        "reason": "thin_context",
+        "disposition": "counted_not_fired"
+      },
+      {
+        "id": "2026-05-31-use-beefapi-s-prices-verbatim-",
+        "project": "prismma-gateway",
+        "reason": "thin_context",
+        "disposition": "counted_not_fired"
+      },
+      {
+        "id": "2026-06-15-the-ufo-should-replace-the-nat",
+        "project": "prismma-gateway",
+        "reason": "no_usable_leadin",
+        "disposition": "counted_not_fired"
+      }
+    ],
+    "rejected_lines": null,
+    "active_approximation": "export-time",
+    "manifest": [
+      {
+        "project": "aam",
+        "file": "2026-04-30-not-needed.json",
+        "sha256": "9651c46ceb4459df42c633488932b37def4ea85dd4023b5395ec909d628324b5"
+      },
+      {
+        "project": "aam",
+        "file": "2026-04-30-that-flag-doesn-t-exist.json",
+        "sha256": "299a688279bb14eecdcd3a69f7582c3cc72d641d9047e7cbd885acd7a4d33407"
+      },
+      {
+        "project": "aam",
+        "file": "2026-05-06-don-t-map-to-human-memory.json",
+        "sha256": "150de4b8fbe6f5cdd8a2d54c6621414645bcfc5c5601a62b82d83b6904f1c1c8"
+      },
+      {
+        "project": "aam",
+        "file": "2026-05-09-confirmed.json",
+        "sha256": "2010748a4750eeab6d106fc0ca1c7b9e2843ef0f92c596c8472eb557257b5e1c"
+      },
+      {
+        "project": "aam",
+        "file": "2026-05-11-confirmed-user-also-corrected-.json",
+        "sha256": "4276f0f955b8c90c57e1ff76d4166a6447df07de50618491b44f67868726b9a3"
+      },
+      {
+        "project": "agentrecall",
+        "file": "2026-05-20-one-version-bump-per-release-n.json",
+        "sha256": "a600b51101b6aa864e141e658ecc2a9458295af6784dda6bbbbf8c5475cc9ff6"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-04-20-yes-you-are-right.json",
+        "sha256": "a97955e2d45868879ed0218d4c087cf633f0317450c33ce62639729d038436c1"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-04-21-i-think-the-number-system-is-a.json",
+        "sha256": "5b6270eb2e0facb1b3e812c4aa91f440d85c035860954ecaa9d29db4fe0bca8f"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-04-22-agentrecall-local-test-report-.json",
+        "sha256": "a28d711e5fb051a99e034a767f9345e866ed999f8bfd6bfbfac215993691378f"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-04-22-no-that-s-wrong.json",
+        "sha256": "15222c1c33b8937066d940e3fb8f688665637422f5c7f33f1f65e207279a44bf"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-04-24--projects-agentrecall-orchestr.json",
+        "sha256": "8512f301e2715b2d5ecf429435cc6e08371da0cae22128849796a31fad484046"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-04-28-user-wants-beige-warm-color-pa.json",
+        "sha256": "867ec944e8a147fc3b5dab87999be9f6f48a284c9e6e6def36beb4ec512cec2f"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-04-30-3.json",
+        "sha256": "ef3d207e1604f84ebc71830d7700350b985674268406abc2befba69590baf08f"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-05-01-we-can-do-1-2-but-not-3-we-nee.json",
+        "sha256": "1e981ce9cb9e277446816b34392465036a5a48003bb83937e6fc811888fa59db"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-05-06--task-notification-.json",
+        "sha256": "5f7418677e10564c012eb6a21f45257ad3e046160ea059726534e5e5c71ba5f9"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-05-06-don-t-map-to-human-memory-it-w.json",
+        "sha256": "845ce97cba47c2b882218bdd79f280021779889c73102fcad05892832042c496"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-05-08-okay-really-good.json",
+        "sha256": "cb47b80bc02702fad647e9ec9070af7bb802cf1f962789b749a0d04d6991b82e"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-05-11-actually-the-dream-is-already-.json",
+        "sha256": "d4e9caa6bc3a58707d6e75e29fcc92ad26273b6b6e4de554a72828f0f76a6ee8"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-05-13-root-cause-is-mac-sleep-mode-e.json",
+        "sha256": "56d7b59bad4579dd5e33ddc98e0e6a937d4e737b6ae7b51c1ccaef735bbb589d"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-05-23--task-notification-.json",
+        "sha256": "3a21aec3f3238c485ffa84aee1e6294c2bf76158af407753ef24051e62a6caeb"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-06-10-this-is-the-fb-from-fable-cli-.json",
+        "sha256": "778e01fbbc774fffc574193448dbded742751bb4d122235145b72508f7fba36d"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-06-18-not-move-to-linear-build-a-new.json",
+        "sha256": "7cd82ebc7b2dd5a3f0e9c5c6565e88419ab261cee90555537009dc0e22e4e456"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-06-23-could-you-please-use-chinese-t.json",
+        "sha256": "62328d9c5807a285954f2c1a6ab8bc4082dc471cf66f0bb6d0a868080d063313"
+      },
+      {
+        "project": "AgentRecall",
+        "file": "2026-07-03-you-always-miss-the-point-plea.json",
+        "sha256": "ddc9a3db3ea53f38d782643a7fc752bb2656a96c1a9fc2e86133b0c6bd6993a2"
+      },
+      {
+        "project": "apqc",
+        "file": "2026-05-08-user-agreed-cli-is-great-for-t.json",
+        "sha256": "f87a512b712c679889a0af1f3ba922b9682a47416b1bb2e783e8641af4a8d720"
+      },
+      {
+        "project": "apqc",
+        "file": "2026-05-08-user-tested-both-versions-and-.json",
+        "sha256": "3c75b68159ba99bdbcccec935cf67cb7cde4cb86e5d100c21b0ea9fdb83a79b6"
+      },
+      {
+        "project": "APQC-Process Automation",
+        "file": "2026-04-22-4-22-apqc-dashboard-discussion.json",
+        "sha256": "dcfb6027950cc678f44d58fc649bdc9270ef505ea58c18b5ab8932ae04cf1084"
+      },
+      {
+        "project": "APQC-Process-Automation",
+        "file": "2026-04-28-li-haoyu.json",
+        "sha256": "f38bfe3ace60c938158c33ce94295b7b05c87e9cd4499ee20f7f5103065f5054"
+      },
+      {
+        "project": "claude",
+        "file": "2026-04-22-.json",
+        "sha256": "4add6b1a846248dd0c8742651c2ba3eaac421b95097f9be785df20b594c56193"
+      },
+      {
+        "project": "claude",
+        "file": "2026-05-04-okay-i-see-because-you-told-me.json",
+        "sha256": "c113799c538d32fb786f4d2ad4e32450e8573818356af9c2473e7b2c8fa21729"
+      },
+      {
+        "project": "d234ebb2-f31b-4d40-a601-7de39085fc4e",
+        "file": "2026-05-13-actually-i-would-say-this-meth.json",
+        "sha256": "5be25a16fe41bc7fbc23615cfe3991f6a6fb3c3a3bce2ac97146cbf240b80bb5"
+      },
+      {
+        "project": "default",
+        "file": "2026-05-06--agentrecall-dreaming-agent.json",
+        "sha256": "9990deda9802f383eba4e6321cdae666711cc403ba2c94652c787247d2c0e827"
+      },
+      {
+        "project": "eu-ai-gateway",
+        "file": "2026-05-20-sub2api-wei-shaw-sub2api-alrea.json",
+        "sha256": "7bb77a0efb171d988c0d94df3b0ece8ccef4da948abb4f3806f32add0e65e64b"
+      },
+      {
+        "project": "eu-ai-gateway",
+        "file": "2026-05-20-sub2api-wei-shaw-sub2api-alrea.json",
+        "sha256": "7bb77a0efb171d988c0d94df3b0ece8ccef4da948abb4f3806f32add0e65e64b"
+      },
+      {
+        "project": "eu-ai-gateway",
+        "file": "2026-05-20-wrong-repo.json",
+        "sha256": "896a6f3c10f327c63fb2c897e158e96ba2cdbd87837f91cdd005a6a5331510f9"
+      },
+      {
+        "project": "eu-ai-gateway",
+        "file": "2026-05-20-wrong-repo.json",
+        "sha256": "896a6f3c10f327c63fb2c897e158e96ba2cdbd87837f91cdd005a6a5331510f9"
+      },
+      {
+        "project": "eu-ai-gateway",
+        "file": "2026-05-27-correct-repo-is-novadalabs-pri.json",
+        "sha256": "23aa0154a3e061b26859a9e7c94876224b2f947af473728f852a77a68d7e3ee5"
+      },
+      {
+        "project": "eu-ai-gateway",
+        "file": "2026-05-27-correct-repo-is-novadalabs-pri.json",
+        "sha256": "23aa0154a3e061b26859a9e7c94876224b2f947af473728f852a77a68d7e3ee5"
+      },
+      {
+        "project": "mcp",
+        "file": "2026-04-28-but-i-still-didn-t-get-how-we-.json",
+        "sha256": "5e293723972073d56e92d2f7facb175a775be1544673d62a6e34c015eeb677cd"
+      },
+      {
+        "project": "novada-intel",
+        "file": "2026-05-06-wrong-layer-htmls-are-generate.json",
+        "sha256": "71ce2ecf35f1dbb46841f620fbf7ca7b199306054c9c6f19aa109676f65501e4"
+      },
+      {
+        "project": "novada-intel",
+        "file": "2026-05-26-i-sent-to-all-4-recipients-on-.json",
+        "sha256": "14500df9da01a95c670a0898e63a119a93ab9e4979931b1ecabd455cf24f0259"
+      },
+      {
+        "project": "novada-intel",
+        "file": "2026-05-26-root-cause-was-not-the-retry-l.json",
+        "sha256": "b5ccabb9c5919f9839edce13cdaf3084bc4cba3017cdbb136465ed4cd1210887"
+      },
+      {
+        "project": "novada-intel",
+        "file": "2026-05-26-test-must-go-to-tong.json",
+        "sha256": "e4057bdc4bd6005728fdeec127b9dbca19c8097ffbc6807ff74ab810993e3eb6"
+      },
+      {
+        "project": "novada-mcp",
+        "file": "2026-05-20--task-notification-.json",
+        "sha256": "13ad6c2cf8a270a9d20118f0416c994643880a3accdbf1d0a210d0118ff66556"
+      },
+      {
+        "project": "novada-mcp",
+        "file": "2026-05-20-code-issue-wrong-query-param-k.json",
+        "sha256": "6408f3c39ce308158bfe105804a6d0cf578a88e1014e09fe0cab3be8df8c2567"
+      },
+      {
+        "project": "novada-mcp",
+        "file": "2026-05-23-firecrawl-live-test-is-done-50.json",
+        "sha256": "981887f7fdf4e5ddde7bde576154a726d2a15f5f2b7431f7c7a095ac5b35b6ab"
+      },
+      {
+        "project": "novada-mcp",
+        "file": "2026-06-12-no-shared-demo-tokens-ever-cus.json",
+        "sha256": "507ffe9017a7887c4cf7dab08343801eb924fbb8da5eeaabdb51891b44572d29"
+      },
+      {
+        "project": "novada-mcp",
+        "file": "2026-06-16--image-27-image-28-okay-good-b.json",
+        "sha256": "29cf06f262d8a11771276b6077c9c9954eb26e7b1995c92dea4759cbd1d7e2f1"
+      },
+      {
+        "project": "novada-mcp",
+        "file": "2026-06-30-we-need-a-persistent-high-qual.json",
+        "sha256": "2c6ba0253579278cb12d8f3366b8409b3746b0177560a4b2348f3c11d24ec813"
+      },
+      {
+        "project": "novada-mcp",
+        "file": "2026-07-01-do-not-touch-novada-mcp-repo-i.json",
+        "sha256": "d813cc7545bd13a319a63e7982c931f5131a91e65af9755b64be14eef9e277fe"
+      },
+      {
+        "project": "novada-mcp",
+        "file": "2026-07-01-never-verify-your-own-work-.json",
+        "sha256": "3ea2af26f32183c98947cd029f31e7d27aa77180d908894cfec1b097c4b92c93"
+      },
+      {
+        "project": "novada-mcp",
+        "file": "2026-07-01-repositories-only-become-pure-.json",
+        "sha256": "0a4172d5124635148fe9a6fa3137bb07e17bf72155b7fdd7c0fb78a5179cec5e"
+      },
+      {
+        "project": "novada-mcp",
+        "file": "2026-07-02-user-wanted-a-light-theme-then.json",
+        "sha256": "446cfa90483617a9afeae44cf47f047096037afb56e8017c4bea0552ae5aa370"
+      },
+      {
+        "project": "novada-proxy",
+        "file": "2026-05-04-codex-has-zero-context-memory.json",
+        "sha256": "ea36d7053e402ef3c59d6702a7b51d1d7fb9734843ded0cf7d487055aa8ef634"
+      },
+      {
+        "project": "novada-proxy",
+        "file": "2026-05-04-opus-must-not-do-coding-via-so.json",
+        "sha256": "750eb77e080b995fc7dcf5803f56c9c206c85419fb2d63990a2e472013cc52d3"
+      },
+      {
+        "project": "novada-proxy-extension",
+        "file": "2026-05-08-the-407-header-diagnosis-was-w.json",
+        "sha256": "e1422b75eed43ecd34bb37d735b4b4c81a80ea5cabb441836a444f3e5e273687"
+      },
+      {
+        "project": "novada-tech-group",
+        "file": "2026-04-27-4-27-process.json",
+        "sha256": "318b8aa42987a0d83150e4c4b9ce60d92ef1c3190c420552fae66b88cc895f96"
+      },
+      {
+        "project": "plywood",
+        "file": "2026-06-03-keyless-paths-template-render-.json",
+        "sha256": "ca0f239e5aa9ae9535c23ad43c7e8155101e5b5479c29f369e55bb819a0d5375"
+      },
+      {
+        "project": "plywood",
+        "file": "2026-06-03-plywood-announcement.json",
+        "sha256": "895493e7795338353384d5800caae7847b638aef97c65cddba48f8cbdcc7ffe4"
+      },
+      {
+        "project": "plywood",
+        "file": "2026-06-03-when-ar-is-absent-emit-a-one-t.json",
+        "sha256": "34330e8e322e5851ff7b51fc65d11fcd77b2173895c60b2ab802b87a98a57737"
+      },
+      {
+        "project": "prismma-desktop",
+        "file": "2026-06-27-it-is-a-deliberate-priority-an.json",
+        "sha256": "81ce28de50beb9eefecc0ff5b62c3a997e094e92338b0b37d112af64d4b55bdb"
+      },
+      {
+        "project": "prismma-gateway",
+        "file": "2026-05-30-keep-the-current-version-treat.json",
+        "sha256": "c0ba0fed449830958f9b80ad6b6ecba8189fe3f2e3d578bec8de6a487a3ec623"
+      },
+      {
+        "project": "prismma-gateway",
+        "file": "2026-05-30-no-signup-credit-at-all-anti-a.json",
+        "sha256": "dcd0b594ddec41f0defff723430d097a0a3fe9bac2d3c5a81eb378fca1b0ebfc"
+      },
+      {
+        "project": "prismma-gateway",
+        "file": "2026-05-31-do-not-use-his-personal-supaba.json",
+        "sha256": "d37a885fa08f278e187400177b3c45957de32db0dbbd6462881224b04644abc2"
+      },
+      {
+        "project": "prismma-gateway",
+        "file": "2026-05-31-use-beefapi-s-prices-verbatim-.json",
+        "sha256": "c16050aa4e6ebb2000d2130024b01208f446c42fa6771a7d8de2b111b20b3668"
+      },
+      {
+        "project": "prismma-gateway",
+        "file": "2026-06-02-compliance-is-our-safety-blank.json",
+        "sha256": "08d83611948cb4bee102936b24c9af576420b5857dd2d450290a41e92a68b540"
+      },
+      {
+        "project": "prismma-gateway",
+        "file": "2026-06-02-never-reveal-our-margin-cost-b.json",
+        "sha256": "03c6fbe04c8f2249a7d3e1c8131d28fe622adb2939b5104bb222cbb034b4261d"
+      },
+      {
+        "project": "prismma-gateway",
+        "file": "2026-06-05-all-customer-facing-email-must.json",
+        "sha256": "3a2994097a321a8ca5a36e7ee03861aa52f55c483fdd78237c76051ca88ae8bb"
+      },
+      {
+        "project": "prismma-gateway",
+        "file": "2026-06-07-customers-cannot-access-sub2ap.json",
+        "sha256": "eb792d11cc383e6119f5ca664fed342b11e5a58dd34c5b43e82fb949a3bb74cd"
+      },
+      {
+        "project": "prismma-gateway",
+        "file": "2026-06-15-do-not-put-api-key-secrets-in-.json",
+        "sha256": "d9a0070b23e7c95837867dd2ec89430b1fa4f8207e0559e1974232522f2ef5cc"
+      },
+      {
+        "project": "prismma-gateway",
+        "file": "2026-06-15-the-ufo-should-replace-the-nat.json",
+        "sha256": "e338e0b36b85b4dedc92b378f070d199debc1e55cc260ac39f3bff37b84cc2e9"
+      },
+      {
+        "project": "prismma-web",
+        "file": "2026-06-29-founder-deleted-the-ribbon-and.json",
+        "sha256": "0df907b6497d77371c98c51a79b54fa3b78a5a155cbabec40583168695bf485c"
+      },
+      {
+        "project": "proxy4agent",
+        "file": "2026-04-27-this-is-the-feedback-on-1.json",
+        "sha256": "2d8b29451789349d04ce872556ff9576cc36e8f229b96cf1ff6af4a9f7cbd3a9"
+      },
+      {
+        "project": "proxy4agent",
+        "file": "2026-04-28--image-4-actually-you-didn-t-c.json",
+        "sha256": "a00e8121ded75eda14ae11a318ee6124296d65b6d2fbbd307c43880bda83f488"
+      },
+      {
+        "project": "proxy4agent",
+        "file": "2026-04-28--image-7-proxy-address.json",
+        "sha256": "0d0373b7574edc8b3e3fa61ed87a979c6d7c133047c164f8a12f823c571a0aca"
+      },
+      {
+        "project": "proxy4agent",
+        "file": "2026-04-28-never-push-or-publish-without-.json",
+        "sha256": "15534dc444726858a02ffdfe1bdfc612afa2109f1b400ca60e533aabf43663bb"
+      },
+      {
+        "project": "proxy4agent",
+        "file": "2026-04-28-rename-everything-to-novada-pr.json",
+        "sha256": "74747d05c989d1646a24b89b255e570d8514cd55dbb8c772fd6c6a76fbdce3c9"
+      },
+      {
+        "project": "proxy4agent",
+        "file": "2026-04-28-user-wants-both-1-all-in-one-i.json",
+        "sha256": "7c23bd45e0d86e9bae45d98852b82f97dddaedc77492a21e635dfae477789093"
+      },
+      {
+        "project": "proxy4agent",
+        "file": "2026-05-01-okay-that-s-why-you-say-naming.json",
+        "sha256": "127c8baa91c73b451234dd572700dd1e208c6eed190b02bc703a6b868cb9ff54"
+      },
+      {
+        "project": "proxy4agent",
+        "file": "2026-05-04-good-this-is-a-really-good-loo.json",
+        "sha256": "491cfae089c8cb486056d759b4288a0df63181a2b1df9ded5c66af29475e332e"
+      },
+      {
+        "project": "skaylink-aws",
+        "file": "2026-06-26-excel-must-show-only-what-artu.json",
+        "sha256": "90fbc44ca68e40f6e2affa667af275dc97c397cd4d51ff7ed69c8a27b62ac6ec"
+      },
+      {
+        "project": "tongwu",
+        "file": "2026-04-18--mission-genome-os-comprehensi.json",
+        "sha256": "b67dad061bf01ac4831703a35ddbb518c5987fba15dd7d5c711ff3ad63c04f17"
+      },
+      {
+        "project": "tongwu",
+        "file": "2026-04-21-.json",
+        "sha256": "bb7a6090275dba7d7f03e2efbcb479261944e0ef53f9c9fb042bb00145f67289"
+      },
+      {
+        "project": "tongwu",
+        "file": "2026-04-21-fudong-account-entire-tech-tea.json",
+        "sha256": "ac7b2a4b5ecd23a582958b3df675803fb68773efa0c28737076bfe5e66bfd807"
+      },
+      {
+        "project": "tongwu",
+        "file": "2026-04-21-trust-already-built-they-alrea.json",
+        "sha256": "67ca270e1fff2aa2c59a1cfd489f52b62f9dfa3225df652db279bbf588d4614d"
+      },
+      {
+        "project": "tongwu",
+        "file": "2026-04-23-the-product-worked-all-along.json",
+        "sha256": "0a708d3f34c95b2c3e13605873d08b0690a7e4b550996f0af6534e9e7c6e6eea"
+      },
+      {
+        "project": "tongwu",
+        "file": "2026-05-04-i-think-the-next-step-is-still.json",
+        "sha256": "1d4b8e0245aa59b692a14e17aab806eaacf14ccbf911492a1c0479e855ceea84"
+      },
+      {
+        "project": "tongwu",
+        "file": "2026-05-06-.json",
+        "sha256": "fe9139d262026403ebda96282885e2f84be7f15e12a53d1832e97846b62ae608"
+      },
+      {
+        "project": "tongwu",
+        "file": "2026-05-08-file-users-tongwu-projects-nov.json",
+        "sha256": "9df5dccaa546373ba35c3c2d654732c26f8a9d7145be7f93b7afaf450e1e8150"
+      },
+      {
+        "project": "tongwu",
+        "file": "2026-05-11--.json",
+        "sha256": "2dd0c93b8ab3be04a6f6e232257a226fc46bf70e2b1fa7fcfa536c58bd74273c"
+      },
+      {
+        "project": "tongwu",
+        "file": "2026-05-12--aam-apqc.json",
+        "sha256": "37b08b55be67dda248bfc7d8dd1dbba463491c4059d82771cd75eae8dea867c7"
+      },
+      {
+        "project": "tongwu",
+        "file": "2026-05-12--image-2-okay-i-would-say-now-.json",
+        "sha256": "aeff692555c13d2f465bcb4662baddc68baefe025d7babfa204fe3d8c99307d3"
+      },
+      {
+        "project": "tongwu",
+        "file": "2026-05-13--hand-off-structure-hand.json",
+        "sha256": "09da98ec300cc5d971182ef360b6b36f0579955c99a680edc86144659c5f3217"
+      },
+      {
+        "project": "tongwu",
+        "file": "2026-05-13-brightdata-comparison-was-alre.json",
+        "sha256": "2b759713a5c0a5d88320674512ab20c0a6b5138906710d073ff7d3918535b347"
+      },
+      {
+        "project": "tongwu",
+        "file": "2026-05-18-this-is-the-conversation-can-y.json",
+        "sha256": "9c9c142992e253af95206cf5a34aecb0b7a57ee145ecb684f8a2edabb9154586"
+      },
+      {
+        "project": "x-omnier",
+        "file": "2026-04-25-and-actually-i-want-not-only-t.json",
+        "sha256": "ae3b0160297850272672b39654fe54553c6215c69102e6d7edd67214fe7908be"
+      }
+    ]
+  },
+  "config": {
+    "cli_args": [
+      "--corpus",
+      "real"
+    ],
+    "semantic": false,
+    "MIN_OVERLAP": 2,
+    "MAX_RISKS": 3,
+    "NEG_PER_LEADIN": 5,
+    "matchFn": "keyword-default"
+  },
+  "environment": {
+    "node": "v24.18.0",
+    "platform": "darwin-arm64",
+    "tz": "Europe/Berlin",
+    "repo_commit": "abf8e0b",
+    "core_version": "3.4.35"
+  },
+  "denominators": {
+    "theoretical": 5,
+    "achievable": 4
+  },
+  "metrics": {
+    "recall_achievable": {
+      "value": 0,
+      "num": 0,
+      "den": 4,
+      "wilson95": [
+        0,
+        0.48990002040399916
+      ]
+    },
+    "recall_theoretical": {
+      "value": 0,
+      "num": 0,
+      "den": 5,
+      "wilson95": [
+        0,
+        0.43449149475208104
+      ]
+    },
+    "precision": {
+      "value": null,
+      "num": 0,
+      "den": 0,
+      "wilson95": [
+        0,
+        1
+      ],
+      "note": "n/a (uncomputable — 0 in denominator)"
+    },
+    "ffr": {
+      "value": 0,
+      "num": 0,
+      "den": 1,
+      "wilson95": [
+        0,
+        0.7934567085261071
+      ],
+      "unit": "lead-in",
+      "pair_level": {
+        "value": 0,
+        "num": 0,
+        "den": 5,
+        "wilson95": [
+          0,
+          0.43449149475208104
+        ]
+      }
+    }
+  },
+  "per_item": [
+    {
+      "id": "2026-05-06-don-t-map-to-human-memory",
+      "item_id": "493ded97c30f3b6d",
+      "project": "aam",
+      "date": "2026-05-06",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-05-11-confirmed-user-also-corrected-",
+      "item_id": "3246ee802c154e20",
+      "project": "aam",
+      "date": "2026-05-11",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": false,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-05-20-one-version-bump-per-release-n",
+      "item_id": "2f5d8b82eaddf5a6",
+      "project": "agentrecall",
+      "date": "2026-05-20",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": false,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-04-28-user-wants-beige-warm-color-pa",
+      "item_id": "34b5fcc7a7c4203a",
+      "project": "AgentRecall",
+      "date": "2026-04-28",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-05-06-don-t-map-to-human-memory-it-w",
+      "item_id": "5615f912c1b67e6d",
+      "project": "AgentRecall",
+      "date": "2026-05-06",
+      "predictable": true,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-06-18-not-move-to-linear-build-a-new",
+      "item_id": "8e4a9110745ddb1c",
+      "project": "AgentRecall",
+      "date": "2026-06-18",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": false,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-06-23-could-you-please-use-chinese-t",
+      "item_id": "975cf12d04255c26",
+      "project": "AgentRecall",
+      "date": "2026-06-23",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": false,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-07-03-you-always-miss-the-point-plea",
+      "item_id": "abf485f5c65072de",
+      "project": "AgentRecall",
+      "date": "2026-07-03",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": false,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-05-26-test-must-go-to-tong",
+      "item_id": "42b17d4e2448d6b3",
+      "project": "novada-intel",
+      "date": "2026-05-26",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-05-20-code-issue-wrong-query-param-k",
+      "item_id": "d4017bd9e772d049",
+      "project": "novada-mcp",
+      "date": "2026-05-20",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-05-23-firecrawl-live-test-is-done-50",
+      "item_id": "a5bb23e86efe596b",
+      "project": "novada-mcp",
+      "date": "2026-05-23",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": false,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-06-12-no-shared-demo-tokens-ever-cus",
+      "item_id": "d7de95785ad8f013",
+      "project": "novada-mcp",
+      "date": "2026-06-12",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-06-16--image-27-image-28-okay-good-b",
+      "item_id": "054b3b86345fa246",
+      "project": "novada-mcp",
+      "date": "2026-06-16",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-06-30-we-need-a-persistent-high-qual",
+      "item_id": "53c6a9a38bb24534",
+      "project": "novada-mcp",
+      "date": "2026-06-30",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": false,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-07-01-do-not-touch-novada-mcp-repo-i",
+      "item_id": "29b99372363a3e99",
+      "project": "novada-mcp",
+      "date": "2026-07-01",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-07-01-never-verify-your-own-work-",
+      "item_id": "222788656e577229",
+      "project": "novada-mcp",
+      "date": "2026-07-01",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-07-01-repositories-only-become-pure-",
+      "item_id": "aeacfc681cca5dee",
+      "project": "novada-mcp",
+      "date": "2026-07-01",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-07-02-user-wanted-a-light-theme-then",
+      "item_id": "b4228a884666c8c8",
+      "project": "novada-mcp",
+      "date": "2026-07-02",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": false,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-05-04-opus-must-not-do-coding-via-so",
+      "item_id": "2274f97c832d1165",
+      "project": "novada-proxy",
+      "date": "2026-05-04",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-06-27-it-is-a-deliberate-priority-an",
+      "item_id": "98624a9818c8e39d",
+      "project": "prismma-desktop",
+      "date": "2026-06-27",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-05-30-keep-the-current-version-treat",
+      "item_id": "d434494985a28e43",
+      "project": "prismma-gateway",
+      "date": "2026-05-30",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-05-31-do-not-use-his-personal-supaba",
+      "item_id": "6f7f39798408e50b",
+      "project": "prismma-gateway",
+      "date": "2026-05-31",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-05-31-use-beefapi-s-prices-verbatim-",
+      "item_id": "48b74824163cc274",
+      "project": "prismma-gateway",
+      "date": "2026-05-31",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": false,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-06-02-never-reveal-our-margin-cost-b",
+      "item_id": "f339cc990b7f57da",
+      "project": "prismma-gateway",
+      "date": "2026-06-02",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-06-05-all-customer-facing-email-must",
+      "item_id": "c05c42cc803a751d",
+      "project": "prismma-gateway",
+      "date": "2026-06-05",
+      "predictable": true,
+      "active_predictable": true,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 1
+    },
+    {
+      "id": "2026-06-15-do-not-put-api-key-secrets-in-",
+      "item_id": "32b8c6ec589402e4",
+      "project": "prismma-gateway",
+      "date": "2026-06-15",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-06-15-the-ufo-should-replace-the-nat",
+      "item_id": "95ae917fde1d496b",
+      "project": "prismma-gateway",
+      "date": "2026-06-15",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": false,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-06-29-founder-deleted-the-ribbon-and",
+      "item_id": "10d05f944710a03a",
+      "project": "prismma-web",
+      "date": "2026-06-29",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-04-28-never-push-or-publish-without-",
+      "item_id": "b6b53c2ab08e1b14",
+      "project": "proxy4agent",
+      "date": "2026-04-28",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-04-28-user-wants-both-1-all-in-one-i",
+      "item_id": "1b5cc02a64a4a191",
+      "project": "proxy4agent",
+      "date": "2026-04-28",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-06-26-excel-must-show-only-what-artu",
+      "item_id": "4daa27279386134b",
+      "project": "skaylink-aws",
+      "date": "2026-06-26",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    },
+    {
+      "id": "2026-04-25-and-actually-i-want-not-only-t",
+      "item_id": "31f946210e7e556e",
+      "project": "x-omnier",
+      "date": "2026-04-25",
+      "predictable": false,
+      "active_predictable": false,
+      "redaction_survived": true,
+      "fired": false,
+      "via": null,
+      "hit": false,
+      "anchor_id": null,
+      "anchor_item_id": null,
+      "anti_self_confirm": false,
+      "lead_time_days": null,
+      "neg_fires": 0,
+      "neg_units": 0
+    }
+  ],
+  "hits": 0,
+  "predictions_fired": 0,
+  "lead_time": null,
+  "neg_trials_leadin": 1,
+  "neg_fires_leadin": 0,
+  "neg_trials_pair": 5,
+  "neg_fires_pair": 0,
+  "anti_self_confirm_hits": 0
+}

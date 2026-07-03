@@ -1,0 +1,3 @@
+{"correction_id":"2026-01-15-always-add-help-text-to-every-cli-flag","project":"gamma-cli","kind":"retrieved","at":"2026-02-20T12:00:00Z","evidence":"loaded before export command extension work"}
+{"correction_id":"2026-03-12-never-call-os-exit-in-library-functions","project":"gamma-cli","kind":"retrieved","at":"2026-04-10T12:00:00Z","evidence":"loaded before plugin loader rewrite"}
+{"correction_id":"2026-03-12-never-call-os-exit-in-library-functions","project":"gamma-cli","kind":"heeded","at":"2026-04-10T12:00:00Z","evidence":"agent raised exceptions instead of calling sys.exit in loader code"}

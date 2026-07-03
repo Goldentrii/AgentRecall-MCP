@@ -1,0 +1,16 @@
+{
+  "_note": "no literal secret patterns present by design — prose names AWS env-var keys but contains no AKIA/key literal (security-reviewed 2026-07-03)",
+  "id": "2026-02-20-always-use-iam-roles-not-access-keys-p2",
+  "date": "2026-02-20",
+  "severity": "p0",
+  "project": "delta-infra",
+  "rule": "never put IAM access keys in manifests or environment configs — always use instance roles or workload identity",
+  "context": "Recurrence: a new microservice deployment manifest included AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY as environment variables. Same pattern as January. The correct approach is to annotate the service account with the IAM role ARN and remove all credential environment variables from the manifest. No exceptions.",
+  "tags": ["iam", "security", "credentials", "cloud", "deployment", "secrets", "aws"],
+  "kind": "correction",
+  "active": true,
+  "weight": 1.0,
+  "authoritative": true,
+  "proof_count": 2,
+  "proof_confidence": 1.0
+}

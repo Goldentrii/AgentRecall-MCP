@@ -1,0 +1,14 @@
+{
+  "id": "missing-both-excluded-case",
+  "severity": "p1",
+  "project": "delta-infra",
+  "rule": "",
+  "context": "This record intentionally has both an empty rule AND no date field. It exercises both exclusion reasons simultaneously. The corpus count rule (§2.2) requires both a non-empty rule AND a valid date. This record must appear in excluded[] — a single row is sufficient, reason: missing_rule (checked first).",
+  "tags": ["test-excluded"],
+  "kind": "correction",
+  "active": true,
+  "weight": 0.7,
+  "authoritative": false,
+  "proof_count": 1,
+  "proof_confidence": 0.7
+}

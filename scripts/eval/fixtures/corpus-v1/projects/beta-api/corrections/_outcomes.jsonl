@@ -1,0 +1,5 @@
+{"correction_id":"2026-01-05-always-use-parameterized-queries-for-sql","project":"beta-api","kind":"retrieved","at":"2026-02-15T12:00:00Z","evidence":"loaded before search endpoint implementation"}
+{"correction_id":"2026-01-05-always-use-parameterized-queries-for-sql","project":"beta-api","kind":"heeded","at":"2026-02-15T12:00:00Z","evidence":"agent used parameterized queries throughout new endpoint"}
+{"correction_id":"2026-01-20-use-structured-logging-not-print-statements","project":"beta-api","kind":"retrieved","at":"2026-02-20T12:00:00Z","evidence":"loaded at session start"}
+{"correction_id":"2026-02-10-always-close-db-connections-in-finally-blocks","project":"beta-api","kind":"retrieved","at":"2026-03-05T12:00:00Z","evidence":"loaded before exception-handling refactor"}
+{"correction_id":"2026-02-10-always-close-db-connections-in-finally-blocks","project":"beta-api","kind":"heeded","at":"2026-03-05T12:00:00Z","evidence":"agent wrapped all db calls in try/finally"}

@@ -1,0 +1,15 @@
+{
+  "id": "2026-03-12-never-call-os-exit-in-library-functions",
+  "date": "2026-03-12",
+  "severity": "p0",
+  "project": "gamma-cli",
+  "rule": "never call os.exit() or sys.exit() inside library functions — only call exit in main entry points",
+  "context": "A utility function in the core module called sys.exit(1) on a validation error. This bypassed all the finally blocks in callers and skipped cleanup code. Library functions must raise exceptions; only the CLI entry point (main()) is allowed to catch those exceptions and call sys.exit with an appropriate code.",
+  "tags": ["python", "exit", "finally", "exceptions", "library", "cleanup"],
+  "kind": "correction",
+  "active": true,
+  "weight": 1.0,
+  "authoritative": true,
+  "proof_count": 1,
+  "proof_confidence": 1.0
+}

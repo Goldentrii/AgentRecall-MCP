@@ -1,0 +1,5 @@
+{"correction_id":"2026-01-10-never-use-sync-db-calls-in-request-handlers","project":"alpha-platform","kind":"retrieved","at":"2026-02-10T12:00:00Z","evidence":"loaded at session start before handler refactor"}
+{"correction_id":"2026-01-10-never-use-sync-db-calls-in-request-handlers","project":"alpha-platform","kind":"heeded","at":"2026-02-10T12:00:00Z","evidence":"agent switched to async driver without being told twice"}
+{"correction_id":"2026-02-14-never-use-sync-db-calls-in-request-handlers-p2","project":"alpha-platform","kind":"retrieved","at":"2026-03-15T12:00:00Z","evidence":"loaded before Redis client refactor session"}
+{"correction_id":"2026-01-22-always-validate-pagination-cursor-before-db-query","project":"alpha-platform","kind":"retrieved","at":"2026-03-01T12:00:00Z","evidence":"loaded before new /api/items endpoint work"}
+{"correction_id":"2026-01-22-always-validate-pagination-cursor-before-db-query","project":"alpha-platform","kind":"heeded","at":"2026-03-01T12:00:00Z","evidence":"agent used cursor-codec.decode() in new endpoint without reminder"}

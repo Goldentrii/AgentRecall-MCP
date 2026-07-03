@@ -1,0 +1,15 @@
+{
+  "id": "2026-02-25-always-add-help-text-to-every-cli-flag-p2",
+  "date": "2026-02-25",
+  "severity": "p1",
+  "project": "gamma-cli",
+  "rule": "never ship CLI flags without help text — add descriptive documentation to every argparse flag definition",
+  "context": "Recurring: five more flags in the import subcommand launched without help text. The previous correction documented this in January. Adding a test that asserts every registered flag has a non-empty help string. The test will fail CI if a new flag is added without help text going forward.",
+  "tags": ["cli", "argparse", "flags", "documentation", "help", "testing"],
+  "kind": "correction",
+  "active": true,
+  "weight": 0.7,
+  "authoritative": true,
+  "proof_count": 2,
+  "proof_confidence": 0.7
+}

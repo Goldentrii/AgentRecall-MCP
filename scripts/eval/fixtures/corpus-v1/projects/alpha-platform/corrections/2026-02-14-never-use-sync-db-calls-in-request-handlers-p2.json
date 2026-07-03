@@ -1,0 +1,15 @@
+{
+  "id": "2026-02-14-never-use-sync-db-calls-in-request-handlers-p2",
+  "date": "2026-02-14",
+  "severity": "p0",
+  "project": "alpha-platform",
+  "rule": "never use blocking synchronous calls in HTTP request handlers — use async database drivers",
+  "context": "Recurrence: a new engineer added a synchronous Redis client call directly inside the /api/users route handler. Same pattern as January: the event loop stalled under load. Use the async Redis client everywhere in handler code; sync calls are only acceptable in startup scripts.",
+  "tags": ["nodejs", "express", "database", "async", "redis"],
+  "kind": "correction",
+  "active": true,
+  "weight": 1.0,
+  "authoritative": true,
+  "proof_count": 2,
+  "proof_confidence": 1.0
+}

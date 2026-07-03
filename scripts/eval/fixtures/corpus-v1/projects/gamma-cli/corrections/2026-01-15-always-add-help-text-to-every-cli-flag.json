@@ -1,0 +1,15 @@
+{
+  "id": "2026-01-15-always-add-help-text-to-every-cli-flag",
+  "date": "2026-01-15",
+  "severity": "p1",
+  "project": "gamma-cli",
+  "rule": "always add descriptive help text to every CLI flag — never leave flags undocumented",
+  "context": "Three flags were added to the export command without any help text. When users ran --help they saw empty descriptions next to the new flags. All argparse-style flag definitions must include a help parameter with a human-readable description of what the flag does and what values it accepts.",
+  "tags": ["cli", "argparse", "flags", "documentation", "help"],
+  "kind": "correction",
+  "active": true,
+  "weight": 0.7,
+  "authoritative": true,
+  "proof_count": 1,
+  "proof_confidence": 0.7
+}
