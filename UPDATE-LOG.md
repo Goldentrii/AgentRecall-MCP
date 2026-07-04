@@ -314,6 +314,85 @@ Repo-URL corrections and draft distribution artifacts. No functional code change
 
 ---
 
+## RMR Program — Wave 3 close-out (2026-07-04) — ledger seams + scrub CLI + README truth draft
+
+Three loops independently reviewed and verified. 874 tests, 0 fail across 4 packages. Security round: 1 MEDIUM + 3 LOW, all found and fixed same-wave.
+
+---
+
+## RMR Program — L1: MemoryBackend write seam (2026-07-04, backlog #3)
+
+Goal: give external belief stores (Hindsight, Mem0, Zep) a governed write path that mirrors `RecallBackend`'s read abstraction. The existing `ar corrections export` surfaces the scrubbed payload; this loop wires the next step — pushing that payload to a backend over a declared interface with an env-selected factory.
+
+**What changed:**
+
+| Item | What | Why |
+|------|------|-----|
+| `MemoryBackend` interface (`memory-backend.ts`) | `retain(records: CorrectionExport[]) → RetainResult`, `available() → bool`, `name() → string`. `RetainResult` shape mirrors Hindsight's retain response: `{ accepted: string[], rejected: { id, reason }[] }`. | Symmetric to `RecallBackend`; every adapter speaks the same dialect. The type system enforces the contract at compile time; the interface comment enforces the scrub-upstream assumption at author time. |
+| `DisabledMemoryBackend` | Default fallback — `available()` returns false; `retain()` returns all records as rejected. Zero-cloud default unchanged: no `AR_MEMORY_BACKEND` set → no egress, full stop. | Gate on `available()` before calling `retain()`; no surprise writes. |
+| `getMemoryBackend()` factory | Env-selected, cached. `AR_MEMORY_BACKEND=local-archive` → built-in reference backend; `AR_MEMORY_BACKEND=<npm-module>` → dynamic `import()` of a third-party adapter; unset/none/disabled → `DisabledMemoryBackend`. | Mirrors `getRecallBackend()` exactly. One env var, one factory, one cache. |
+| `SAFE_MODULE_RE` + `BUILTIN_DENYLIST` import-injection guards | Allowlist: bare/scoped npm package names, lowercase-only, no path separators. Denylist: explicit floor list (`fs`, `path`, `os`, `http`, `https`, `child_process`, `net`, `crypto`, `module`, `process`, `vm`, `worker_threads`) unioned with `builtinModules` at runtime. Uppercase input rejected with a clear message — NOT silently lowercased (squat-redirect hazard if `MyAdapter` normalises to a different registered package). | `AR_MEMORY_BACKEND` is operator-controlled env input; treat as untrusted. Both gates run before `import()` is called — a crafted value cannot reach the dynamic import as a file path or node builtin. |
+| `LocalArchiveMemoryBackend` (`local-archive-backend.ts`) | Reference backend. Writes scrubbed `CorrectionExport[]` to `<root>/exports/local-archive/YYYY-MM-DD.json`. Idempotent by `id`. Uses local timezone for the date file (not UTC) — avoids wrong-day archive for positive-offset operators past midnight UTC. | Dual purpose: round-trip test harness (no live service needed) + adapter template (replace the JSON write with a `client.retain()` call; keep the `RetainResult` shape). |
+| `ar corrections export --to-backend` | Opt-in flag on the existing export command. Without `--to-backend`: JSON to stdout unchanged. With `--to-backend`: calls `getMemoryBackend()`, gates on `available()`, calls `retain()`, prints per-record `accepted`/`rejected` summary to stderr. | Explicit operator invocation — never auto-fires on `session_end`. Zero-cloud default unchanged. |
+| Concrete backends NOT barrel-exported | `LocalArchiveMemoryBackend` is intentionally kept off the `packages/core/src/index.ts` barrel. Only `MemoryBackend` (interface), `RetainResult`, `DisabledMemoryBackend`, and `getMemoryBackend` are exported. A comment in the barrel explains why. | An external caller constructing a `LocalArchiveMemoryBackend` directly bypasses the scrub-upstream contract enforced by `getMemoryBackend()`. Keeping it private means the only supported path is the factory → `exportCorrections()` → `retain()` chain. Deliberate scrub-bypass hardening. |
+
+**Security findings fixed same-wave (reviewer):** MEDIUM — `BUILTIN_DENYLIST` built only at declaration time without `node:` prefix variants; fixed by also checking `rawSpec.startsWith("node:")` in the gate. LOW — `available()` on a `DisabledMemoryBackend` called by the CLI could trigger a warning line even when the operator deliberately left `AR_MEMORY_BACKEND` unset; fixed by gating the warning on whether the env var was explicitly set.
+
+**Tests:** 26 module tests in `packages/core/test/memory-backend.test.mjs` covering: `DisabledMemoryBackend` contract, factory env selection (disabled/local-archive/bad module/builtin denylist/uppercase rejection), `LocalArchiveMemoryBackend` round-trip (write + idempotency + date file + date fn injection), scrubbed-input contract (exportCorrections() upstream rejects AKIA key before `retain()` is reached), empty input no-op. Verifier PASS.
+
+**REDLINE:** local commit only.
+
+---
+
+## RMR Program — L2: ar scrub CLI + corrections sync store (2026-07-04, backlog #4 + #5)
+
+Goal: (1) expose the fail-closed `scrubForExport` guarantee as a CLI-accessible pipe filter so agents and automation can scrub arbitrary content before sending it anywhere; (2) route corrections into the Supabase sync union behind a double opt-in so they flow through the existing egress chokepoint rather than bypassing it.
+
+**What changed — ar scrub (backlog #4):**
+
+| Item | What | Why |
+|------|------|-----|
+| `ar scrub [--check]` command | Reads stdin, writes scrubbed content to stdout. Three exit codes: **0** clean or redacted (output safe to use), **1** (`--check` only) secrets found and scrubbable, **2** scrub-resistant residue survived (stdout provably empty on exit 2). | Pipe-safe: callers can `ar scrub < file > out` and trust that any exit 2 means nothing was written to stdout. Exit codes are machine-readable; `agent_instruction` on stderr gives agent-readable diagnosis. |
+| `--check` mode | Scan-only — no output rewritten. Exit 0 (clean), 1 (secrets found but redactable), 2 (scrub-resistant). Produces no stdout in any case. | Lets a pre-flight check discover problems without consuming the content. |
+| JWT / Bearer fail-open documented in `--help` twice | `Authorization: Bearer <token>` headers are **not** scanned by `scrubForExport`. The honest failure mode is documented in both the default `--help` description and the `--check` description. An executable regression test asserts the Bearer line survives scrub (`exit 0`, token in stdout). | Making the failure mode machine-testable prevents a future "fix" from silently creating a false sense of security. Documented fail-open is not the same as silent fail-open. |
+| Pattern classes documented | `--help` lists: AWS AKIA keys, GitHub `ghp_`/`ghs_` tokens, OpenAI/Anthropic `sk-` keys, bidi override chars, prompt-injection tags (`<system-reminder>`, etc.). | Operators need to know what the scrub covers and what it does not. |
+
+**What changed — corrections sync (backlog #5):**
+
+| Item | What | Why |
+|------|------|-----|
+| `corrections` added to `syncToSupabase` store union | `"journal" \| "palace" \| "awareness" \| "digest" \| "corrections"` | Corrections were previously written to the local store only; the sync path had no branch for them. |
+| Double opt-in gate | `store === "corrections"` branch: returns early (silent no-op) unless BOTH `config.sync_personal === true` AND `config.sync_corrections === true`. `sync_corrections` sourced from `AR_SYNC_CORRECTIONS=1` env var or the `.ar-config` file. | Corrections carry the raw behavioral layer. One opt-in (`sync_personal`) was already the cloud gate for awareness. Corrections need a second explicit opt-in so a user who enables cloud sync for journals doesn't unknowingly sync their behavioral rules. |
+| `syncCorrectionRecord()` module-private | The corrections sync path is a private function (`syncCorrectionRecord`). It calls `exportCorrections()` (fail-closed scrub upstream) then passes the pre-scrubbed JSON into `doSync()` — the existing egress chokepoint. The raw `CorrectionRecord` is never passed to `doSync` directly. | The egress chokepoint is the authoritative scrub location. Routing corrections through it means the scrub coverage proof applies automatically. A module-private function prevents caller bypass. |
+| `classifyStore("corrections")` returns `"personal"` | `PERSONAL_STORES` set updated to include `"corrections"`. The classification regression test now asserts `corrections → personal`. | Classification is the single source of truth for the privacy split. Adding `corrections` to the set ensures the `sync_personal` gate catches the store before the corrections-specific double opt-in runs. Defense in depth. |
+| `sync_corrections` field on `SupabaseConfig` | `config.ts` surfaces `sync_corrections: boolean` (default `false`). Both `readSupabaseConfig()` and the `AGENT_RECALL_SYNC_PERSONAL`/`AR_SYNC_CORRECTIONS` env parsing paths populate it. | Explicit field — no implicit stringly-typed lookup. The field name matches the env var suffix for discoverability. |
+
+**Security findings fixed same-wave (reviewer):** LOW × 2 — (1) `syncCorrectionRecord` called `logSyncError` with the raw file path in the error string; path may contain project name (personal data). Fixed to log only `correctionId`, not the full path. (2) Classification test did not cover `corrections` store before this loop; a future `PERSONAL_STORES` edit would silently break the gate. Regression assertion added.
+
+**Tests:** 34 tests across two new test files: `packages/core/test/corrections-sync.test.mjs` (double-opt-in gate scenarios: neither/one/both, classification regression, `syncCorrectionRecord` scrub-upstream path, module-private enforcement) and `packages/cli/test/scrub.test.mjs` (empty stdin, clean pipe-through, AKIA/ghp_/sk- scrub, injection layer, multi-line, `--check` all three exit codes, Bearer fail-open with executable regression guard, `--help` Bearer mention). Verifier PASS 8/8.
+
+**REDLINE:** local commit only.
+
+---
+
+## RMR Program — D1: README identity rewrite DRAFT (2026-07-04, taste gate pending)
+
+Goal: replace unfalsifiable marketing language in README.md with claims that cite a concrete artifact. Claims-ledger-driven: every retained sentence must earn its place by pointing at something verifiable. The rewrite itself lives in a proposal file; README.md is untouched pending the owner's taste review.
+
+**What changed:**
+
+| Item | What | Why |
+|------|------|-----|
+| `docs/proposals/readme-rewrite-2026-07-04.md` | Full draft of the new README with a claims ledger: 15 retained claims, each citing an artifact + entry number; 9 unfalsifiable/stale claims cut. | Human decision gate before any live file is touched — taste is owner territory. |
+| 15 cited, 9 cut | Retained claims reference `rmr-baseline-2026-07-03.json`, `rmr-report.mjs`, `docs/eval/REPRODUCE.md`, `scrub.test.mjs`, `sync.ts` double opt-in, `memory-backend.ts` header, MEMORY-PROTOCOL.md, and the 694-test count from v3.4.33. Cut claims include *"Every correction saved is a mistake never repeated"* (unfalsifiable without a measured recurrence count), the "instant setup in 60 seconds" timing (not benchmarked), and competitor-gaming language (*"Unlike MemGPT…"*). | The unfalsifiable claims are exactly what the RMR program is designed to make falsifiable over time — writing them into the README now, before the data exists, is the thing the program exists to prevent. |
+| Measured-not-promised table | Existing benchmark table replaced with an honest snapshot: capture recall 35.3% [CI], verdict coverage 0/3, no heed-rate claim. `REPRODUCE.md` link for verify-it-yourself. | The original table stated numbers without citing how they were derived. The new table states the same numbers with source + caveat. |
+| Competitor language softened | *"Unlike X, we…"* patterns replaced with our-property statements: *"AgentRecall is the only open-source system that…"* with a cite. | Our-property claims we can defend. Competitor-comparative claims require us to track competitors accurately over time. |
+| README.md untouched | No edit to `README.md` or `README.zh-CN.md`. | Final application awaits the owner's taste review. `README.zh-CN.md` needs the same pass later — noted at the bottom of the proposal. |
+
+**REDLINE:** local commit only. README.md application requires explicit human go-ahead.
+
+---
+
 ## RMR Program — Wave 2 close-out (2026-07-03) — honest heed instrumentation + injection diet + A/B switch + dream audit
 
 Five loops independently reviewed and verified. 815 tests, 0 fail across 4 packages. B2 bench gates green throughout.

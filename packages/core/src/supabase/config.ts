@@ -17,6 +17,24 @@ export interface SupabaseConfig {
    * Env override: AGENT_RECALL_SYNC_PERSONAL=true|false.
    */
   sync_personal: boolean;
+  /**
+   * DOUBLE OPT-IN guard for corrections sync.
+   *
+   * /corrections/ is a PERSONAL_PATH_MARKER (classification.ts) — a deliberate
+   * privacy-tier decision, not an oversight. Corrections carry the raw behavioral
+   * layer (rules, context, tags) and are gated by default.
+   *
+   * To sync corrections to Supabase you must set BOTH:
+   *   1. sync_personal=true  (existing cloud opt-in, Decision #6)
+   *   2. sync_corrections=true  (this flag / AR_SYNC_CORRECTIONS=1)
+   *
+   * The synced payload is NEVER raw CorrectionRecord — it is always the
+   * scrubbed CorrectionExport projection (exportCorrections) routed through
+   * the existing doSync egress chokepoint. No new egress path is created.
+   *
+   * Env override: AR_SYNC_CORRECTIONS=1|true.
+   */
+  sync_corrections: boolean;
 }
 
 function configPath(): string {
@@ -44,6 +62,11 @@ export function readSupabaseConfig(): SupabaseConfig | null {
   if (process.env.AGENT_RECALL_SYNC_PERSONAL !== undefined) {
     config.sync_personal = process.env.AGENT_RECALL_SYNC_PERSONAL === "true";
   }
+  // Corrections sync second opt-in (AR_SYNC_CORRECTIONS=1|true). Independent of
+  // sync_personal — both must be true before corrections leave the machine.
+  if (process.env.AR_SYNC_CORRECTIONS !== undefined) {
+    config.sync_corrections = process.env.AR_SYNC_CORRECTIONS === "1" || process.env.AR_SYNC_CORRECTIONS === "true";
+  }
 
   if (!config.supabase_url || !config.supabase_anon_key) return null;
   if (config.sync_enabled === false) return null;
@@ -55,6 +78,7 @@ export function readSupabaseConfig(): SupabaseConfig | null {
     embedding_api_key: config.embedding_api_key ?? "",
     sync_enabled: config.sync_enabled ?? true,
     sync_personal: config.sync_personal ?? false,
+    sync_corrections: config.sync_corrections ?? false,
   };
 }
 

@@ -101,9 +101,19 @@ OUTCOMES (dream-audit verdicts — C3b):
       Show detailed help with agent instructions.
 
 DIAGNOSTICS:
+  ar scrub [--check]   Scrub stdin through the fail-CLOSED export guard and write to stdout.
+      Default: stdin → scrubbed content on stdout; exit 0 (clean/redacted), 2 (secret survived scrub).
+      Fail-OPEN (NOT scanned): Authorization: Bearer <token> headers — do not rely on ar scrub for JWT redaction.
+      --check: no output rewrite — exit 0 (clean), 1 (secrets found and scrubbable), 2 (scrub-resistant residue).
+        Fail-OPEN (NOT scanned): Authorization: Bearer <token> headers — do not rely on ar scrub for JWT redaction.
+        A --check exit 0 does NOT clear Bearer tokens.
+      Fail-closed pattern classes: AKIA (AWS), ghp_/gho_/ghs_/github_pat_/ghr_ (GitHub), sk- (OpenAI/Anthropic),
+        xoxb-/xoxp- (Slack), npm_, _authToken, PEM private key/certificate blocks.
   ar stats             Show memory system health: corrections, feedback, insights, graph edges
   ar corrections rejected [--stats] [--json]  Survivorship-bias probe: corrections the capture gate discarded
-  ar corrections export [--all-projects] [--include-retracted] [--since YYYY-MM-DD]  Vendor-neutral, fail-closed-scrubbed JSON export for external memory backends
+  ar corrections export [--all-projects] [--include-retracted] [--since YYYY-MM-DD] [--to-backend]
+      Vendor-neutral, fail-closed-scrubbed export. Without --to-backend: JSON to stdout (pipe to an adapter).
+      With --to-backend: push to the MemoryBackend selected by AR_MEMORY_BACKEND env var (e.g. local-archive).
   ar mirror [--json]   The Mirror: first-person, citation-backed self-model from your real corrections/insights (personal-tier, local-only; omit --project for the cross-project mirror)
   ar doctor [--json]   READ-ONLY store integrity check: index drift, stale locks, stalled consolidation seam
   ar repair [--apply] [--json]  Remediate doctor findings (DRY-RUN unless --apply): reindex drift, remove dead locks, login-free drain
@@ -550,8 +560,13 @@ async function main(): Promise<void> {
           // Vendor-neutral, fail-closed-scrubbed export of corrections — the one
           // supported egress contract for external memory backends. Active-only +
           // current project by default; --all-projects / --include-retracted / --since widen it.
+          // --to-backend: instead of printing JSON to stdout, push to the configured
+          //   MemoryBackend (AR_MEMORY_BACKEND env selects the backend). Prints a
+          //   summary of accepted/rejected counts. Explicit invocation only — no
+          //   automatic sync in this version.
           const allProjects = hasFlag("--all-projects", rest);
           const includeRetracted = hasFlag("--include-retracted", rest);
+          const toBackend = hasFlag("--to-backend", rest);
           const since = getFlag("--since", rest);
           if (since !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(since)) {
             process.stderr.write(`Invalid --since "${since}" — expected YYYY-MM-DD\n`);
@@ -572,8 +587,37 @@ async function main(): Promise<void> {
               const projCount = new Set(rows.map((r) => r.project)).size;
               process.stderr.write(`[ar] exporting ${rows.length} corrections across ${projCount} projects (retracted: ${includeRetracted ? "yes" : "no"})\n`);
             }
-            // Always machine-readable: this output is meant to be piped into an adapter.
-            output(rows);
+
+            if (toBackend) {
+              // Push to the configured MemoryBackend instead of printing JSON.
+              const backend = await core.getMemoryBackend();
+              if (!(await backend.available())) {
+                process.stderr.write(
+                  `[ar] no memory backend configured — set AR_MEMORY_BACKEND (e.g. local-archive) and retry\n`
+                );
+                process.exitCode = 1;
+                break;
+              }
+              process.stderr.write(`[ar] pushing ${rows.length} corrections to backend: ${backend.name()}\n`);
+              const result = await backend.retain(rows);
+              output({
+                backend: backend.name(),
+                submitted: rows.length,
+                accepted: result.accepted.length,
+                rejected: result.rejected.length,
+                rejected_detail: result.rejected,
+              });
+              if (result.rejected.length > 0) {
+                process.stderr.write(
+                  `[ar] warning: ${result.rejected.length} record(s) rejected by backend\n`
+                );
+                // Non-zero exit when ANY record was rejected so scripts can gate on it.
+                process.exitCode = 1;
+              }
+            } else {
+              // Always machine-readable: this output is meant to be piped into an adapter.
+              output(rows);
+            }
           } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
             process.stderr.write(`Export aborted (fail-closed): ${msg}\n`);
@@ -582,7 +626,7 @@ async function main(): Promise<void> {
           break;
         }
         default:
-          process.stderr.write(`Unknown corrections subcommand: ${sub ?? "(none)"}\nUsage:\n  ar corrections rejected [--stats] [--json]\n  ar corrections export [--all-projects] [--include-retracted] [--since YYYY-MM-DD]\n`);
+          process.stderr.write(`Unknown corrections subcommand: ${sub ?? "(none)"}\nUsage:\n  ar corrections rejected [--stats] [--json]\n  ar corrections export [--all-projects] [--include-retracted] [--since YYYY-MM-DD] [--to-backend]\n`);
           process.exitCode = 1;
       }
       break;
@@ -2231,6 +2275,9 @@ ${correctionCount === 0 ? "\n  Warning: No corrections captured yet. Use the too
           sync_enabled: true,
           // Privacy boundary (Decision #6): personal data stays local by default.
           sync_personal: false,
+          // Second opt-in for corrections (PERSONAL_PATH_MARKER). Both sync_personal
+          // AND sync_corrections must be true before corrections leave the machine.
+          sync_corrections: false,
         });
 
         output("\nConfig saved to ~/.agent-recall/config.json");
@@ -2460,6 +2507,84 @@ agent_instruction: use "audit-candidates" to list unknown-verdict corrections fo
         `agent_instruction: use "audit-candidates" to list unknowns, "record" to write a verdict\n`
       );
       process.exitCode = 1;
+      break;
+    }
+
+    case "scrub": {
+      // Fail-CLOSED stdin scrub — the same guarantee Supabase's doSync has, but
+      // exposed as a CLI primitive so every downstream egress path (user scripts,
+      // bridges, CI) can share it.
+      //
+      // Fail-CLOSED pattern classes (scrubForExport re-scans output and throws on
+      // residue so these are guaranteed to not survive to stdout):
+      //   AKIA…         — AWS access key
+      //   ghp_/gho_/ghs_/github_pat_/ghr_ — GitHub token family
+      //   sk-…          — OpenAI / Anthropic secret key (≥20 chars)
+      //   xoxb-/xoxp-   — Slack bot / user token
+      //   npm_…         — npm registry token
+      //   _authToken=…  — npm _authToken (.npmrc)
+      //   PEM private key / certificate blocks
+      //
+      // Fail-OPEN (deliberately not scanned — documented scope decision, §4.6):
+      //   Authorization: Bearer <jwt> — high false-positive rate on normal journal
+      //   content; JWTs are short-lived. This is a known gap, not a silent one.
+      const { scrubForExport, scrubPromptInjection, scrubSecretContent, SecretScanError: ScrubError } = await import("agent-recall-core");
+      const checkMode = hasFlag("--check", rest);
+
+      const chunks: Buffer[] = [];
+      await new Promise<void>((resolve, reject) => {
+        process.stdin.on("data", (chunk: Buffer) => chunks.push(chunk));
+        process.stdin.on("end", resolve);
+        process.stdin.on("error", reject);
+      });
+
+      const rawInput = Buffer.concat(chunks).toString("utf-8");
+
+      if (checkMode) {
+        // --check: detection only, no stdout rewrite.
+        // Layer 1: injection scrub is not relevant to secret detection; scan raw.
+        // Layer 2: scrubSecretContent detects secret patterns.
+        const { redactedCount } = scrubSecretContent(rawInput);
+        if (redactedCount === 0) {
+          // No secrets found — clean.
+          process.exitCode = 0;
+        } else {
+          // Secrets found — run scrubForExport to determine if any survive.
+          try {
+            scrubForExport(rawInput);
+            // scrubForExport did not throw — secrets were redactable, none survived.
+            process.exitCode = 1;
+          } catch (e) {
+            if (e instanceof ScrubError) {
+              // scrub-resistant residue — secret survived even after redaction attempt.
+              process.stderr.write(
+                `scrub-resistant: ${e.message}\n` +
+                `agent_instruction: content contains a secret pattern that survived the export scrub — remove or redact the raw secret before piping to ar scrub\n`
+              );
+              process.exitCode = 2;
+            } else {
+              throw e;
+            }
+          }
+        }
+      } else {
+        // Default: scrub and emit to stdout. Exit 0 on success, 2 on fail-closed throw.
+        try {
+          const scrubbed = scrubForExport(rawInput);
+          process.stdout.write(scrubbed);
+          process.exitCode = 0;
+        } catch (e) {
+          if (e instanceof ScrubError) {
+            process.stderr.write(
+              `scrub failed (exit 2): ${e.message}\n` +
+              `agent_instruction: content contains a secret pattern that survived the export scrub — nothing was written to stdout. Remove or pre-redact the raw secret before piping to ar scrub.\n`
+            );
+            process.exitCode = 2;
+          } else {
+            throw e;
+          }
+        }
+      }
       break;
     }
 

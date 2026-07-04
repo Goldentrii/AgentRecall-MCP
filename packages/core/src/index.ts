@@ -457,6 +457,16 @@ export type { ParsedMemoryFile } from "./supabase/sync.js";
 export { LocalRecallBackend, getRecallBackend, resetRecallBackend, recordRemoteFailure, recordRemoteSuccess } from "./tools-logic/recall-backend.js";
 export type { RecallBackend } from "./tools-logic/recall-backend.js";
 
+// MemoryBackend — symmetric WRITE seam for external belief stores.
+// DELIBERATELY NOT exported: LocalArchiveMemoryBackend / todayDateString — the
+// local-archive backend is a reference implementation, not stable API. Barrel-
+// exporting a concrete backend would invite adapter authors to call retain()
+// with hand-constructed CorrectionExport objects, bypassing the
+// exportCorrections() scrub chain. Reach it via getMemoryBackend() with
+// AR_MEMORY_BACKEND=local-archive; tests import its module path directly.
+export { DisabledMemoryBackend, getMemoryBackend, resetMemoryBackend } from "./tools-logic/memory-backend.js";
+export type { MemoryBackend, RetainResult } from "./tools-logic/memory-backend.js";
+
 // Supabase — recall backend
 export { SupabaseRecallBackend } from "./supabase/recall-backend.js";
 

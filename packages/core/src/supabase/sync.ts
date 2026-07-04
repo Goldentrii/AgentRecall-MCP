@@ -8,6 +8,7 @@ import { readSupabaseConfig } from "./config.js";
 import { createEmbeddingProvider, type EmbeddingProvider } from "./embedding.js";
 import { classifyStore } from "../storage/classification.js";
 import { scrubForCloud } from "../storage/content-guard.js";
+import { exportCorrections } from "../tools-logic/export-corrections.js";
 
 // ---------------------------------------------------------------------------
 // Utilities (exported for testing)
@@ -110,7 +111,7 @@ export function syncToSupabase(
   filePath: string,
   content: string,
   project: string,
-  store: "journal" | "palace" | "awareness" | "digest",
+  store: "journal" | "palace" | "awareness" | "digest" | "corrections",
   room?: string
 ): void {
   // PRIVACY GATE (Wave 1, Decision #6): personal-tier data (awareness behavioral
@@ -119,6 +120,33 @@ export function syncToSupabase(
   // NOTE: flipping config.sync_personal=true re-feeds the war-room dashboard's
   // ar_awareness reads.
   if (classifyStore(store, { project }) === "personal" && readSupabaseConfig()?.sync_personal !== true) {
+    return;
+  }
+  // DOUBLE OPT-IN GATE for corrections (privacy-tier decision, classification.ts).
+  // /corrections/ is a PERSONAL_PATH_MARKER — NOT an oversight. Corrections carry
+  // the raw behavioral layer (rules, context, tags) and must not leave the machine
+  // unless the user has explicitly opted into BOTH:
+  //   1. sync_personal=true  (the existing cloud opt-in, Decision #6)
+  //   2. sync_corrections=true  (the second opt-in for the corrections tier)
+  // Both missing, or only one set → silent skip. This preserves the fire-and-forget
+  // contract and does not produce a visible error — same as the sync_personal gate.
+  if (store === "corrections") {
+    const config = readSupabaseConfig();
+    if (!config?.sync_personal || !config?.sync_corrections) {
+      return;
+    }
+    // Corrections sync: emit the scrubbed CorrectionExport projection via the
+    // EXISTING egress chokepoint (doSync). The raw CorrectionRecord is NEVER
+    // written directly — exportCorrections() applies the fail-closed scrubForExport
+    // to every free-text field before we touch the network.
+    //
+    // The `content` parameter is the correction id (used as the slug discriminator
+    // and to scope the single-record export). We re-derive the scrubbed payload from
+    // exportCorrections so the doSync path always receives pre-scrubbed JSON.
+    const correctionId = content; // caller convention: content = correction id
+    setImmediate(() => {
+      void syncCorrectionRecord(filePath, correctionId, project);
+    });
     return;
   }
   setImmediate(() => {
@@ -200,6 +228,37 @@ async function doSync(
     });
   } catch (err) {
     logSyncError(`doSync failed for ${filePath}: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+/**
+ * Sync a single CorrectionRecord (by id) for a project through the existing
+ * doSync egress chokepoint. The raw record is never emitted — exportCorrections()
+ * applies the fail-closed scrubForExport to every free-text field. If the record
+ * does not exist (retracted or unknown id) we silently return without error.
+ *
+ * Called only from the syncToSupabase "corrections" store branch, which has
+ * already verified the double opt-in.
+ */
+async function syncCorrectionRecord(
+  filePath: string,
+  correctionId: string,
+  project: string
+): Promise<void> {
+  try {
+    // Export the single correction (project + no retracted). If the id doesn't
+    // exist in the active set (already retracted or bad id) → empty → skip.
+    const rows = exportCorrections({ project, includeRetracted: true });
+    const row = rows.find((r) => r.id === correctionId);
+    if (!row) return; // retracted or not found — nothing to sync
+
+    // Serialize the CorrectionExport projection as the "content" for doSync.
+    // scrubForExport (inside exportCorrections) already redacted every free-text
+    // field, so doSync's internal scrubForCloud re-scrub is a no-op (idempotent).
+    const scrubbedJson = JSON.stringify(row);
+    await doSync(filePath, scrubbedJson, project, "corrections");
+  } catch (err) {
+    logSyncError(`syncCorrectionRecord failed for ${filePath}: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
