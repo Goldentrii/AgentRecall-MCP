@@ -2,9 +2,17 @@
  * Local embedding helper — thin wrapper around OpenAI text-embedding-3-small.
  * Returns null when OPENAI_API_KEY is not set so callers can degrade gracefully.
  * Uses plain fetch; no openai SDK dependency.
+ *
+ * EMBEDDING SEAM — purity-census-2026-07-05 / Loop 13 verdict:
+ * Local sentence-embeddings tested against BM25/lexical on the real corpus: no benefit.
+ * Ceiling is DATA density, not retrieval algorithm. Env flags
+ * (AGENT_RECALL_EMBEDDING_PROVIDER, AGENT_RECALL_EMBEDDING_KEY, AGENT_RECALL_EMBED_TIMEOUT_MS)
+ * are NOT user-facing and removed from docs/help surfaces.
+ * Code path kept as matchFn A/B seam only — do not re-activate without new data.
+ * Do not re-propose without evidence from a corpus with >5x current density.
  */
 
-/** Timeout in ms for the embedding fetch. Overridable via AGENT_RECALL_EMBED_TIMEOUT_MS. */
+/** Timeout in ms for the embedding fetch. Not a user-facing env flag — internal seam only. */
 const EMBED_TIMEOUT_MS = parseInt(process.env.AGENT_RECALL_EMBED_TIMEOUT_MS ?? "2000", 10);
 
 /**

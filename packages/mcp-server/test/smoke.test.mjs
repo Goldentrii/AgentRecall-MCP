@@ -23,17 +23,31 @@ describe("MCP server smoke tests", () => {
     assert.equal(tools.length, 5);
   });
 
-  it("--full exposes all 24 tools", async () => {
+  it("--full exposes 17 active tools (quarantined extras excluded without AR_EXTRAS)", async () => {
     const { stdout } = await execFileAsync("node", [ENTRY, "--list-tools", "--full"]);
     const tools = JSON.parse(stdout);
     const names = tools.map((t) => t.name);
+    // Active extended tools present
     assert.ok(names.includes("memory_query"));
-    assert.ok(names.includes("digest"));
     assert.ok(names.includes("project_board"));
     assert.ok(names.includes("project_status"));
     assert.ok(names.includes("bootstrap_scan"));
     assert.ok(names.includes("bootstrap_import"));
     assert.ok(names.includes("brief"));
+    // Quarantined extras absent without AR_EXTRAS=1
+    assert.ok(!names.includes("digest"), "digest must be quarantined without AR_EXTRAS=1");
+    assert.ok(!names.includes("pipeline_open"), "pipeline tools must be quarantined without AR_EXTRAS=1");
+    assert.ok(!names.includes("register_rule"), "register_rule must be quarantined without AR_EXTRAS=1");
+    assert.equal(tools.length, 17);
+  });
+
+  it("AR_EXTRAS=1 --full exposes all 24 tools", async () => {
+    const { stdout } = await execFileAsync("node", [ENTRY, "--list-tools", "--full"], { env: { ...process.env, AR_EXTRAS: "1" } });
+    const tools = JSON.parse(stdout);
+    const names = tools.map((t) => t.name);
+    assert.ok(names.includes("digest"));
+    assert.ok(names.includes("pipeline_open"));
+    assert.ok(names.includes("register_rule"));
     assert.equal(tools.length, 24);
   });
 

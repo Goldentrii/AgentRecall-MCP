@@ -14,7 +14,8 @@ export function register(server: McpServer): void {
         "'goal' → palace/goals room. " +
         "'lesson' or 'insight' → awareness. " +
         "'qa' or 'capture' → Q&A log. " +
-        "Omit for auto-classification."
+        "Omit for auto-classification. " +
+        "Note: bug/fix/error content previously routed to standalone knowledge/ dir now routes to journal (purity-census-2026-07-05: knowledge/ is write-only, not surfaced by recall or session_start)."
       ),
       project: z.string().default("auto"),
     },

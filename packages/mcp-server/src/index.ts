@@ -10,18 +10,12 @@ import { register as registerRemember } from "./tools/remember.js";
 import { register as registerRecall } from "./tools/recall.js";
 import { register as registerSessionEnd } from "./tools/session-end.js";
 import { register as registerCheck } from "./tools/check.js";
-import { register as registerDigest } from "./tools/digest.js";
+
+// ── Extended --full tools (non-quarantined) ───────────────────────────────
 import { register as registerProjectBoard } from "./tools/project-board.js";
 import { register as registerProjectStatus } from "./tools/project-status.js";
 import { register as registerBootstrap } from "./tools/bootstrap.js";
 import { register as registerMemoryQuery } from "./tools/memory-query.js";
-
-// ── Pipeline tools (experimental — project narrative spine) ──────────────
-import { register as registerPipelineOpen } from "./tools/pipeline-open.js";
-import { register as registerPipelineClose } from "./tools/pipeline-close.js";
-import { register as registerPipelineList } from "./tools/pipeline-list.js";
-import { register as registerPipelineCurrent } from "./tools/pipeline-current.js";
-import { register as registerPipelineShow } from "./tools/pipeline-show.js";
 
 // ── Skill tools (procedural memory layer) ─────────────────────────────────
 import { register as registerSkillWrite } from "./tools/skill-write.js";
@@ -32,14 +26,23 @@ import { register as registerSkillList } from "./tools/skill-list.js";
 import { register as registerDashboardExport } from "./tools/dashboard-export.js";
 import { register as registerSessionEndReflect } from "./tools/session-end-reflect.js";
 
-// ── Behavior policies (always-loaded IF-THEN rules) ──────────────────────
-import { register as registerRegisterRule } from "./tools/register-rule.js";
-
-// ── Pre-action proactive matcher (items 3 + 5) ──────────────────────────
+// ── Pre-action proactive matcher ─────────────────────────────────────────
 import { register as registerCheckAction } from "./tools/check-action.js";
 
 // ── Cross-surface adapter (P4): brief ────────────────────────────────────
 import { register as registerBrief } from "./tools/brief.js";
+
+// ── AR_EXTRAS quarantine zone — purity-census-2026-07-05 ─────────────────
+// These tools are ZOMBIE/low-use (pipeline: 1 organic use in 60d; register_rule: 2;
+// digest: 0 MCP calls). Core logic files stay untouched for reversibility.
+// Activate with: AR_EXTRAS=1 npx agent-recall-mcp --full
+import { register as registerPipelineOpen } from "./tools/pipeline-open.js";
+import { register as registerPipelineClose } from "./tools/pipeline-close.js";
+import { register as registerPipelineList } from "./tools/pipeline-list.js";
+import { register as registerPipelineCurrent } from "./tools/pipeline-current.js";
+import { register as registerPipelineShow } from "./tools/pipeline-show.js";
+import { register as registerRegisterRule } from "./tools/register-rule.js";
+import { register as registerDigest } from "./tools/digest.js";
 
 // ── Legacy tools (still importable for SDK/CLI, not registered by default) ──
 // DEPRECATED v3.4: use session_start instead
@@ -90,9 +93,10 @@ Everything else fires automatically via hooks or is available on demand with --f
 
 Usage:
   npx agent-recall-mcp              Start with 5 default tools (session_start, session_end, remember, recall, check)
-  npx agent-recall-mcp --full       Start with all tools (adds memory_query, check_action, register_rule,
-                                    pipeline_*, skill_*, dashboard_export, session_end_reflect,
-                                    project_board, project_status, digest, bootstrap)
+  npx agent-recall-mcp --full       Start with all active tools (adds memory_query, check_action, skill_*,
+                                    dashboard_export, session_end_reflect, project_board, project_status,
+                                    bootstrap, brief)
+  AR_EXTRAS=1 npx agent-recall-mcp --full  Add quarantined extras (pipeline_*, register_rule, digest)
   npx agent-recall-mcp --help       Show this help
   npx agent-recall-mcp --list-tools List available MCP tools (add --full to see full list)
 
@@ -106,12 +110,6 @@ Default tools (5):
 Full-mode additions (--full):
   memory_query           Pull-on-demand recall mid-task
   check_action           Pre-action safety check (publish/push/deploy warnings)
-  register_rule          Save an IF-THEN behavior policy
-  pipeline_open          Open a project narrative phase
-  pipeline_close         Close active phase with reflection
-  pipeline_list          List all narrative phases
-  pipeline_current       Show currently active phase
-  pipeline_show          Render full project narrative spine
   skill_write            Save a procedural IF-THEN rule
   skill_recall           Find skills matching an intent
   skill_list             Browse all skills in a project
@@ -119,10 +117,18 @@ Full-mode additions (--full):
   session_end_reflect    Park-2023 reflection bundle — distills last N journals
   project_board          Status board across all projects
   project_status         Quick project health check
-  digest                 Context cache — store/recall/invalidate pre-computed analysis
   bootstrap_scan         Discover existing projects on this machine
   bootstrap_import       Import discovered projects into AgentRecall
   brief                  Compact LLM-free re-orientation briefing (≤200 tokens, read-only)
+
+Quarantined extras (AR_EXTRAS=1 --full only):
+  pipeline_open          Open a project narrative phase
+  pipeline_close         Close active phase with reflection
+  pipeline_list          List all narrative phases
+  pipeline_current       Show currently active phase
+  pipeline_show          Render full project narrative spine
+  register_rule          Save an IF-THEN behavior policy
+  digest                 Context cache — store/recall/invalidate pre-computed analysis
 
 Storage: ${getRoot()}
 Legacy:  ${getLegacyRoot()}
@@ -134,9 +140,11 @@ Community: https://t.me/+ywZwoHrg3AM0NDVi
   process.exit(0);
 }
 
-// --full: register all tools including advanced/setup tools
+// --full: register active tools beyond the 5-tool default surface
+// AR_EXTRAS=1: also register quarantined extras (pipeline_*, register_rule, digest)
 // Default: 5 core tools only (minimal token overhead per session — Automaticity Law)
 const fullMode = args.includes("--full");
+const extrasMode = fullMode && process.env.AR_EXTRAS === "1";
 
 if (args.includes("--list-tools")) {
   const coreTools = [
@@ -149,12 +157,6 @@ if (args.includes("--list-tools")) {
   const fullOnlyTools = [
     { name: "memory_query", description: "Pull-on-demand recall mid-task — query before decisions (--full)" },
     { name: "check_action", description: "Pre-action safety matcher — warns on publish/push/deploy (--full)" },
-    { name: "register_rule", description: "Save an IF-THEN behavior policy (--full)" },
-    { name: "pipeline_open", description: "Open a new project narrative phase (--full)" },
-    { name: "pipeline_close", description: "Close active phase with reflection fields (--full)" },
-    { name: "pipeline_list", description: "List all narrative phases as JSON summaries (--full)" },
-    { name: "pipeline_current", description: "Return content of the currently active phase (--full)" },
-    { name: "pipeline_show", description: "Render project narrative spine — all phases (--full)" },
     { name: "skill_write", description: "Save a procedural IF-THEN rule (--full)" },
     { name: "skill_recall", description: "Find skills matching an intent (--full)" },
     { name: "skill_list", description: "Browse all skills in a project (--full)" },
@@ -162,12 +164,23 @@ if (args.includes("--list-tools")) {
     { name: "session_end_reflect", description: "Park-2023 reflection bundle — distills last N journals (--full)" },
     { name: "project_board", description: "Status board across all projects (--full)" },
     { name: "project_status", description: "Quick project health check (--full)" },
-    { name: "digest", description: "Context cache — store/recall/read/invalidate pre-computed analysis (--full)" },
     { name: "bootstrap_scan", description: "Discover existing projects on this machine (--full)" },
     { name: "bootstrap_import", description: "Import discovered projects into AgentRecall (--full)" },
     { name: "brief", description: "Compact LLM-free re-orientation briefing ≤200 tokens, read-only (--full)" },
   ];
-  const tools = fullMode ? [...coreTools, ...fullOnlyTools] : coreTools;
+  // Quarantined extras: registered only when AR_EXTRAS=1 (purity-census-2026-07-05)
+  const extrasTools = [
+    { name: "pipeline_open", description: "Open a new project narrative phase (AR_EXTRAS=1 --full)" },
+    { name: "pipeline_close", description: "Close active phase with reflection fields (AR_EXTRAS=1 --full)" },
+    { name: "pipeline_list", description: "List all narrative phases as JSON summaries (AR_EXTRAS=1 --full)" },
+    { name: "pipeline_current", description: "Return content of the currently active phase (AR_EXTRAS=1 --full)" },
+    { name: "pipeline_show", description: "Render project narrative spine — all phases (AR_EXTRAS=1 --full)" },
+    { name: "register_rule", description: "Save an IF-THEN behavior policy (AR_EXTRAS=1 --full)" },
+    { name: "digest", description: "Context cache — store/recall/read/invalidate pre-computed analysis (AR_EXTRAS=1 --full)" },
+  ];
+  let tools = coreTools;
+  if (fullMode) tools = [...tools, ...fullOnlyTools];
+  if (extrasMode) tools = [...tools, ...extrasTools];
   process.stdout.write(JSON.stringify(tools, null, 2) + "\n");
   process.exit(0);
 }
@@ -183,8 +196,7 @@ registerRecall(server);
 registerCheck(server);
 
 // ── Extended tools (--full mode only) ────────────────────────────────────────
-// Use when you need pipeline tracking, skills, dashboards, project boards,
-// context caching, on-demand queries, or first-time bootstrap.
+// Use when you need skills, dashboards, project boards, on-demand queries, or first-time bootstrap.
 // Start server with: npx agent-recall-mcp --full
 if (fullMode) {
   // On-demand recall + pre-action safety
@@ -193,16 +205,6 @@ if (fullMode) {
 
   // Cross-surface adapter (P4): brief — compact LLM-free re-orientation
   registerBrief(server);
-
-  // Behavior policies
-  registerRegisterRule(server);
-
-  // Pipeline tools — project narrative spine
-  registerPipelineOpen(server);
-  registerPipelineClose(server);
-  registerPipelineList(server);
-  registerPipelineCurrent(server);
-  registerPipelineShow(server);
 
   // Procedural memory layer
   registerSkillWrite(server);
@@ -213,11 +215,30 @@ if (fullMode) {
   registerDashboardExport(server);
   registerSessionEndReflect(server);
 
-  // Project status boards, context caching, bootstrap
+  // Project status boards, bootstrap
   registerProjectBoard(server);
   registerProjectStatus(server);
-  registerDigest(server);
   registerBootstrap(server);
+}
+
+// ── AR_EXTRAS quarantine zone (purity-census-2026-07-05) ─────────────────────
+// Activate with: AR_EXTRAS=1 npx agent-recall-mcp --full
+// Pipeline: 1 organic use (60d); register_rule: 2 uses; digest: 0 MCP uses.
+// Core logic untouched for reversibility. These tools do NOT appear in the default
+// --full listing — they are invisible until AR_EXTRAS=1 is set.
+if (extrasMode) {
+  // Pipeline tools — project narrative spine (ZOMBIE: last used 2026-05-30)
+  registerPipelineOpen(server);
+  registerPipelineClose(server);
+  registerPipelineList(server);
+  registerPipelineCurrent(server);
+  registerPipelineShow(server);
+
+  // Behavior policies (ZOMBIE: 2 organic uses, last 2026-06-03)
+  registerRegisterRule(server);
+
+  // Context cache (DEAD via MCP: 0 MCP calls; CLI last used 2026-06-18)
+  registerDigest(server);
 }
 
 registerJournalResources(server);

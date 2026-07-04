@@ -230,6 +230,87 @@ When defined, any agent (Claude, GPT, Gemini) can read/write the same memory sto
 
 ---
 
+## RMR Program — Purity Wave close-out (2026-07-05) — census-driven surface diet, 77% ambient noise fixed, 7 tools quarantined
+
+Three loops independently reviewed and verified. 96 tests, 0 fail across 4 packages. B2 gates green throughout.
+
+---
+
+## RMR Program — P1: usage census (2026-07-05)
+
+Goal: measure which parts of the AgentRecall surface are actually used vs. dead weight, via 60-day organic-usage data. No guessing — every verdict comes from transcript JSON or file mtime forensics.
+
+**Corpus:** 2,649 transcript files, 2026-05-06 → 2026-07-05. Artifacts: `docs/proposals/purity-census-2026-07-05.md`.
+
+**Findings by dimension:**
+
+| Dimension | Alive | Zombie | Dead / Graveyard |
+|-----------|-------|--------|-----------------|
+| MCP tools (25 total) | 5 (all default-mode) | 2 | 18 (all --full only) |
+| CLI commands (47 distinct) | 25 | 7 | 15 |
+| Memory layers | 4 ALIVE + 2 ALIVE-but-read-only | 1 pipeline (stale) | 1 dead (digest store); 2 WRITE-ONLY GRAVEYARDS (knowledge/, mirror) |
+| Env flags | 9 core/cloud | 4 zombie (embedding cluster) | 2 experiment (A/B, by design) |
+| Skills / commands | 5 | 2 | 1 |
+
+**Key finding:** 77% of ambient injections are noise (23 of 30 sampled). Root causes: (1) task-notification / agent-message XML prompts firing the hook (18 of 23 noise cases), (2) two global blind-spot watch-for entries matching on virtually every prompt, (3) stale journal excerpts with no content.
+
+**Orchestrator override (2 verdicts):** `check_action` and `AR_MEMORY_BACKEND` classified as DEAD / ZOMBIE by census data but retained — both are strategic surfaces under 48 hours old. Census is structurally blind to new surfaces that haven't accumulated usage yet. Overrule documented; census verdict stands in the artifact for future re-evaluation.
+
+**Kill-candidate list** (ranked by zero-usage × maintenance-surface): 10 candidates, 7 quarantine targets, 3 safe-delete. All DELETE candidates left intentionally untouched — owner checkmarks pending.
+
+**REDLINE:** local commit only.
+
+---
+
+## RMR Program — P2: ambient injection precision (2026-07-05)
+
+Goal: fix the 77% noise ratio measured by P1. Three hooks (`hook-ambient`, `hook-correction`, `hook-save`) are the injection surface — each needed different surgery.
+
+**What changed:**
+
+| Item | What | Why |
+|------|------|-----|
+| Harness-artifact early-exit in `hook-ambient` | Checks for `<task-notification>`, `<agent-message>`, `<system-reminder>`, `<parameter name="command">`, `<result>`, `<search_results>`, and 7 other harness XML wrappers at the top of the hook; exits 0 (silent) when matched | These XML envelopes have no semantic content relevant to any correction or room. They account for 18 of 23 noise cases. The hook was being invoked on background agent completions and firing on keywords like "output", "file", "status" extracted from task metadata |
+| Harness-artifact early-exit in `hook-correction` | Same guard pattern added — `hook-correction` had NO early-exit before this wave | A correction-detection hook should never scan a `<task-notification>` blob for behavioral signals. The guard was present in `hook-ambient` only |
+| Harness-artifact early-exit in `hook-save` | Same guard added | `hook-save` detects "remember this" / "save session" phrases — firing it on a background task completion would trigger false save signals |
+| `BLIND_SPOT_DOMAIN_NOISE` 24-token filter | The two global blind-spot entries ("No revenue from any product", "novada-proxy competitive benchmark blocked") now require ≥24 distinctive domain tokens in the prompt before their watch-for warning fires. Corrections (non–blind-spot) bypass this filter entirely | These two entries were responsible for root-cause #2: they matched on virtually every prompt because their trigger vocabulary is too common. The filter targets only the global noise sources; it does not affect the correction injection path |
+| `MAX_INJECT=2` cap | `hook-ambient` now injects at most 2 items per turn (down from uncapped) | Reduces context bloat in the relevant-injection cases; uncapped injection on a relevant turn was also a token budget problem |
+| TZ-naive date assertion fixed (`outcomes-audit.test.mjs`) | Test was asserting `recorded_at` local-date === today's date using `new Date().toISOString().slice(0,10)` (UTC). Replaced with `todayStr()` (local-timezone date) | Test bug, not product bug. The product's `todayStr()` intentionally returns local timezone. The UTC-based assertion was failing in CI across the international date line |
+| Pinned-date regression guard | `outcomes-audit.test.mjs` now pins the date used by `todayStr()` in test scope | Prevents future timezone-sensitive failures across midnight |
+
+**Replay verification:** census's 3 worst noise samples (task-notification, agent-message, 测试完成 test-results) all replay to zero injection after the guard. 2 relevant cases (a genuine mid-task recall and a palace-room correction) still fire. Signal preserved; noise eliminated.
+
+**Reviewer:** exit points traced in all 3 hooks pre-write (no unterminated early-exit path). APPROVE.
+
+**REDLINE:** local commit only.
+
+---
+
+## RMR Program — P3a: MCP surface quarantine (2026-07-05)
+
+Goal: implement the quarantine tier identified by P1 — move 7 tools out of `--full` without deleting them, lock the new surface with a snapshot guard, and close two write-only graveyards.
+
+**What changed:**
+
+| Item | What | Why |
+|------|------|-----|
+| `AR_EXTRAS=1` quarantine tier | `packages/mcp-server/src/index.ts`: a new third tier behind `process.env.AR_EXTRAS`. Default: 5 tools. `--full`: 17 tools. `AR_EXTRAS=1` (or `--full --extras`): 24 tools | Census showed 18/25 tools never used organically. `--full` was already a signal amplifier for the power-user. `AR_EXTRAS` creates a dedicated surface for tools that are structurally sound but not default-path — without deleting them and their test coverage |
+| 7 tools quarantined out of `--full` → extras tier | `pipeline_open`, `pipeline_close`, `pipeline_list`, `pipeline_current`, `pipeline_show`, `register_rule`, `digest` moved from `--full` to `AR_EXTRAS`. All 7 had census verdicts: pipeline × 5 (ZOMBIE/1-use), register_rule (ZOMBIE/2-uses), digest (DEAD/MCP-side) | Quarantine, not delete. Pipeline store has real user data; register_rule had 2 genuine uses. Moving to extras preserves the surface for the edge case without polluting `--full` |
+| `knowledge_write` routing → journal | `packages/mcp-server/src/tools/remember.ts` + `packages/core/src/tools-logic/smart-remember.ts`: the `knowledgeWrite` routing path now redirects to journal. Standalone `knowledge/` files are no longer written for new content | Knowledge store was a write-only graveyard — written via `remember` routing, never read by session_start, recall, or any active tool. Existing `knowledge/` files untouched (real user data) |
+| Embedding cluster → internal seam note | `packages/core/src/vector/embedding.ts` + `packages/core/src/tools-logic/prior-builder.ts`: a doc comment added at each embedding call site: "Loop 13 verdict: embedding adds no measurable recall improvement over lexical on this corpus; this path is an unsealed seam, not a production path" | Loop 13 tested local sentence-embeddings vs lexical on the real corpus and found no benefit. The code stayed in but was never surfaced. Codifying the verdict in source prevents a future agent from "activating" it without reading the prior research |
+| `tool-surface-purity.test.mjs` snapshot guard | New test file: asserts exact tool counts per tier — `{default: 5, full: 17, extras: 24}` — and that tool names match the approved list. Uses `deepStrictEqual` against a hardcoded snapshot | Without a guard, tool count drift is invisible. A future PR that adds one tool to `--full` will fail this test loudly |
+| Snapshot guard bite-tested | Test was verified to fail when a fake tool is injected into the `--full` array: 4 assertions fail (count mismatch, name mismatch, extras count, full-minus-default set). The guard is not cosmetic | A test that never fails on a wrong value is not a test |
+
+**Surface totals:** default 5 / `--full` 17 / `AR_EXTRAS` 24, locked by snapshot.
+
+**Verifier PASS. B2 gates green.**
+
+**DELETE candidates (7 items from census):** intentionally untouched — awaiting owner checkmarks before any removal.
+
+**REDLINE:** local commit only.
+
+---
+
 ## RMR Program — Phase 0 (2026-07-02) — research/plan artifacts committed as program of record
 
 Two documents committed as the standing program of record before any measurement loop runs:

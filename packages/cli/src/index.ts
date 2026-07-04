@@ -1144,6 +1144,11 @@ async function main(): Promise<void> {
           prompt = raw; // fallback: treat raw input as the prompt
         }
 
+        // Non-semantic harness artifact early-exit (FIX 1): task-notifications and
+        // agent-message wrappers must never be scanned for corrections.
+        // Shared HARNESS_PREFIXES regex is defined in hook-ambient above.
+        if (/^(<task-notification>|<agent-message|<local-command-caveat>|<command-name>|<system-reminder>)/i.test(prompt.trimStart())) process.exit(0);
+
         // Two-gate capture: correction signal + durability signal (and the >3
         // char floor) are all enforced inside detectCorrection().
         const detection = detectCorrection(prompt);
@@ -1218,6 +1223,17 @@ async function main(): Promise<void> {
 
       const SHORT_ACKS = /^(ok|yes|done|sure|got it|thanks|k|yep|nope|no|maybe|yup|alright|cool|great|perfect|sounds good|noted|understood|agreed|fine|right)\.?$/i;
 
+      /**
+       * Returns true for harness-generated prompts that carry no human semantic
+       * content. Must exit early — before ANY recall/injection work — so that
+       * task-notifications and agent-message wrappers are never scanned for
+       * corrections, memories, or save-intent. Trim leading whitespace first.
+       */
+      const HARNESS_PREFIXES = /^(<task-notification>|<agent-message|<local-command-caveat>|<command-name>|<system-reminder>)/i;
+      function isHarnessArtifact(text: string): boolean {
+        return HARNESS_PREFIXES.test(text.trimStart());
+      }
+
       // Communication file for feedback loop (defined at top of case for both steps)
       const surfacedFile = path.join(os.homedir(), ".agent-recall", ".ambient-last-surfaced.json");
 
@@ -1236,6 +1252,11 @@ async function main(): Promise<void> {
         } catch {
           prompt = raw;
         }
+
+        // Non-semantic harness artifact early-exit (FIX 1): task-notifications,
+        // agent-message wrappers, system-reminders, etc. carry no human intent.
+        // Exit before ANY recall/injection work — no output, no store writes.
+        if (isHarnessArtifact(prompt)) process.exit(0);
 
         // --- READ PREVIOUS SURFACED DATA (used by feedback + topic drift + dedup) ---
         let prevSurfaced: { items?: { id: string; title: string }[]; query?: string; timestamp?: string; history?: string[] } | null = null;
@@ -1382,7 +1403,12 @@ async function main(): Promise<void> {
 
         // Dedup window: filter out items already surfaced in recent fires
         const historySet = new Set(surfacedHistory);
-        const items = allItems.filter(item => !historySet.has(item.id));
+        // FIX 3: cap at 2 injected items (highest-overlap first) to prevent
+        // multi-item noise dumps. allItems is already sorted by score descending.
+        const MAX_INJECT = 2;
+        const items = allItems
+          .filter(item => !historySet.has(item.id))
+          .slice(0, MAX_INJECT);
         if (items.length === 0) process.exit(0);
 
         let out = "[AgentRecall] Relevant past context:\n";
@@ -1560,6 +1586,10 @@ async function main(): Promise<void> {
         }
 
         if (!prompt || prompt.length < 4) process.exit(0);
+
+        // Non-semantic harness artifact early-exit (FIX 1): task-notifications
+        // must never trigger a save-intent detection or inject any output.
+        if (/^(<task-notification>|<agent-message|<local-command-caveat>|<command-name>|<system-reminder>)/i.test(prompt.trimStart())) process.exit(0);
 
         const isSaveIntent = core.saveTriggerKind(prompt) === "explicit-save";
         if (!isSaveIntent) process.exit(0);

@@ -192,14 +192,14 @@ export async function smartRemember(input: SmartRememberInput): Promise<SmartRem
       break;
     }
     case "knowledge_write": {
-      // Extract title from first sentence or first line
-      const firstLine = input.content.split(/[.\n]/)[0]?.trim() ?? "Auto-captured lesson";
-      result = await knowledgeWrite({
-        category: slugResult.contentType,
-        title: firstLine.slice(0, 80),
-        what_happened: input.content,
-        root_cause: "See content",
-        fix: "See content",
+      // purity-census-2026-07-05: standalone knowledge/ dir is a write-only graveyard —
+      // nothing reads it (knowledge_read MCP tool deprecated; session_start does not surface it).
+      // New writes route to journal instead (the alive store that IS read back).
+      // Existing files on disk are untouched. To recall old knowledge entries, open
+      // ~/.agent-recall/projects/<name>/knowledge/ directly or use palace/rooms/knowledge/.
+      result = await journalCapture({
+        question: "Auto-captured lesson",
+        answer: input.content,
         project: input.project,
       });
       break;
