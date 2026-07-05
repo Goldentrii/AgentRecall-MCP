@@ -1,0 +1,3 @@
+# local/ holds full-slug originals before anonymization.
+# Owner keeps these for private analysis; committed artifacts use anonymized slugs.
+local/

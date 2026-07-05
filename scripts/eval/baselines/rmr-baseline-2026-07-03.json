@@ -28,7 +28,7 @@
   "all_project_dirs_scanned": 60,
   "per_project": [
     {
-      "project": "AgentRecall",
+      "project": "proj-03",
       "sessions": 15,
       "n_total": 18,
       "n_active": 5,
@@ -50,7 +50,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "aam",
+      "project": "proj-04",
       "sessions": 12,
       "n_total": 5,
       "n_active": 2,
@@ -72,7 +72,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "apqc",
+      "project": "proj-06",
       "sessions": 7,
       "n_total": 4,
       "n_active": 0,
@@ -94,7 +94,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "claude",
+      "project": "proj-07",
       "sessions": 0,
       "n_total": 1,
       "n_active": 0,
@@ -116,7 +116,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "d234ebb2-f31b-4d40-a601-7de39085fc4e",
+      "project": "proj-08",
       "sessions": 0,
       "n_total": 1,
       "n_active": 0,
@@ -138,7 +138,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "default",
+      "project": "proj-09",
       "sessions": 0,
       "n_total": 1,
       "n_active": 0,
@@ -160,7 +160,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "eu-ai-gateway",
+      "project": "proj-10",
       "sessions": 4,
       "n_total": 3,
       "n_active": 0,
@@ -182,7 +182,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "mcp",
+      "project": "proj-11",
       "sessions": 0,
       "n_total": 1,
       "n_active": 0,
@@ -204,7 +204,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "novada-intel",
+      "project": "proj-12",
       "sessions": 20,
       "n_total": 5,
       "n_active": 1,
@@ -226,7 +226,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "novada-mcp",
+      "project": "proj-13",
       "sessions": 18,
       "n_total": 10,
       "n_active": 9,
@@ -248,7 +248,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "novada-proxy",
+      "project": "proj-14",
       "sessions": 8,
       "n_total": 10,
       "n_active": 3,
@@ -270,7 +270,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "novada-proxy-extension",
+      "project": "proj-15",
       "sessions": 2,
       "n_total": 1,
       "n_active": 0,
@@ -292,7 +292,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "novada-tech-group",
+      "project": "proj-16",
       "sessions": 0,
       "n_total": 1,
       "n_active": 0,
@@ -314,7 +314,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "plywood",
+      "project": "proj-17",
       "sessions": 9,
       "n_total": 3,
       "n_active": 0,
@@ -336,7 +336,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "prismma-desktop",
+      "project": "proj-18",
       "sessions": 1,
       "n_total": 1,
       "n_active": 1,
@@ -358,7 +358,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "prismma-web",
+      "project": "proj-20",
       "sessions": 25,
       "n_total": 14,
       "n_active": 8,
@@ -380,7 +380,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "skaylink-aws",
+      "project": "proj-22",
       "sessions": 2,
       "n_total": 1,
       "n_active": 1,
@@ -402,7 +402,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "tongwu",
+      "project": "proj-23",
       "sessions": 9,
       "n_total": 14,
       "n_active": 0,
@@ -424,7 +424,7 @@
       "c3_not_triggered": 0
     },
     {
-      "project": "x-omnier",
+      "project": "proj-24",
       "sessions": 0,
       "n_total": 1,
       "n_active": 1,
@@ -469,5 +469,6 @@
     "c3_heed_rate_evidence_grounded": 0,
     "c3_heed_rate_wilson95_lo": 0,
     "c3_heed_rate_wilson95_hi": 0.767
-  }
+  },
+  "_note": "transform-not-regenerated: this is a HISTORICAL snapshot (corpus as of 2026-07-03). Slug anonymization applied as a pure string transform; all numeric values unchanged. Tool: scripts/eval/anonymize-baseline.mjs."
 }
