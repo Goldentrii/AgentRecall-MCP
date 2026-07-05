@@ -116,6 +116,63 @@
     <span style="font-size:20px;color:var(--accent);flex-shrink:0;">→</span>
   </a>
 
+  <!-- MAJOR: v3.4.36 -->
+  <section class="hero">
+    <div class="hero-head">
+      <div class="tagrow">
+        <span class="vbadge">v3.4.36</span>
+        <span class="major"><span class="en ">★ RMR Wave 2</span><span class="zh ">★ RMR 第二波</span></span>
+        <span class="date mono">2026-07-05</span>
+      </div>
+      <h2 class="hero-title"><span class="en ">Honest heed, lean injection, MCP diet</span><span class="zh ">诚实 heed、精简注入、MCP 瘦身</span></h2>
+      <p class="hero-lede"><span class="en ">The pre-C3 heed rate of 96.9% was an instrument artifact — default-heeded every time, no evidence required. This release fixes that at the source: a "heeded" verdict now requires at least one <code>check_action</code> trigger during the same day; everything else lands as "unknown". At the same time, the session-start correction payload was cut from ~2010 to 1489 median tokens, and the MCP surface was cut from 25 tools to 6 (default 5) after a 2,649-transcript census found 11 tools with zero organic use. Two new CLI verbs surface the dream-audit loop so verdicts can be closed manually.</span><span class="zh ">C3 之前 96.9% 的 heed 率是仪器假象 —— 每次默认 heeded，不需要任何证据。这一版从源头修复：「heeded」现在需要当天至少一次 <code>check_action</code> 触发，否则落地为「unknown」。同时，session-start 注入从约 2010 降至中位 1489 token，MCP surface 在 2,649 条转录的普查后从 25 个工具削减至 6 个（默认 5），11 个工具零有机使用。两条新 CLI 命令让 dream-audit 回路可手动关账。</span></p>
+    </div>
+    <div class="grid">
+      <div class="card flag">
+        <span class="ic">🔒</span>
+        <h3><span class="en ">C3: evidence-grounded heed (BREAKING)</span><span class="zh ">C3：证据驱动 heed（破坏性变更）</span></h3>
+        <p><span class="en "><code>session_end</code> default outcome changes from <b>"heeded"</b> to <b>"unknown"</b>. A "heeded" verdict requires a same-day <code>"triggered"</code> event from <code>check_action</code>. Pre-C3 events stamped <code>default-heeded</code> are instrument artifacts; the boundary date <code>2026-07-03</code> separates the two regimes in <code>rmr-report.mjs</code>.</span><span class="zh "><code>session_end</code> 默认结果从 <b>"heeded"</b> 改为 <b>"unknown"</b>。"heeded" 需要当天 <code>check_action</code> 产生的 <code>"triggered"</code> 事件。C3 前的 <code>default-heeded</code> 事件是仪器假象；边界日期 <code>2026-07-03</code> 在 <code>rmr-report.mjs</code> 中分隔两个制度。</span></p>
+        <p class="why"><span class="en ">Why: a metric that auto-passes 97% of the time measures nothing — it was the instrument, not the behavior.</span><span class="zh ">为什么：自动通过 97% 的指标什么也测不出来 —— 衡量的是仪器，不是行为。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">✂️</span>
+        <h3><span class="en ">C2: injection diet (–26% median tokens)</span><span class="zh ">C2：注入瘦身（中位 −26% token）</span></h3>
+        <p><span class="en ">Session-start correction payload: ~2010 → 1489 median tokens. <code>SlimCorrection</code> strips KPI counter fields; per-section char budgets enforced (corrections_total 1200 chars). P0 corrections <b>always survive</b> the cap (controlled overflow, not silent truncation).</span><span class="zh ">session-start 注入：约 2010 → 1489 中位 token。<code>SlimCorrection</code> 去掉 KPI 计数字段；分节字符预算强制执行（corrections_total 1200 字符）。P0 纠正<b>始终幸存</b>（受控溢出，不静默截断）。</span></p>
+        <p class="why"><span class="en ">Why: every context token is a tax; shrink the tax without losing the signal that matters.</span><span class="zh ">为什么：每个上下文 token 都是税；在不丢失关键信号的前提下压税。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">🗑️</span>
+        <h3><span class="en ">P3a/b: MCP surface 25 → 6 tools</span><span class="zh ">P3a/b：MCP surface 25 → 6 工具</span></h3>
+        <p><span class="en ">11 zero-organic-use tools deleted after a 2,649-transcript, 60-day census (<code>skill_write</code>, <code>dashboard_export</code>, <code>project_board</code>, and 8 more). 7 more quarantined to <code>AR_EXTRAS=1</code>. Default surface: 5 tools. Snapshot guard <code>tool-surface-purity.test.mjs</code> locks all 3 tiers.</span><span class="zh ">在 2,649 条转录、60 天普查后删除 11 个零有机使用工具（<code>skill_write</code>、<code>dashboard_export</code>、<code>project_board</code> 等）。另 7 个隔离至 <code>AR_EXTRAS=1</code>。默认 surface：5 个工具。快照守卫 <code>tool-surface-purity.test.mjs</code> 锁定三层。</span></p>
+        <p class="why"><span class="en ">Why: an LLM given 25 rarely-used tools picks the wrong one; fewer choices = more reliable selection.</span><span class="zh ">为什么：给 LLM 25 个少用工具，它会选错；选择越少，选对越可靠。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">🌙</span>
+        <h3><span class="en ">C3b: dream-audit verdict surface</span><span class="zh ">C3b：dream-audit 判定界面</span></h3>
+        <p><span class="en "><code>ar outcomes audit-candidates</code> lists "unknown" corrections for a given date. <code>ar outcomes record</code> writes a dream-audit verdict (<code>not_triggered | recurred | heeded</code>). <code>not_triggered</code> is single-producer enforced — evidence must start with <code>"dream-audit:"</code>.</span><span class="zh "><code>ar outcomes audit-candidates</code> 列出指定日期的「unknown」纠正。<code>ar outcomes record</code> 写入 dream-audit 判定（<code>not_triggered | recurred | heeded</code>）。<code>not_triggered</code> 强制单生产者 —— evidence 必须以 <code>"dream-audit:"</code> 开头。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">📊</span>
+        <h3><span class="en ">M1 baselines + measured-truth README</span><span class="zh ">M1 基线 + 实测 README</span></h3>
+        <p><span class="en ">Capture recall baseline: <b>35.3%</b> [CI 17.3–58.7]. Root cause: hook-no-fire (coverage bug, not classification). Pre-C3 heed rate 96.9% marked instrument-artifact. Unfalsifiable claims + competitor table <b>removed</b> from README; replaced with artifact-cited metrics table (891 tests, B2 bench green).</span><span class="zh ">捕获召回基线：<b>35.3%</b>（CI 17.3–58.7）。根因：hook-no-fire（覆盖率 bug，非分类 bug）。C3 前 96.9% heed 率标注为仪器假象。README 中无法证伪的声明 + 竞品对比表<b>已删除</b>；替换为制品引用的指标表（891 测试，B2 bench 绿色）。</span></p>
+        <p class="why"><span class="en ">Why: you cannot improve a metric you cannot measure; the competitor table was marketing, not engineering.</span><span class="zh ">为什么：测不准就无法改善；竞品对比表是 marketing，不是工程。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">🔧</span>
+        <h3><span class="en ">C0: npx +x hotfix (since v3.4.21)</span><span class="zh ">C0：npx +x 修复（自 v3.4.21 起）</span></h3>
+        <p><span class="en "><code>tsc</code> strips the execute bit from <code>dist/server.js</code> on every build. <code>npx agent-recall-mcp</code> silently failed since v3.4.21 unless the user manually <code>chmod +x</code>. Build script now: <code>tsc &amp;&amp; chmod +x dist/server.js</code>. Pack-test verified correct mode (0755 in tarball).</span><span class="zh "><code>tsc</code> 每次构建都会去掉 <code>dist/server.js</code> 的执行位。自 v3.4.21 起 <code>npx agent-recall-mcp</code> 无声失败，除非用户手动 <code>chmod +x</code>。构建脚本改为：<code>tsc &amp;&amp; chmod +x dist/server.js</code>。打包测试验证了正确权限（tarball 中 0755）。</span></p>
+      </div>
+    </div>
+    <div class="verify">
+      <span class="vlabel"><span class="en ">Verified</span><span class="zh ">已验证</span></span>
+      <span class="pill">build · 0 errors</span>
+      <span class="pill">891 tests · 0 fail</span>
+      <span class="pill">npx smoke · exit 0</span>
+      <span class="pill">MCP surface locked · 3-tier snapshot</span>
+    </div>
+    <div class="shipped"><span class="en "><b>Shipped 2026-07-05 (v3.4.36):</b> C3 heed semantics live (BREAKING: boundary 2026-07-03); injection diet active; MCP trimmed to 5 default tools; dream-audit CLI surface shipped; <code>npx agent-recall-mcp</code> +x fix closes the v3.4.21 regression. Capture recall baseline (35.3%) is a <b>measured fact</b>, not a design target — the next wave addresses hook coverage.</span><span class="zh "><b>2026-07-05 发布 (v3.4.36)：</b>C3 heed 语义生效（破坏性：边界 2026-07-03）；注入瘦身激活；MCP 裁剪至 5 个默认工具；dream-audit CLI 界面发布；<code>npx agent-recall-mcp</code> +x 修复关闭 v3.4.21 回归。捕获召回基线（35.3%）是<b>实测事实</b>，不是设计目标 —— 下一波解决 hook 覆盖率。</span></div>
+  </section>
+
   <!-- MAJOR: v3.4.35 -->
   <section class="hero">
     <div class="hero-head">
