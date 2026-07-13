@@ -24,3 +24,7 @@ venv/
 
 # Real-corpus eval data — contains real user paths/names/project slugs; never commit
 scripts/eval/fixtures/loop8-labeled-rejects.json
+
+# agent-loop runner artifacts (repo-root runs): transcript/scratch state + kill switch
+/state/
+/STOP

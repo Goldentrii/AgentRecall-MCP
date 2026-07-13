@@ -1,0 +1,7 @@
+{
+  "task": "In the current working directory, create greet.mjs exporting a function greet(name) that returns the string `Hello, {name}!` for any name.",
+  "doneCheck": "node -e \"import('./greet.mjs').then(m => process.exit(m.greet('Ada') === 'Hello, Ada!' ? 0 : 1)).catch(() => process.exit(1))\"",
+  "maxIterations": 15,
+  "stopFile": "STOP",
+  "stateDir": "state"
+}
