@@ -233,7 +233,7 @@ The kit in [`experimental/harness-kit/`](experimental/harness-kit/) is a Claude 
 
 North-star metric: **post-re-abstraction phantom rate → 0** for treated classes. First validation run (2026-07-14, one power-user harness): 8 error classes and 18 confirmed phantom gradient steps found in 109 corrections; 6 rules re-abstracted the same day.
 
-**Status: experimental.** Validated on one harness; Python 3 stdlib only; install steps and caveats in the kit's [README](experimental/harness-kit/README.md).
+**Status: experimental.** Validated on one harness; Python 3 stdlib only; install steps and caveats in the kit's [README](experimental/harness-kit/README.md). Since v3.4.37 the same phenomenon is also measured natively: `failure_class` + the cross-project recurrence join.
 
 ---
 
