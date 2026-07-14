@@ -116,6 +116,56 @@
     <span style="font-size:20px;color:var(--accent);flex-shrink:0;">→</span>
   </a>
 
+  <!-- MAJOR: v3.4.37 -->
+  <section class="hero">
+    <div class="hero-head">
+      <div class="tagrow">
+        <span class="vbadge">v3.4.37</span>
+        <span class="major"><span class="en ">★ RMR Wave 3</span><span class="zh ">★ RMR 第三波</span></span>
+        <span class="date mono">2026-07-14</span>
+      </div>
+      <h2 class="hero-title"><span class="en ">Cross-project recurrence detection + reflection harness kit</span><span class="zh ">跨项目复发检测 + 反思 harness 套件</span></h2>
+      <p class="hero-lede"><span class="en ">Every recurrence the detector had ever recorded was within-project — a known pattern violated again in a <em>different</em> project was invisible by construction. This release gives corrections a <code>failure_class</code> (stamped by a keyword classifier at capture, zero new deps) and adds a cross-project class join at session-end. The eval on the live corpus cleared the workpacket's Phase-0 gate: the first cross-project detection the system has ever made (a model-dispatch violation linked to its 2-month-older ancestor in another project), with 0/53 false positives on stride negatives and all pinned baselines unshifted. Ships with an experimental harness kit — the four memory verbs, a health scoreboard, an error-class taxonomy, and a periodic <code>/arreflect</code> loop that hunts <em>phantom gradient steps</em>: corrections whose rule was encoded yet whose error class recurred anyway.</span><span class="zh ">检测器历史上记录的所有复发都是项目内的 —— 已知模式在<em>另一个</em>项目再次违反，结构上就不可见。本版给纠正记录加上 <code>failure_class</code>（捕获时由关键词分类器盖章，零新依赖），并在 session-end 新增跨项目类别 join。真实语料 eval 通过了工作包的 Phase-0 门：系统有史以来第一次跨项目检出（一次 model-dispatch 违规连到了另一项目中早它两个月的始祖纠错），负样本 0/53 误报，全部锁定基线无漂移。随附实验性 harness 套件 —— 四个记忆动词、健康记分牌、错误分类税则、以及定期 <code>/arreflect</code> 循环，专门猎捕<em>幻影梯度步</em>：规则已编码、同类错误却照样复发的纠正。</span></p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <span class="ic">🏷️</span>
+        <h3><span class="en ">RD-1: failure_class at capture</span><span class="zh ">RD-1：捕获时的 failure_class</span></h3>
+        <p><span class="en ">9-value enum (<code>publish_gate</code>, <code>naming_violation</code>, <code>model_dispatch</code>, <code>skipped_verify</code>, <code>confidential_leak</code>, <code>framing_error</code>, <code>scope_violation</code>, <code>wrong_ref</code>, <code>other</code>) stamped by a tokenize/overlap keyword classifier — strict-max wins, zero hits or tie → <code>other</code>. Additive and optional: old records read as <code>other</code>, are never re-classified, never rewritten.</span><span class="zh ">9 值枚举，由 tokenize/overlap 关键词分类器盖章 —— 严格最大值获胜，零命中或并列 → <code>other</code>。纯增量可选字段：旧记录按 <code>other</code> 读取，永不重分类、永不改写。</span></p>
+        <p class="why"><span class="en ">Why: word-overlap alone can't group "wrong model routing" incidents that share zero ≥4-char words; a class key can.</span><span class="zh ">为什么：仅靠词重叠无法归并零共词的同类事故；类别键可以。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">🔗</span>
+        <h3><span class="en ">RD-1: cross-project class join</span><span class="zh ">RD-1：跨项目类别 join</span></h3>
+        <p><span class="en ">When session-end sees a genuine-recurrence marker, a new additive pass scans ALL projects' active corrections for the same <code>failure_class</code> with rule-text token overlap ≥ 1, and books <code>recurred</code> under the <b>originating</b> correction's project. Auto-tags are excluded from the join key — the live-corpus eval showed tag tokens made overlap trivially satisfiable.</span><span class="zh ">session-end 见到真实复发标记时，新增的增量扫描在所有项目的活跃纠正中寻找同 <code>failure_class</code> 且规则正文 token 重叠 ≥ 1 的记录，并把 <code>recurred</code> 记到<b>始发</b>纠正所属项目。join 键排除自动 tags —— 真实语料 eval 显示 tag token 会让重叠条件被平凡满足。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">⚖️</span>
+        <h3><span class="en ">Eval honesty: Phase-0 cleared, recall claims deferred</span><span class="zh ">Eval 诚实账：Phase-0 通过，召回宣称递延</span></h3>
+        <p><span class="en ">Held-out (time-split 2026-06-01): <b>1 confirmed cross-project detection, 0/53 stride false positives → Phase-0 PASS</b>. Zero-regression: all pinned baselines verify, claim-gates unshifted. Held-in matchFn-surface recall was 20% (&lt;50% gate) — diagnosed as instrument-surface loss (redaction + truncation destroy record identity); the capture-time join surface reaches 60% active-only / 100% as-captured on the same pairs. The ≥50% recall claim stays deferred per the n≥39 gate.</span><span class="zh ">Held-out（2026-06-01 时间切分）：<b>1 例确认跨项目检出，负样本 0/53 误报 → Phase-0 通过</b>。零回归：全部锁定基线校验通过，claim-gates 无漂移。Held-in matchFn 面召回 20%（未达 50% 门）—— 诊断为仪器面损耗（redaction + 截断毁掉记录身份）；capture-time join 面在同样的对上达 60%（仅活跃）/ 100%（按捕获时点）。≥50% 召回宣称按 n≥39 门继续递延。</span></p>
+        <p class="why"><span class="en ">Why: a gate that fails is reported as failed — the metric is the product.</span><span class="zh ">为什么：没过的门就报没过 —— 指标本身就是产品。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">🧰</span>
+        <h3><span class="en ">Experimental: recurrence &amp; reflection harness kit</span><span class="zh ">实验性：复发与反思 harness 套件</span></h3>
+        <p><span class="en "><code>experimental/harness-kit/</code>: the four memory verbs (<code>/arstart</code> · <code>/arsave</code> · <code>/arrecall</code> · <code>/arreflect</code>), a SessionStart health scoreboard, an error-class taxonomy with mechanical phantom detection, and a K-session reflection cadence with mid-session nudge. First validation run (one power-user harness, 2026-07-14): 8 error classes, 18 confirmed phantom gradient steps in 109 corrections, 6 rules re-abstracted same day. Python 3 stdlib only; rule edits stay owner-gated.</span><span class="zh "><code>experimental/harness-kit/</code>：四个记忆动词、SessionStart 健康记分牌、带机械幻影检测的错误分类税则、K-session 反思节奏 + 会话中催办。首次验证（单个重度用户 harness，2026-07-14）：109 条纠正中发现 8 个错误类、18 个确认幻影梯度步，当天完成 6 条规则重抽象。仅需 Python 3 标准库；规则修改始终由 owner 把关。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">🚌</span>
+        <h3><span class="en ">Ride-along: loop runner + harness-change protocol</span><span class="zh ">顺风车：loop runner + harness 变更协议</span></h3>
+        <p><span class="en ">Two previously-unpushed commits ship in this release: the self-verifying agent loop runner (harness-run <code>doneCheck</code> as the only stop condition) and the harness-change acceptance protocol (bounded edit, dual regression, evaluator outside the loop).</span><span class="zh ">两个此前未推送的提交随本版发布：自校验 agent loop runner（harness-run <code>doneCheck</code> 为唯一停止条件）与 harness 变更验收协议（有界编辑、双重回归、评审者在环外）。</span></p>
+      </div>
+    </div>
+    <div class="verify">
+      <span class="vlabel"><span class="en ">Verified</span><span class="zh ">已验证</span></span>
+      <span class="pill">build · 0 errors</span>
+      <span class="pill">core 789 tests · 0 fail</span>
+      <span class="pill">Phase-0 eval · PASS (1 detection, 0/53 FP)</span>
+      <span class="pill">claim-gates · unshifted</span>
+    </div>
+    <div class="shipped"><span class="en "><b>Shipped 2026-07-14 (v3.4.37):</b> failure_class live at capture; cross-project recurrence join active (warms up as new classified captures accrue — old records are never rewritten); harness kit published under <code>experimental/</code>. The held-in recall gate is re-scoped to the capture-time join surface for the next wave.</span><span class="zh "><b>2026-07-14 发布 (v3.4.37)：</b>failure_class 捕获即生效；跨项目复发 join 激活（随新分类捕获逐步热身 —— 旧记录永不改写）；harness 套件以 <code>experimental/</code> 发布。held-in 召回门下一波重定标到 capture-time join 面。</span></div>
+  </section>
+
   <!-- MAJOR: v3.4.36 -->
   <section class="hero">
     <div class="hero-head">
