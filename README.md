@@ -216,6 +216,27 @@ Dream reports are saved locally to `~/.agent-recall/dreams/YYYY-MM-DD.md`.
 
 ---
 
+## Experimental: Recurrence & Reflection Harness Kit
+
+**The question this answers: does a correction actually change behavior, or does the same mistake come back?** A logged correction whose error class recurs after the rule was encoded is a *phantom gradient step* — the write cost was paid, the behavior never changed.
+
+The kit in [`experimental/harness-kit/`](experimental/harness-kit/) is a Claude Code harness layer that closes this loop on top of AgentRecall:
+
+| Piece | What it does |
+|---|---|
+| `ar-scoreboard.py` (SessionStart hook) | Health digest every session: correction flow, insight promotion rate, loop health, phantom counts, reflection cadence |
+| `ar-recurrence-check.py` (+ your `~/.agent-recall/taxonomy.json`, schema in `TAXONOMY-SCHEMA.md`) | Error-class taxonomy over your corrections; mechanical phantom detection (violation dated after its rule) |
+| `/arstart` · `/arsave` · `/arrecall` · `/arreflect` | The four memory verbs (open · save · search · consolidate) as slash commands |
+| `/arreflect` (every K sessions) | Periodic triage: confirm provisional matches, cluster new error classes, propose rule re-abstractions — **rule edits stay owner-gated** |
+| `ar-nudge.py` (UserPromptSubmit hook) | Surfaces overdue reflection mid-session — memory pushed to the moment of action, not left to be remembered |
+| `dispatch-model-guard.py` (PreToolUse hook, optional) | Warn-only guard for an explicit-model dispatch policy — an example of mechanizing a rule that text alone failed to enforce |
+
+North-star metric: **post-re-abstraction phantom rate → 0** for treated classes. First validation run (2026-07-14, one power-user harness): 8 error classes and 18 confirmed phantom gradient steps found in 109 corrections; 6 rules re-abstracted the same day.
+
+**Status: experimental.** Validated on one harness; Python 3 stdlib only; install steps and caveats in the kit's [README](experimental/harness-kit/README.md).
+
+---
+
 ## War Room Dashboard — Download & Deploy
 
 A local-first visual dashboard for your memory: an activity calendar, per-project status, corrections, and insights — all rendered from your local `~/.agent-recall/` data. Fully offline (vendored assets), no Node and no build step.
