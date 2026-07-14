@@ -12,7 +12,8 @@ import { promoteConfirmedInsights } from "./insight-promotion.js";
 import { readInsightsIndex, findSimilarInsight } from "../palace/insights-index.js";
 import { consolidateJournalToPalace } from "../palace/consolidate.js";
 import { resolveProject } from "../storage/project.js";
-import { readCorrections, recordOutcome, readOutcomesForToday, readOutcomesBefore, splitSentences } from "../storage/corrections.js";
+import { readCorrections, readActiveCorrections, recordOutcome, readOutcomesForToday, readOutcomesBefore, splitSentences, type CorrectionOutcome, type FailureClass } from "../storage/corrections.js";
+import { ruleSignature, overlap } from "./check-action.js";
 import { recomputeBlindSpots } from "../storage/blind-spots-store.js";
 import { ensurePalaceInitialized, listRooms } from "../palace/rooms.js";
 import { journalDir } from "../storage/paths.js";
@@ -390,6 +391,136 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
       }
     } catch {
       // Outcome tracking must NEVER break session_end — swallow all errors
+    }
+  }
+
+  // 1c. RD-1 (2026-07-14): cross-project failure-class recurrence join —
+  // recurrence-detector workpacket §2 (docs/proposals/2026-07-13-recurrence-
+  // detector-workpacket.md). The 1b loop above is single-project + retrieved-
+  // today only, so a known pattern recurring in a DIFFERENT project was never
+  // linked (all 6 recorded recurrence events are within-project). This is a
+  // purely ADDITIVE secondary pass — the 1b `todays` loop semantics are
+  // untouched.
+  //
+  // Trigger: the same genuine-recurrence marker path as 1b. Seeds: active
+  // corrections of THIS project retrieved-or-captured today whose stamped
+  // failure_class is a real class (owner decision 2026-07-14: records without
+  // the field read as "other" — never re-classified, never rewritten — and
+  // "other" never seeds or matches). Candidates: ALL active corrections across
+  // ALL projects with the same failure_class AND ruleSignature (RULE-TEXT
+  // tokens ONLY — auto-tags like "rule"/"correction" recur everywhere and made
+  // a tags-inclusive overlap ≥ 1 trivially satisfiable in the live-corpus
+  // eval) overlap ≥ 1 with the seed — relaxed from check-action's
+  // MIN_OVERLAP=2 because the class key already narrows candidates.
+  // Outcome routing (owner decision 3): `recurred` is recorded under the
+  // MATCHING correction's OWN project slug, not the current session's slug.
+  //
+  // Fire-and-forget: like 1b, this must NEVER affect the session_end result.
+  if (journalWritten) {
+    try {
+      if (hasGenuineRecurrenceMarker(input.summary)) {
+        const todayLocal = new Date().toLocaleDateString("sv");
+        const todayUTC = new Date().toISOString().slice(0, 10);
+        const nowISO = new Date().toISOString();
+
+        // Seeds — retrieved today (local-TZ, mirrors 1b) OR captured today.
+        // `date` is a bare YYYY-MM-DD written by todayDate() (UTC-based), so it
+        // is string-compared against BOTH the local and UTC day — never parsed
+        // through new Date(), which would shift a bare date across timezones.
+        const seeds = readActiveCorrections(slug)
+          .filter((c) => {
+            const cls: FailureClass = c.failure_class ?? "other";
+            if (cls === "other") return false;
+            const retrievedToday =
+              !!c.last_retrieved &&
+              new Date(c.last_retrieved).toLocaleDateString("sv") === todayLocal;
+            const capturedToday = c.date === todayLocal || c.date === todayUTC;
+            return retrievedToday || capturedToday;
+          })
+          .map((c) => ({
+            id: c.id,
+            cls: (c.failure_class ?? "other") as FailureClass,
+            sig: ruleSignature(c),
+          }));
+
+        if (seeds.length > 0) {
+          const projectsDir = path.join(getRoot(), "projects");
+          const allSlugs = fs.existsSync(projectsDir)
+            ? fs.readdirSync(projectsDir).filter((s) => {
+                try {
+                  return fs.statSync(path.join(projectsDir, s)).isDirectory();
+                } catch {
+                  return false;
+                }
+              })
+            : [];
+
+          for (const proj of allSlugs) {
+            try {
+              // Review fix HIGH-2 (2026-07-14): 1b owns within-project
+              // recurrence with a stricter evidence standard (summary-topical
+              // overlap, trigger evidence). Letting 1c re-judge the same
+              // project's corrections on 1 rule-token overlap gave records 1b
+              // had verdicted "unknown" a second, weaker bite. Cross-project
+              // ONLY — that is the feature's name and its whole point.
+              if (proj === slug) continue;
+              const candidates = readActiveCorrections(proj);
+              if (candidates.length === 0) continue;
+              // Lazily read the candidate project's today-outcomes only when a
+              // class match exists — most projects short-circuit before this.
+              let projTodayOut: Map<string, Set<CorrectionOutcome["kind"]>> | null = null;
+              for (const cand of candidates) {
+                try {
+                  const candCls: FailureClass = cand.failure_class ?? "other";
+                  if (candCls === "other") continue; // old/unclassified records never join
+                  // Review fix HIGH-2 (2026-07-14): a correction captured
+                  // TODAY must not be marked "recurred" on its birth day —
+                  // recurred means "the known pattern happened again AFTER it
+                  // was recorded". Bare-date string compare against both local
+                  // and UTC today, consistent with the seed-side handling.
+                  if (cand.date === todayLocal || cand.date === todayUTC) continue;
+                  const candSig = ruleSignature(cand);
+                  const seedMatch = seeds.find(
+                    (s) =>
+                      s.cls === candCls &&
+                      overlap(s.sig, candSig).length >= 1,
+                  );
+                  if (!seedMatch) continue;
+                  if (projTodayOut === null) projTodayOut = readOutcomesForToday(proj);
+                  const firedToday = projTodayOut.get(cand.id);
+                  // Mirror the 1b guard: a REAL heeded/recurred outcome already
+                  // booked today for this correction is never contradicted or
+                  // double-counted (also dedups repeat session_end calls).
+                  if (firedToday && (firedToday.has("heeded") || firedToday.has("recurred"))) {
+                    continue;
+                  }
+                  const shared = overlap(seedMatch.sig, candSig);
+                  recordOutcome({
+                    correction_id: cand.id,
+                    project: proj, // originating correction's own slug (owner decision 3)
+                    kind: "recurred",
+                    at: nowISO,
+                    evidence:
+                      `cross-project class join: failure_class "${candCls}" matched ` +
+                      `seed ${seedMatch.id} (${slug}); signature overlap: ${shared.slice(0, 5).join(", ")}`,
+                  });
+                  // Keep the in-memory dedup map coherent within this pass so a
+                  // second seed matching the same candidate cannot double-fire.
+                  const set = projTodayOut.get(cand.id) ?? new Set<CorrectionOutcome["kind"]>();
+                  set.add("recurred");
+                  projTodayOut.set(cand.id, set);
+                } catch {
+                  // Malformed candidate record → skipped; the join continues.
+                }
+              }
+            } catch {
+              // Per-project errors are swallowed — don't abort the join
+            }
+          }
+        }
+      }
+    } catch {
+      // Cross-project join must NEVER break session_end — swallow all errors
     }
   }
 

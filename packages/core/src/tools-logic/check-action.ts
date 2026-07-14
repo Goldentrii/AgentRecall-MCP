@@ -16,7 +16,7 @@
  */
 
 import { resolveProject } from "../storage/project.js";
-import { readActiveCorrections, recordOutcome, readOutcomesForToday, type CorrectionRecord } from "./../storage/corrections.js";
+import { readActiveCorrections, recordOutcome, readOutcomesForToday, type CorrectionRecord, type FailureClass } from "./../storage/corrections.js";
 import { readBehaviorPolicies, type BehaviorRule } from "../storage/behavior-policies.js";
 import { readAwarenessState } from "../palace/awareness.js";
 
@@ -100,6 +100,154 @@ export function overlap(a: Set<string>, b: Set<string>): string[] {
   const hits: string[] = [];
   for (const t of a) if (b.has(t)) hits.push(t);
   return hits.sort();
+}
+
+// ---------------------------------------------------------------------------
+// RD-1 — failure-class keyword classifier (recurrence-detector workpacket §1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-class keyword sets — ADOPTED VERBATIM from the eval-frozen table in
+ * scripts/eval/failure-class-matchfn.mjs (frozen 2026-07-14 BEFORE the first
+ * eval run; passed the workpacket's Phase-0 acceptance gates on the live
+ * corpus). Review finding HIGH-1 (2026-07-14): the earlier taxonomy-derived
+ * table carried ambient tokens ("wrong", "work", "memory", "human", "api",
+ * "customer") that misclassified realistic rules on single hits — and a
+ * stored failure_class is durable (stored-wins on merge), so classifier
+ * precision matters more here than recall. The eval table deliberately
+ * excludes ambient tokens and carries surface variants (pushed/deployment/
+ * renamed…) because tokenize does no stemming. Change one table → re-run
+ * scripts/eval/failure-class-eval.mjs and update both.
+ *
+ * `naming_violation` beyond the workpacket's 7 classes: owner decision
+ * 2026-07-14 (highest-phantom class in the taxonomy validation).
+ */
+const FAILURE_CLASS_KEYWORDS: ReadonlyArray<
+  readonly [Exclude<FailureClass, "other">, readonly string[]]
+> = [
+  ["publish_gate", [
+    "push", "pushed", "pushes", "pushing",
+    "publish", "published", "publishing",
+    "deploy", "deployed", "deploys", "deployment",
+    "release", "released", "releases",
+    "version", "versions", "bump", "bumped",
+    "approval", "approve", "approved",
+    "permission", "permissions",
+  ]],
+  ["naming_violation", [
+    "naming", "rename", "renamed", "renames", "renaming",
+    "repo", "repos", "repository", "repositories",
+    "slug", "slugs", "filename", "filenames",
+    "folder", "folders", "directory", "directories",
+    "kebab-case", "canonical", "alias", "aliases",
+    "spelling", "spelled", "misspelled",
+  ]],
+  ["model_dispatch", [
+    "opus", "sonnet", "haiku", "fable", "codex",
+    "model", "models",
+    "dispatch", "dispatched", "dispatching",
+    "sub-agent", "sub-agents", "subagent", "subagents",
+    "orchestrate", "orchestrates", "orchestrator", "orchestration",
+    "worker", "workers", "reviewer", "reviewers",
+    "sequential", "parallel", "routing",
+  ]],
+  ["skipped_verify", [
+    "verify", "verifying", "verifies", "verification",
+    "self-review", "self-verify", "self-check",
+    "unverified", "re-verify",
+  ]],
+  ["confidential_leak", [
+    "confidential", "secret", "secrets",
+    "internal", "internals",
+    "leak", "leaked", "leaks", "leaking",
+    "expose", "exposed", "exposes", "exposure",
+    "reveal", "reveals", "revealed", "revealing",
+    "margin", "margins", "cost", "costs", "economics",
+    "credential", "credentials", "api-key", "api-keys",
+  ]],
+  ["framing_error", [
+    "frame", "framed", "frames", "framing", "reframe",
+    "lens", "lenses",
+    "conceptual", "concept", "concepts",
+    "metaphor", "metaphors", "paradigm",
+    "analogy", "analogies",
+    "neuroscience", "philosophy", "philosophical", "mental",
+  ]],
+  ["scope_violation", [
+    "scope", "scopes", "scoped", "out-of-scope",
+    "session", "sessions",
+    "focus", "focuses", "focused",
+    "unrelated", "mix", "mixing",
+    "boundary", "boundaries",
+    "conversation", "conversations",
+  ]],
+  ["wrong_ref", [
+    "stale", "outdated", "deprecated",
+    "param", "params", "parameter", "parameters",
+    "endpoint", "endpoints", "ref", "refs",
+    "mismatch", "mismatched",
+  ]],
+];
+
+/** Tokenized once at module load — fixed array order keeps scoring deterministic. */
+const FAILURE_CLASS_TOKENSETS: ReadonlyArray<
+  readonly [Exclude<FailureClass, "other">, Set<string>]
+> = FAILURE_CLASS_KEYWORDS.map(
+  ([cls, kws]) => [cls, tokenize(kws.join(" "))] as const,
+);
+
+/**
+ * RD-1 — derive `failure_class` from correction text at capture time.
+ *
+ * Built ONLY from the existing tokenize/overlap grammar above — no new deps,
+ * no ML, no embeddings (the embedding-declined ruling stands). Scoring is a
+ * plain token-overlap count per class, resolved highest-first:
+ *   strict max score > 0            → that class
+ *   zero hits OR tied max           → "other"   (owner decision 2026-07-14)
+ *
+ * NOTE: tokenize does no stemming — "worker" matches the token "worker", not
+ * "workers". That is the same deliberate literalness check-action matching has.
+ */
+export function classifyFailureClass(text: string): FailureClass {
+  const tokens = tokenize(typeof text === "string" ? text : "");
+  if (tokens.size === 0) return "other";
+  let best: FailureClass = "other";
+  let bestScore = 0;
+  let tiedAtBest = false;
+  for (const [cls, kwTokens] of FAILURE_CLASS_TOKENSETS) {
+    const score = overlap(tokens, kwTokens).length;
+    if (score > bestScore) {
+      best = cls;
+      bestScore = score;
+      tiedAtBest = false;
+    } else if (score === bestScore && score > 0) {
+      tiedAtBest = true;
+    }
+  }
+  return bestScore > 0 && !tiedAtBest ? best : "other";
+}
+
+/**
+ * RD-1 — cluster signature for the cross-project class join (workpacket §2).
+ * MIRRORS clusterSignature in scripts/eval/predict-loo.mjs — rule + tags through
+ * the shared tokenize grammar — so the eval harness and the production join
+ * agree on the join key. Change one → change both.
+ */
+export function clusterSignature(c: Pick<CorrectionRecord, "rule" | "tags">): Set<string> {
+  return tokenize(`${c.rule ?? ""} ${(c.tags ?? []).join(" ")}`);
+}
+
+/**
+ * RD-1 fix (live-corpus eval finding, 2026-07-14) — rule-text-only signature
+ * for the §1c production join. Auto-tags ("rule", "correction", "deployment")
+ * recur across unrelated corrections, so a tags-inclusive overlap ≥ 1 is
+ * trivially satisfiable — 18/23 cross-project edges in the eval rode partly on
+ * tag tokens; one edge joined on sig∩=["rule"] alone. The production join
+ * therefore requires its ≥1-token overlap to come from RULE TEXT only.
+ * clusterSignature above stays byte-identical — the eval mirror depends on it.
+ */
+export function ruleSignature(c: Pick<CorrectionRecord, "rule">): Set<string> {
+  return tokenize(c.rule ?? "");
 }
 
 export async function checkAction(input: CheckActionInput): Promise<CheckActionResult> {

@@ -41,9 +41,20 @@ function writeRawCorrection(root, project, record) {
 
 describe("session_start injection efficacy", () => {
   let core;
+  let savedAbEnabled;
+  let savedAbForce;
 
   before(async () => {
     process.env.AGENT_RECALL_ROOT = TEST_ROOT;
+    // Hermeticity: the C4 A/B experiment (AR_AB_ENABLED=1 in the experiment
+    // owner's ambient shell) assigns hash(project+date+ordinal)-based arms, and
+    // an "off"-arm session forces corrections:[] BY DESIGN — which makes these
+    // injection assertions fail date-/machine-dependently. These tests assert
+    // the FULL-injection contract, so the experiment must be off here.
+    savedAbEnabled = process.env.AR_AB_ENABLED;
+    savedAbForce = process.env.AR_AB_FORCE;
+    delete process.env.AR_AB_ENABLED;
+    delete process.env.AR_AB_FORCE;
     core = await import("../dist/index.js");
     core.setRoot(TEST_ROOT);
 
@@ -58,6 +69,8 @@ describe("session_start injection efficacy", () => {
   after(() => {
     core.resetRoot?.();
     delete process.env.AGENT_RECALL_ROOT;
+    if (savedAbEnabled !== undefined) process.env.AR_AB_ENABLED = savedAbEnabled;
+    if (savedAbForce !== undefined) process.env.AR_AB_FORCE = savedAbForce;
     fs.rmSync(TEST_ROOT, { recursive: true, force: true });
   });
 

@@ -13,6 +13,7 @@ import { ensureDir, todayISO } from "../storage/fs-utils.js";
 import { extractKeywords, generateSlug } from "../helpers/auto-name.js";
 import { generateTags } from "../helpers/tag-generator.js";
 import { writeCorrection, splitSentences } from "../storage/corrections.js";
+import { classifyFailureClass } from "./check-action.js";
 import {
   readAlignmentLog as readLog,
   extractWatchPatterns,
@@ -141,6 +142,10 @@ export async function check(input: CheckInput): Promise<CheckResult> {
         rule: corrRule,
         context: corrText,
         tags: corrTags,
+        // RD-1 (owner decision 2026-07-14): failure_class is auto-derived at
+        // capture — keyword classifier over the FULL correction text, using
+        // only the shared tokenize/overlap grammar. Zero/tied hits → "other".
+        failure_class: classifyFailureClass(corrText),
       });
       if (!writeResult.written) {
         // Surface the gate rejection instead of silently dropping the

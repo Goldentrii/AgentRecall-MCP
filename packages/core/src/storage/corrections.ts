@@ -14,6 +14,32 @@ import { ensureDir } from "./fs-utils.js";
 // Types
 // ---------------------------------------------------------------------------
 
+/**
+ * RD-1 (2026-07-13 workpacket §1, owner decisions 2026-07-14) — behavioral
+ * failure-class taxonomy for the cross-project recurrence join.
+ *
+ * Owner decisions (2026-07-14):
+ *  - 9 values: the workpacket's 7 + `naming_violation`, which was the
+ *    highest-phantom class in the 2026-07-14 taxonomy validation.
+ *  - `failure_class` is AUTO-DERIVED AT CAPTURE (check.ts) via the keyword
+ *    classifier in tools-logic/check-action.ts (tokenize/overlap grammar only —
+ *    no new deps, no embeddings; the embedding-declined ruling stands).
+ *  - Old records without the field are treated as `other` at READ time. The
+ *    field is deliberately NOT defaulted in applyCorrectionDefaults — a default
+ *    there would be persisted to disk by recordOutcome's read-modify-write and
+ *    silently rewrite old files, which the owner ruled out.
+ */
+export type FailureClass =
+  | "wrong_ref"
+  | "naming_violation"
+  | "skipped_verify"
+  | "scope_violation"
+  | "model_dispatch"
+  | "framing_error"
+  | "confidential_leak"
+  | "publish_gate"
+  | "other";
+
 export interface CorrectionRecord {
   id: string;       // date-slug
   date: string;     // YYYY-MM-DD
@@ -70,6 +96,12 @@ export interface CorrectionRecord {
   superseded_by?: string;     // id of the correction that replaced this one. Record stays on disk for audit; active:false hides it from surfacing.
   merged_from?: string[];     // ids folded into this record by on-write consolidation (audit trail).
   stale?: boolean;            // computeTrend flagged this rule untouched >30d. Informational — corrections are decay-protected.
+  /**
+   * RD-1 — behavioral failure class (see FailureClass above). ADDITIVE +
+   * OPTIONAL: no capture-schema break. Stamped at capture time by check.ts;
+   * absent on pre-RD-1 records, which readers treat as "other" (never rewritten).
+   */
+  failure_class?: FailureClass;
 }
 
 /**
@@ -615,6 +647,20 @@ export function writeCorrection(project: string, correction: CorrectionRecord): 
       weight: Math.max(existing.weight ?? 0, record.weight ?? 0),
       authoritative: Boolean(existing.authoritative || record.authoritative),
       last_outcome: new Date().toISOString(),
+      // RD-1: keep the existing classification; adopt the incoming capture's
+      // class only when the existing record predates the field AND the
+      // incoming class is a REAL class. Review fix MEDIUM-1 (2026-07-14):
+      // writing "other" into a pre-RD-1 file changes nothing at read time
+      // (absent already reads as other) but permanently forecloses a future
+      // real classification — stored-wins would keep "other" forever. Note the
+      // merge gate is rule-text equality while classification runs on the full
+      // context text, so incoming classes CAN differ across merges; stored
+      // still wins in that case by design (durable classification).
+      ...(existing.failure_class
+        ? { failure_class: existing.failure_class }
+        : record.failure_class && record.failure_class !== "other"
+          ? { failure_class: record.failure_class }
+          : {}),
     };
     const mfile = `${merged.date}-${slugify(merged.rule || merged.id)}.json`;
     writeRecordAtomic(path.join(dir, mfile), merged);
