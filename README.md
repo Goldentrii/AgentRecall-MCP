@@ -19,11 +19,10 @@
 </p>
 
 <p align="center">
-  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farstatus-START_HERE-22C55E?style=for-the-badge" alt="/arstatus"></a>
-  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farstart-Load_Context-4ECDC4?style=for-the-badge" alt="/arstart"></a>
-  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farsave-Save_Session-FF6B6B?style=for-the-badge" alt="/arsave"></a>
-  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farsaveall-Batch_Save-FFD93D?style=for-the-badge" alt="/arsaveall"></a>
-  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farbootstrap-Transfer_Memory-8B5CF6?style=for-the-badge" alt="/arbootstrap"></a>
+  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farstart-OPEN·START_HERE-22C55E?style=for-the-badge" alt="/arstart"></a>
+  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farsave-SAVE-FF6B6B?style=for-the-badge" alt="/arsave"></a>
+  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farrecall-SEARCH-4ECDC4?style=for-the-badge" alt="/arrecall"></a>
+  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farreflect-CONSOLIDATE-8B5CF6?style=for-the-badge" alt="/arreflect"></a>
 </p>
 
 <details>
@@ -175,15 +174,26 @@ All layers share one canonical naming grammar so any agent can compose retrieval
 
 ## The Session Loop
 
+```mermaid
+flowchart LR
+    A([session start]) --> B["/arstart — open<br/>board → pick → load context"]
+    B --> C{work}
+    C -->|need past knowledge| D["/arrecall — search"]
+    D --> C
+    C --> E["/arsave — save<br/>journal + compound"]
+    E --> F([session end])
+    F -. every K sessions .-> G["/arreflect — consolidate"]
+    G -.-> A
+```
+
 | Command | When | What it does |
 |---|---|---|
-| `/arstatus` | **First — every session** | Status board across ALL projects: pending work, blockers, relevance scores. Pick by number. |
-| `/arstart` | After picking a project | Load deep context: palace rooms, corrections, task-specific recall. |
-| `/arsave` | **Last — every session** | Write journal + palace consolidation + awareness compounding. |
-| `/arsaveall` | End of day (multi-session) | Batch save all parallel sessions — scan, merge, deduplicate. |
-| `/arbootstrap` | First install / migrating | Scan your machine for existing projects and import them. |
+| `/arstart` | **First — every session** | OPEN. No args = status board across ALL projects (pending work, blockers) → pick by number → load that project's deep context (palace rooms, corrections, task recall). `/arstart <slug>` loads directly; `/arstart bootstrap` scans your machine and imports existing projects. |
+| `/arsave` | **Last — every session** | SAVE. Write journal + palace consolidation + awareness compounding. `/arsave all` batch-saves every parallel session of the day (scan, merge, deduplicate). |
+| `/arrecall` | Mid-session, on demand | SEARCH. Surface past knowledge for the current task — documented fixes, prior decisions, patterns. |
+| `/arreflect` | Every K sessions | CONSOLIDATE. Periodic triage: confirm recurrence/phantom matches, cluster new error classes, propose rule re-abstractions (rule edits stay owner-gated). |
 
-> **Without `/arstatus`, a fresh agent has zero orientation. Without `/arsave`, nothing compounds. These two are the entire loop.**
+> **Without `/arstart`, a fresh agent has zero orientation. Without `/arsave`, nothing compounds. Those two are the spine; `/arrecall` and `/arreflect` compound it.**
 
 ---
 

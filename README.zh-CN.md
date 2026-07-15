@@ -23,11 +23,10 @@
 </p>
 
 <p align="center">
-  <a href="#会话循环"><img src="https://img.shields.io/badge/%2Farstatus-START_HERE-22C55E?style=for-the-badge" alt="/arstatus"></a>
-  <a href="#会话循环"><img src="https://img.shields.io/badge/%2Farstart-Load_Context-4ECDC4?style=for-the-badge" alt="/arstart"></a>
-  <a href="#会话循环"><img src="https://img.shields.io/badge/%2Farsave-Save_Session-FF6B6B?style=for-the-badge" alt="/arsave"></a>
-  <a href="#会话循环"><img src="https://img.shields.io/badge/%2Farsaveall-Batch_Save-FFD93D?style=for-the-badge" alt="/arsaveall"></a>
-  <a href="#会话循环"><img src="https://img.shields.io/badge/%2Farbootstrap-Transfer_Memory-8B5CF6?style=for-the-badge" alt="/arbootstrap"></a>
+  <a href="#会话循环"><img src="https://img.shields.io/badge/%2Farstart-OPEN·START_HERE-22C55E?style=for-the-badge" alt="/arstart"></a>
+  <a href="#会话循环"><img src="https://img.shields.io/badge/%2Farsave-SAVE-FF6B6B?style=for-the-badge" alt="/arsave"></a>
+  <a href="#会话循环"><img src="https://img.shields.io/badge/%2Farrecall-SEARCH-4ECDC4?style=for-the-badge" alt="/arrecall"></a>
+  <a href="#会话循环"><img src="https://img.shields.io/badge/%2Farreflect-CONSOLIDATE-8B5CF6?style=for-the-badge" alt="/arreflect"></a>
 </p>
 
 <details>
@@ -159,15 +158,26 @@ const ctx = await memory.recall("rate limiting");
 
 ## 会话循环
 
+```mermaid
+flowchart LR
+    A([会话开始]) --> B["/arstart — 打开<br/>看板 → 选择 → 加载上下文"]
+    B --> C{工作}
+    C -->|需要过去的知识| D["/arrecall — 搜索"]
+    D --> C
+    C --> E["/arsave — 保存<br/>写 journal + 复合"]
+    E --> F([会话结束])
+    F -. 每 K 次会话 .-> G["/arreflect — 整合"]
+    G -.-> A
+```
+
 | 命令 | 什么时候 | 做什么 |
 |---|---|---|
-| 🔴 `/arstatus` | **每个会话最先** | 所有项目的状态看板：待办、阻塞、相关性分数。按编号选。 |
-| `/arstart` | 选完项目后 | 加载深度上下文：palace 房间、纠正记录、任务相关召回。 |
-| 🔴 `/arsave` | **每个会话最后** | 写 journal + palace 合并 + awareness 复合 + 语义预取。 |
-| `/arsaveall` | 一天结束（多会话） | 批量保存所有并行会话——扫描、合并、去重、完成。 |
-| `/arbootstrap` | 首次安装 / 迁移 | 扫描你的机器，把已有项目导入进来。 |
+| 🔴 `/arstart` | **每个会话最先** | OPEN（打开）。不带参数 = 所有项目的状态看板（待办、阻塞）→ 按编号选 → 加载该项目的深度上下文（palace 房间、纠正记录、任务相关召回）。`/arstart <slug>` 直接加载；`/arstart bootstrap` 扫描你的机器并导入已有项目。 |
+| 🔴 `/arsave` | **每个会话最后** | SAVE（保存）。写 journal + palace 合并 + awareness 复合。`/arsave all` 批量保存当天所有并行会话（扫描、合并、去重）。 |
+| `/arrecall` | 会话中，按需 | SEARCH（搜索）。为当前任务浮现过去的知识——已记录的修复方案、历史决策、模式。 |
+| `/arreflect` | 每 K 次会话 | CONSOLIDATE（整合）。周期性 triage：确认复发/幻影匹配，聚类新的错误类别，提出规则再抽象建议（规则修改仍由 owner 把关）。 |
 
-> **没有 `/arstatus`，新 agent 完全失去方向。没有 `/arsave`，什么都不会复合。这两个就是整个闭环。**
+> **没有 `/arstart`，新 agent 完全失去方向。没有 `/arsave`，什么都不会复合。这两个是主干；`/arrecall` 和 `/arreflect` 让它持续复合。**
 
 ---
 

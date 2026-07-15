@@ -47,11 +47,10 @@
 ---
 
 <p align="center">
-  <a href="#the-session-loop--会话循环"><img src="https://img.shields.io/badge/%2Farstatus-START_HERE-22C55E?style=for-the-badge" alt="/arstatus"></a>
-  <a href="#the-session-loop--会话循环"><img src="https://img.shields.io/badge/%2Farstart-Load_Context-4ECDC4?style=for-the-badge" alt="/arstart"></a>
-  <a href="#the-session-loop--会话循环"><img src="https://img.shields.io/badge/%2Farsave-Save_Session-FF6B6B?style=for-the-badge" alt="/arsave"></a>
-  <a href="#the-session-loop--会话循环"><img src="https://img.shields.io/badge/%2Farsaveall-Batch_Save-FFD93D?style=for-the-badge" alt="/arsaveall"></a>
-  <a href="#already-using-another-memory-system--已经用过别的"><img src="https://img.shields.io/badge/%2Farbootstrap-Transfer_Memory-8B5CF6?style=for-the-badge" alt="/arbootstrap"></a>
+  <a href="#the-session-loop--会话循环"><img src="https://img.shields.io/badge/%2Farstart-OPEN·START_HERE-22C55E?style=for-the-badge" alt="/arstart"></a>
+  <a href="#the-session-loop--会话循环"><img src="https://img.shields.io/badge/%2Farsave-SAVE-FF6B6B?style=for-the-badge" alt="/arsave"></a>
+  <a href="#the-session-loop--会话循环"><img src="https://img.shields.io/badge/%2Farrecall-SEARCH-4ECDC4?style=for-the-badge" alt="/arrecall"></a>
+  <a href="#the-session-loop--会话循环"><img src="https://img.shields.io/badge/%2Farreflect-CONSOLIDATE-8B5CF6?style=for-the-badge" alt="/arreflect"></a>
 </p>
 
 ---
@@ -175,6 +174,18 @@ All five layers share one **canonical naming grammar** (`<scope>/<type>/[<topic>
 
 ## The Session Loop · 会话循环
 
+```mermaid
+flowchart LR
+    A([session start · 会话开始]) --> B["/arstart — open · 打开<br/>board → pick → load context<br/>看板 → 选择 → 加载上下文"]
+    B --> C{work · 工作}
+    C -->|need past knowledge · 需要过去的知识| D["/arrecall — search · 搜索"]
+    D --> C
+    C --> E["/arsave — save · 保存<br/>journal + compound<br/>写 journal + 复合"]
+    E --> F([session end · 会话结束])
+    F -. every K sessions · 每 K 次会话 .-> G["/arreflect — consolidate · 整合"]
+    G -.-> A
+```
+
 <table>
 <tr>
 <th>Command</th>
@@ -183,47 +194,41 @@ All five layers share one **canonical naming grammar** (`<scope>/<type>/[<topic>
 <th>中文 — 做什么</th>
 </tr>
 <tr>
-<td>🔴 <code>/arstatus</code></td>
+<td>🔴 <code>/arstart</code></td>
 <td><b>First — every session</b><br/>每个会话最先</td>
-<td>Status board across ALL projects. Pending work, blockers, relevance scores. Pick by number.</td>
-<td>所有项目的状态看板。待办、阻塞、相关性分数。按编号选。</td>
-</tr>
-<tr>
-<td><code>/arstart</code></td>
-<td>After picking a project<br/>选完项目后</td>
-<td>Load deep context: palace rooms, corrections, task-specific recall.</td>
-<td>加载深度上下文：palace 房间、纠正记录、任务相关召回。</td>
+<td>OPEN. No args = status board across ALL projects (pending work, blockers) → pick by number → load that project's deep context (palace rooms, corrections, task recall). <code>/arstart &lt;slug&gt;</code> loads directly; <code>/arstart bootstrap</code> scans your machine and imports existing projects.</td>
+<td>OPEN（打开）。不带参数 = 所有项目的状态看板（待办、阻塞）→ 按编号选 → 加载该项目的深度上下文（palace 房间、纠正记录、任务相关召回）。<code>/arstart &lt;slug&gt;</code> 直接加载；<code>/arstart bootstrap</code> 扫描你的机器并导入已有项目。</td>
 </tr>
 <tr>
 <td>🔴 <code>/arsave</code></td>
 <td><b>Last — every session</b><br/>每个会话最后</td>
-<td>Write journal + palace consolidation + awareness compounding + semantic prefetch.</td>
-<td>写 journal + palace 合并 + awareness 复合 + 语义预取。</td>
+<td>SAVE. Write journal + palace consolidation + awareness compounding. <code>/arsave all</code> batch-saves every parallel session of the day (scan, merge, deduplicate).</td>
+<td>SAVE（保存）。写 journal + palace 合并 + awareness 复合。<code>/arsave all</code> 批量保存当天所有并行会话（扫描、合并、去重）。</td>
 </tr>
 <tr>
-<td><code>/arsaveall</code></td>
-<td>End of day (multi-session)<br/>一天结束（多会话）</td>
-<td>Batch save all parallel sessions — scan, merge, deduplicate, done.</td>
-<td>批量保存所有并行会话——扫描、合并、去重、完成。</td>
+<td><code>/arrecall</code></td>
+<td>Mid-session, on demand<br/>会话中，按需</td>
+<td>SEARCH. Surface past knowledge for the current task — documented fixes, prior decisions, patterns.</td>
+<td>SEARCH（搜索）。为当前任务浮现过去的知识——已记录的修复方案、历史决策、模式。</td>
 </tr>
 <tr>
-<td><code>/arbootstrap</code></td>
-<td>First install / migrating<br/>首次安装 / 迁移</td>
-<td>Scan your machine for existing projects and import them.</td>
-<td>扫描你的机器，把已有项目导入进来。</td>
+<td><code>/arreflect</code></td>
+<td>Every K sessions<br/>每 K 次会话</td>
+<td>CONSOLIDATE. Periodic triage: confirm recurrence/phantom matches, cluster new error classes, propose rule re-abstractions (rule edits stay owner-gated).</td>
+<td>CONSOLIDATE（整合）。周期性 triage：确认复发/幻影匹配，聚类新的错误类别，提出规则再抽象建议（规则修改仍由 owner 把关）。</td>
 </tr>
 </table>
 
-> **Without `/arstatus`, a fresh agent has zero orientation. Without `/arsave`, nothing compounds. These two are the entire loop.**
-> 没有 `/arstatus`，新 agent 完全失去方向。没有 `/arsave`，什么都不会复合。这两个就是整个闭环。
+> **Without `/arstart`, a fresh agent has zero orientation. Without `/arsave`, nothing compounds. Those two are the spine; `/arrecall` and `/arreflect` compound it.**
+> 没有 `/arstart`，新 agent 完全失去方向。没有 `/arsave`，什么都不会复合。这两个是主干；`/arrecall` 和 `/arreflect` 让它持续复合。
 
 ---
 
 ## Already Using Another Memory System? · 已经用过别的？
 
-**`/arbootstrap`** scans your machine and imports everything: git repos, Claude AutoMemory (`~/.claude/projects/`), CLAUDE.md files. Read-only scan, secrets never touched.
+**`/arstart bootstrap`** scans your machine and imports everything: git repos, Claude AutoMemory (`~/.claude/projects/`), CLAUDE.md files. Read-only scan, secrets never touched.
 
-**`/arbootstrap`** 扫描你的机器并导入所有：git 仓库、Claude AutoMemory（`~/.claude/projects/`）、CLAUDE.md 文件。只读扫描，secrets 永不触碰。
+**`/arstart bootstrap`** 扫描你的机器并导入所有：git 仓库、Claude AutoMemory（`~/.claude/projects/`）、CLAUDE.md 文件。只读扫描，secrets 永不触碰。
 
 ```bash
 ar bootstrap            # scan and show what was found
@@ -477,11 +482,10 @@ const hits = await memory.skillRecall({ intent: "set up cloudflare for new domai
 # Capture & recall
 ar capture "Question" "Answer"
 ar recall "topic"                # hybrid BM25 + vector + Hopfield re-rank
-ar recall "topic" --since 7d     # time-filtered
+ar recall "topic" --limit 5      # cap to top-5 hits
 
 # Sessions
 ar status                        # status board across all projects
-ar save                          # full session_end (journal + palace + awareness)
 ar saveall                       # batch save all parallel sessions
 
 # Bootstrap
@@ -491,10 +495,6 @@ ar bootstrap --import            # import all new projects
 # Palace navigation
 ar palace walk --depth active    # browse active rooms
 ar palace read goals             # read a room
-
-# Pipeline
-ar pipeline show <project>       # narrative spine
-ar pipeline list <project>       # JSON summaries
 ```
 
 Run `ar --help` for the full surface · 完整命令运行 `ar --help`.
