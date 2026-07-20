@@ -126,6 +126,29 @@ function classifyRoute(content: string, context?: string): Route {
 // Dispatch
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// PII & Credential Sanitizer
+// ---------------------------------------------------------------------------
+
+/**
+ * Redacts common PII and credential patterns before any content reaches disk.
+ * Non-sensitive content passes through unchanged.
+ */
+export function sanitizePIIAndCredentials(text: string): string {
+  return text
+    // OpenAI / Anthropic / Voyage API keys
+    .replace(/\b(sk-proj-|sk-ant-|pa-)[A-Za-z0-9_\-]{10,}/g, "[REDACTED_API_KEY]")
+    // Slack tokens
+    .replace(/\b(xoxb-|xoxa-|xoxp-)[A-Za-z0-9\-]{10,}/g, "[REDACTED_SLACK_TOKEN]")
+    // Generic key=value sensitive fields
+    .replace(/(password|pass|secret|token|key|pwd|auth_token)\s*[=:]\s*\S+/gi, "$1=[REDACTED_SECRET]")
+    // HTTP Authorization Bearer
+    .replace(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/g, "Bearer [REDACTED_BEARER_TOKEN]")
+    // Email addresses
+    .replace(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g, "[REDACTED_EMAIL]");
+}
+
+
 export async function smartRemember(input: SmartRememberInput): Promise<SmartRememberResult> {
   if (!input.content || input.content.trim().length < 5) {
     return {
@@ -136,6 +159,11 @@ export async function smartRemember(input: SmartRememberInput): Promise<SmartRem
       result: { error: "Content too short (minimum 5 characters). Memory not saved." },
     };
   }
+
+  // Sanitize PII and credentials before any routing or persistence
+  const sanitizedContent = sanitizePIIAndCredentials(input.content);
+  const sanitizedContext = input.context ? sanitizePIIAndCredentials(input.context) : undefined;
+  input = { ...input, content: sanitizedContent, context: sanitizedContext };
 
   const route = classifyRoute(input.content, input.context);
   const slugResult = generateSlug(input.content);
