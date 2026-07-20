@@ -116,6 +116,50 @@
     <span style="font-size:20px;color:var(--accent);flex-shrink:0;">→</span>
   </a>
 
+  <!-- MAJOR: v3.4.38 -->
+  <section class="hero">
+    <div class="hero-head">
+      <div class="tagrow">
+        <span class="vbadge">v3.4.38</span>
+        <span class="major"><span class="en ">★ Naming System v2</span><span class="zh ">★ 命名系统 v2</span></span>
+        <span class="date mono">2026-07-20</span>
+      </div>
+      <h2 class="hero-title"><span class="en ">The filename is the index — designed by a 5-seat round table</span><span class="zh ">文件名即索引 —— 由五席圆桌设计</span></h2>
+      <p class="hero-lede"><span class="en ">A 10-question cold-start test on the live corpus scored the old naming at <b>55%</b> — and proved filenames alone top out at ~75–80% (identity and hard rules are paragraph-shaped). v2's answer is a two-audience split: the <b>filename</b> is the human/triage index (2–4 immutable-at-birth fields; printed <code>none--none</code> nulls are gone), and a <b>materialized <code>_index.md</code> per store</b> is the machine fast-path — severity-sorted for corrections, regenerated atomically on every write. Mutable fields (severity escalates, status flips) never enter a path: every path consumer — wikilinks, path-keyed mirrors, git history — treats it as identity.</span><span class="zh ">用 10 问冷启动测试给旧命名打分：<b>55%</b> —— 并证明纯文件名的天花板在 ~75–80%（identity 和硬规则是段落形状）。v2 的答案是双受众分工：<b>文件名</b>是人的分诊索引（2–4 个出生即不变的字段；打印出来的 <code>none--none</code> 空值消失），每个 store 一个<b>物化 <code>_index.md</code></b> 作为机器快速路径 —— corrections 按 severity 排序，每次写入原子重生成。可变字段（severity 会升级、status 会翻转）永不进入路径：每个路径消费者 —— wikilink、按路径键控的镜像、git 历史 —— 都把路径当身份。</span></p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <span class="ic">✂️</span>
+        <h3><span class="en ">Per-store grammar, nulls omitted</span><span class="zh ">按 store 语法，空值省略</span></h3>
+        <p><span class="en ">Journal: <code>{date}--{saveType}--[{sig}]--[{theme}]--{slug}.md</code> — a <code>none</code> tag is omitted, never printed. Corrections: <code>{date}--{rule-slug}.json</code> — the slug now derives from the <em>rule</em> (leading interjections stripped, EN + CJK incl. full-width punctuation), not the trigger utterance ("no-that-s-wrong" era ends). A 4th parser generation reads v2 alongside all 3 legacy generations — old files parse forever.</span><span class="zh ">Journal：<code>{date}--{saveType}--[{sig}]--[{theme}]--{slug}.md</code> —— <code>none</code> 标签直接省略，永不打印。Corrections：<code>{date}--{rule-slug}.json</code> —— slug 取自<em>规则</em>（剥离开头感叹词，支持英文 + 中文全角标点），不再是触发语（"no-that-s-wrong" 时代结束）。第 4 代 parser 与 3 个旧世代并存 —— 旧文件永远可读。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">🔤</span>
+        <h3><span class="en ">One sanitizer: case-fold + byte budgets</span><span class="zh ">统一 sanitizer：大小写折叠 + 字节预算</span></h3>
+        <p><span class="en "><code>sanitizeName()</code>: lowercase + NFC + byte-capped (255-byte filesystem limits, not UTF-16 chars) + structurally cannot emit <code>--</code>. <code>resolveProjectDirName()</code> reuses an existing case-variant directory (deterministic pick + warning on pre-existing forks) — <code>agentrecall</code>/<code>AgentRecall</code> can no longer split your corpus on a case-sensitive filesystem. ~21 call sites routed through one resolver; a source-level guard test makes the bypass class unrecreatable.</span><span class="zh "><code>sanitizeName()</code>：小写 + NFC + 字节上限（对齐文件系统 255 字节限制，而非 UTF-16 字符数）+ 结构上不可能输出 <code>--</code>。<code>resolveProjectDirName()</code> 复用已存在的大小写变体目录（确定性选择 + 存量分叉告警）—— <code>agentrecall</code>/<code>AgentRecall</code> 再也不会在大小写敏感的文件系统上劈裂语料。约 21 处调用点收口到单一 resolver；源码级守卫测试让旁路类 bug 永久绝迹。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">📇</span>
+        <h3><span class="en ">Materialized indexes: names + ≤3 pinned files ⇒ 90%</span><span class="zh ">物化索引：名字 + ≤3 个固定文件 ⇒ 90%</span></h3>
+        <p><span class="en "><code>corrections/_index.md</code> (severity-first table: severity · failure_class · status · date · rule), <code>journal/_index.md</code> (last 10, filename-derived, zero content reads), <code>rooms/_index.md</code> (per-room overview). Atomic tmp+rename; a regen failure never fails the underlying write. The honest 90% path: <code>ls</code> + reading ≤3 pinned index files — not ever-richer filenames.</span><span class="zh "><code>corrections/_index.md</code>（severity 优先表：severity · failure_class · status · date · rule）、<code>journal/_index.md</code>（近 10 条，纯文件名推导，零内容读取）、<code>rooms/_index.md</code>（每房间概览）。原子 tmp+rename；索引重生成失败永不拖垮底层写入。诚实的 90% 路径：<code>ls</code> + 读 ≤3 个固定索引文件 —— 而不是无限加肥文件名。</span></p>
+        <p class="why"><span class="en ">Why: the cold-start test proved names alone cannot carry identity/hard-rules; the index bridge can.</span><span class="zh ">为什么：冷启动测试证明纯名字装不下 identity/硬规则；索引桥可以。</span></p>
+      </div>
+      <div class="card">
+        <span class="ic">🛡️</span>
+        <h3><span class="en ">Zero-rename migration + race fixes</span><span class="zh ">零改名迁移 + 竞态修复</span></h3>
+        <p><span class="en ">Existing files are NEVER renamed (wikilinks, path-keyed mirrors, git history stay intact) — v2 applies to new writes only. Rewrite paths (retract/outcome/merge, skill rewrites) reuse the on-disk filename, so a grammar change can't orphan-duplicate old records. Same-day journal decide+write now runs under a per-project file lock (case-normalized lock keys). Underscore files excluded from journal scans — an <code>_index.md</code> can no longer knock a project off the status board.</span><span class="zh ">存量文件永不改名（wikilink、路径键控镜像、git 历史全部无损）—— v2 只对新写入生效。改写路径（撤回/结果/合并、技能改写）复用磁盘上的原文件名，语法变更不会孤儿化旧记录。同日 journal 的判定+写入现在在按项目的文件锁下运行（锁名大小写归一）。下划线文件排除出 journal 扫描 —— <code>_index.md</code> 再也不会把项目从状态板上挤掉。</span></p>
+      </div>
+    </div>
+    <div class="verify">
+      <span class="vlabel"><span class="en ">Verified</span><span class="zh ">已验证</span></span>
+      <span class="pill">build · 0 errors</span>
+      <span class="pill">core 855 tests · 0 fail</span>
+      <span class="pill">tool-surface guard · 15/15</span>
+      <span class="pill">2 independent reviews · all CRITICAL/HIGH closed</span>
+    </div>
+    <div class="shipped"><span class="en "><b>Shipped 2026-07-20 (v3.4.38):</b> v2 naming live for all new writes; indexes materialize on first write per store; legacy names parse forever. Deferred to v2.1 (spec §7): room/topic-level case-fold, sig/theme vocabulary pruning, corrections-index extraction.</span><span class="zh "><b>2026-07-20 发布 (v3.4.38)：</b>v2 命名对所有新写入生效；每个 store 首次写入时物化索引；旧命名永远可读。递延至 v2.1（spec §7）：room/topic 级大小写折叠、sig/theme 词表瘦身、corrections-index 模块拆分。</span></div>
+  </section>
+
   <!-- MAJOR: v3.4.37 -->
   <section class="hero">
     <div class="hero-head">

@@ -2,34 +2,31 @@
 
 <h1 align="center">AgentRecall</h1>
 
-<p align="center"><strong>Your agent doesn't just remember. It learns how you think.</strong></p>
-<p align="center">Every correction saved is a mistake never repeated. Every insight compounded is tokens never wasted rebuilding context.</p>
-<p align="center">Persistent, compounding memory + automatic correction capture. MCP server + SDK + CLI.</p>
+<p align="center"><strong>Claude Code memory that learns from corrections. The only learning loop that measures whether your agent actually stops repeating a mistake.</strong></p>
+
+<p align="center">Corrections ledger + session lifecycle + honest measurement. MCP · SDK · CLI · Skill.</p>
 
 <p align="center">
   <a href="https://t.me/+ywZwoHrg3AM0NDVi"><img src="https://img.shields.io/badge/Telegram-Community-2CA5E0?style=flat-square&logo=telegram" alt="Telegram Community"></a>
   <a href="https://www.npmjs.com/package/agent-recall-mcp"><img src="https://img.shields.io/npm/v/agent-recall-mcp?style=flat-square&label=MCP&color=5D34F2" alt="MCP npm"></a>
   <a href="https://www.npmjs.com/package/agent-recall-sdk"><img src="https://img.shields.io/npm/v/agent-recall-sdk?style=flat-square&label=SDK&color=0EA5E9" alt="SDK npm"></a>
   <a href="https://www.npmjs.com/package/agent-recall-cli"><img src="https://img.shields.io/npm/v/agent-recall-cli?style=flat-square&label=CLI&color=10B981" alt="CLI npm"></a>
-  <a href="https://github.com/Goldentrii/AgentRecall/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen?style=flat-square" alt="License"></a>
-  <img src="https://img.shields.io/badge/MCP-5_tools_default-orange?style=flat-square" alt="Tools">
+  <a href="https://github.com/Goldentrii/AgentRecall-X/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen?style=flat-square" alt="License"></a>
+  <img src="https://img.shields.io/badge/tools-5_default-orange?style=flat-square" alt="Tools">
   <img src="https://img.shields.io/badge/memory_layers-5-7C3AED?style=flat-square" alt="5 layers">
   <img src="https://img.shields.io/badge/cloud-zero_by_default-blue?style=flat-square" alt="Zero cloud by default">
-  <img src="https://img.shields.io/badge/decay-FSRS--lite-3B82F6?style=flat-square" alt="FSRS-lite decay">
   <img src="https://img.shields.io/badge/retrieval-keyword_%2B_RRF-8B5CF6?style=flat-square" alt="Keyword + RRF retrieval">
-  <img src="https://img.shields.io/badge/feedback-precision_KPI-F59E0B?style=flat-square" alt="Precision KPI">
 </p>
 
 <p align="center">
-  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farstatus-START_HERE-22C55E?style=for-the-badge" alt="/arstatus"></a>
-  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farstart-Load_Context-4ECDC4?style=for-the-badge" alt="/arstart"></a>
-  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farsave-Save_Session-FF6B6B?style=for-the-badge" alt="/arsave"></a>
-  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farsaveall-Batch_Save-FFD93D?style=for-the-badge" alt="/arsaveall"></a>
-  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farbootstrap-Transfer_Memory-8B5CF6?style=for-the-badge" alt="/arbootstrap"></a>
+  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farstart-OPEN·START_HERE-22C55E?style=for-the-badge" alt="/arstart"></a>
+  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farsave-SAVE-FF6B6B?style=for-the-badge" alt="/arsave"></a>
+  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farrecall-SEARCH-4ECDC4?style=for-the-badge" alt="/arrecall"></a>
+  <a href="#the-session-loop"><img src="https://img.shields.io/badge/%2Farreflect-CONSOLIDATE-8B5CF6?style=for-the-badge" alt="/arreflect"></a>
 </p>
 
 <details>
-<summary>🤖 <b>Agent found this repo?</b> Install AgentRecall for your human (click to expand)</summary>
+<summary><b>Agent found this repo?</b> Install AgentRecall for your human (click to expand)</summary>
 
 **1. Install the MCP server** (Claude Code):
 
@@ -55,35 +52,55 @@ At the end of a session, call session_end to compound what you learned.
 
 ---
 
-## What & Why
+## What it does
 
-**AgentRecall is not a memory tool. It's a learning loop.** Memory is the mechanism; understanding is the goal. Every time you correct your agent — *"no, not that version"*, *"put this section first"*, *"ask me before you assume"* — that correction is stored, weighted, and recalled next time. After 10 sessions your agent doesn't just remember your project; it understands how you think.
+AgentRecall is two things:
 
-- **Correction-first.** When you say "no, that's wrong", we log a `CorrectionRecord` with severity, holder, and evidence. After N confirmations across sessions it auto-promotes to a cross-project insight.
-- **Measurable learning loop.** Every correction tracks `retrieved_count`, `heeded_count`, `recurrence_count`, `precision`. The KPI that matters: *did the same bug recur after we warned about it?*
-- **Five memory types.** Episodic, semantic, procedural, narrative, correction — mapped to the canonical cognitive-psychology taxonomy (Squire 2004, Tulving 1972).
-- **Local markdown, local by default.** Everything lives in `~/.agent-recall/`. Open it in Obsidian, grep it in the terminal, version it in git. The default keyword + RRF retrieval is fully local — zero cloud, no API keys, no lock-in. Semantic vector search is **optional**: set `OPENAI_API_KEY` and query/content text is sent to OpenAI for embeddings. Leave it unset and nothing leaves your machine.
-- **Backed by published math.** FSRS-lite decay (Ebbinghaus → SuperMemo → FSRS-6), RRF fusion (Cormack 2009). A Modern Hopfield re-rank primitive (Ramsauer 2020) ships in the codebase but is **not** wired into the default retrieval path — what runs today is BM25/keyword + RRF, plus optional vector search.
+1. **A governed corrections ledger** — every time you correct your agent (*"no, not that version"*, *"put this section first"*, *"ask me before you assume"*), that correction is stored as a structured record with severity, evidence, and outcome tracking. It persists across sessions, projects, and agent restarts.
 
-> **The Automaticity Law.** Memory only compounds if it's used *automatically*, not on demand. Measured on the live corpus: push channels (`session_start`, `session_end`, correction hooks) show repeated behavior-changing usage, while pull channels had **zero** organic calls across 44 projects over weeks of real use — including from the agent that built them. That's why only 5 tools ship by default; the two-verb model (inhale/exhale) carries all the compounding value, and everything else is opt-in via `--full`.
+2. **A measurement instrument** — the only open-source system that tracks whether a correction actually changed what the agent does in a later session. Every correction accumulates `retrieved_count`, and every time the agent encounters the same situation, the outcome is recorded (`heeded` or `recurred`).
 
-> **Injection Precision KPI.** Every correction tracks `precision = heeded / retrieved` — of the times we surfaced this warning, how often did the agent actually act on it? `precision < 0.3` → archive candidate (noise we should stop injecting). `precision ≥ 0.8` → promote faster (high-signal, compound it sooner). This is the measurability claim: a memory system you can prove is working.
+No other agent memory tool measures that second step. Every benchmark in the field tests retrieval; none tests behavioral change across sessions. We built the measurement harness first — and we publish what we found, including the unflattering numbers.
 
 ---
 
-## Why AgentRecall vs X?
+## Measured, not promised
 
-| Feature | AgentRecall | Mem0 | Zep | Letta |
-|---|---|---|---|---|
-| Correction tracking + precision KPI | ✅ Core feature | ❌ | ❌ | ❌ |
-| Behavioral calibration across sessions | ✅ | ❌ | ❌ | Partial |
-| Local markdown, zero cloud by default | ✅ (vector search optional, opt-in) | ❌ cloud | ❌ cloud | ❌ cloud |
-| MCP native | ✅ | ✅ | ✅ | ✅ |
-| FSRS-lite decay + keyword/RRF retrieval | ✅ | ❌ | ❌ | ❌ |
-| Free / open source | ✅ MIT | Freemium | Freemium | Apache |
-| Works offline | ✅ (default; vector search needs network) | ❌ | ❌ | Partial |
+Most agent memory tools claim "never repeats the same mistake." None of them publish a number for it.
 
-The difference: AgentRecall is the only system that tracks whether the agent actually acted on a warning — not just that it stored one.
+Here is what our own instrument found on our own live corpus (2026-07-03):
+
+| Metric | Value | Artifact |
+|---|---|---|
+| Correction capture recall (dual-blind audit, n=59) | **35.3%** [17.3–58.7 CI] | `UPDATE-LOG.md` §M2 |
+| Heed rate, pre-2026-07-03 (instrument-biased upper bound — do not cite) | 92.5% [Wilson 60.1–100] | `scripts/eval/baselines/rmr-baseline-2026-07-03.json` |
+| Heed rate, evidence-grounded (post-reset) | **0/3** events | `scripts/eval/baselines/rmr-baseline-2026-07-03.json` |
+| Correction transfer recall (offline bench, achievable) | **0/4** [Wilson 0–49%] | `scripts/eval/baselines/correction-transfer-real-2026-07-03.json` |
+| Median session_start injection | **1,489 tokens** (was 2,010; Mem0 anchor ~7K) | `UPDATE-LOG.md` §C2 |
+| p95 session_start latency (warm) | **363 ms** (was 1,132) | `UPDATE-LOG.md` §C2 |
+
+*The heed instrument defaulted to "heeded" absent evidence before 2026-07-03; the reset default is "unknown" — the honest 0/3 is the correct starting point, not a regression. Transfer recall cannot support a point-estimate claim below 39 classes (claim-gate ledger, [benchmark spec](docs/proposals/2026-07-02-correction-transfer-benchmark-spec.md) §2.6).*
+
+**Verify it yourself:** every number above regenerates from the committed artifacts — see [docs/eval/REPRODUCE.md](docs/eval/REPRODUCE.md).
+
+**What this means:** we captured 35% of real corrections in our own live use. The heed instrument was biased and we reset it. The offline transfer benchmark scores 0 on our own corpus — which is a density problem (32 active corrections across 19 projects is too sparse to front-run mistakes), not a retrieval architecture problem (confirmed 5× by internal experiments).
+
+The learning loop framing is correct — the system is designed to track whether corrections change behavior — but the data we have so far is insufficient to quantify the uplift. We are publishing the measurement harness and running the experiment.
+
+---
+
+## Why this is different from every other memory tool
+
+In mid-2026, the agent-memory field is crowded (Mem0 ~60K stars, Graphiti/Zep ~28K, Supermemory ~28K, Letta ~24K). Most published benchmark numbers in this space are self-reported on the same 2–3 retrieval benchmarks and are hard to reproduce independently.
+
+The confirmed gap (from our research report `docs/research/agent-memory-landscape-2026-07.md` §2): **no public benchmark measures whether a captured correction changes what a fresh agent does in a new session.** LongMemEval, LoCoMo, MemoryAgentBench, Letta Leaderboard — all test retrieval or within-session updates.
+
+AgentRecall owns two pieces of the unclaimed ground:
+
+- **The corrections ledger** — a governed data model (`corrections-export/v1`, scrubbed egress, retraction, severity, proof-confidence) that any engine can integrate against.
+- **The measurement harness** — `predict-loo` (leave-one-out, anti-self-confirming, dual denominators) and the correction-transfer benchmark spec (`HeedBench v1` — provisional name), which implements the missing pipeline: capture → persist → fresh session → measure recurrence.
+
+Benchmark numbers in agent memory are typically self-reported and hard to reproduce. Ours regenerate from a fixed, hash-locked corpus with one command (`npm run bench`) — including the scores that make us look bad.
 
 ---
 
@@ -119,7 +136,7 @@ codex mcp add agent-recall -- npx -y agent-recall-mcp
 ```bash
 mkdir -p ~/.claude/skills/agent-recall
 curl -o ~/.claude/skills/agent-recall/SKILL.md \
-  https://raw.githubusercontent.com/Goldentrii/AgentRecall/main/SKILL.md
+  https://raw.githubusercontent.com/Goldentrii/AgentRecall-X/main/SKILL.md
 ```
 
 ### SDK & CLI
@@ -148,28 +165,45 @@ The canonical cognitive-psychology taxonomy mapped to your agent's filesystem:
 | 2 | **Semantic** | Topic-clustered facts with `[[wikilinks]]`: Architecture, Goals, Blockers. | `palace/rooms/` |
 | 3 | **Procedural** | IF-THEN production rules — reusable how-tos. | `palace/skills/` |
 | 4 | **Narrative** | Project phases: Goal → What was hard → How solved → Synthesis. | `palace/pipeline/` |
-| 5 | **Correction** | Behavioral calibration: rules the agent must follow, with precision KPIs. | `corrections/` |
+| 5 | **Correction** | Behavioral calibration: rules the agent must follow, with severity and outcome tracking. | `corrections/` |
 | + | **Awareness** | Cross-project insights promoted from N-confirmed corrections — the compounding layer. | `palace/awareness` |
 
-All layers share one **canonical naming grammar** (`<scope>/<type>/[<topic>/]<temporal>--<slug>.md`) so any agent can compose retrieval paths from intent. Existing files keep working via a `legacy_path` view — no migration needed.
+All layers share one canonical naming grammar so any agent can compose retrieval paths from intent. Existing files keep working via a `legacy_path` view — no migration needed.
 
 ---
 
 ## The Session Loop
 
+```mermaid
+flowchart LR
+    A([session start]) --> B["/arstart — open<br/>board → pick → load context"]
+    B --> C{work}
+    C -->|need past knowledge| D["/arrecall — search"]
+    D --> C
+    C --> E["/arsave — save<br/>journal + compound"]
+    E --> F([session end])
+    F -. every K sessions .-> G["/arreflect — consolidate"]
+    G -.-> A
+```
+
 | Command | When | What it does |
 |---|---|---|
-| 🔴 `/arstatus` | **First — every session** | Status board across ALL projects: pending work, blockers, relevance scores. Pick by number. |
-| `/arstart` | After picking a project | Load deep context: palace rooms, corrections, task-specific recall. |
-| 🔴 `/arsave` | **Last — every session** | Write journal + palace consolidation + awareness compounding + semantic prefetch. |
-| `/arsaveall` | End of day (multi-session) | Batch save all parallel sessions — scan, merge, deduplicate, done. |
-| `/arbootstrap` | First install / migrating | Scan your machine for existing projects and import them. |
+| `/arstart` | **First — every session** | OPEN. No args = status board across ALL projects (pending work, blockers) → pick by number → load that project's deep context (palace rooms, corrections, task recall). `/arstart <slug>` loads directly; `/arstart bootstrap` scans your machine and imports existing projects. |
+| `/arsave` | **Last — every session** | SAVE. Write journal + palace consolidation + awareness compounding. `/arsave all` batch-saves every parallel session of the day (scan, merge, deduplicate). |
+| `/arrecall` | Mid-session, on demand | SEARCH. Surface past knowledge for the current task — documented fixes, prior decisions, patterns. |
+| `/arreflect` | Every K sessions | CONSOLIDATE. Periodic triage: confirm recurrence/phantom matches, cluster new error classes, propose rule re-abstractions (rule edits stay owner-gated). |
 
-> **Without `/arstatus`, a fresh agent has zero orientation. Without `/arsave`, nothing compounds. These two are the entire loop.**
+> **Without `/arstart`, a fresh agent has zero orientation. Without `/arsave`, nothing compounds. Those two are the spine; `/arrecall` and `/arreflect` compound it.**
 
 ---
 
-## 🌙 Dreaming — Nightly Consolidation (optional)
+## The Automaticity Principle
+
+Memory only compounds if it fires automatically, not on demand. Every pull-channel tool (`recall`, `memory_query`) saw zero organic calls across 44 projects over weeks of real use — including from the agent that built them. That is why only 5 tools ship by default; the two-verb model (session_start / session_end) carries all the compounding value, and everything else is opt-in via `--full`.
+
+---
+
+## Dreaming — Nightly Consolidation (optional)
 
 An autonomous overnight agent that runs while you sleep and compounds everything your sessions wrote during the day.
 
@@ -192,15 +226,36 @@ Dream reports are saved locally to `~/.agent-recall/dreams/YYYY-MM-DD.md`.
 
 ---
 
-## 🖥️ War Room Dashboard — Download & Deploy
+## Experimental: Recurrence & Reflection Harness Kit
 
-A **local-first visual dashboard** for your memory: an activity calendar, per-project status, corrections, and insights — all rendered from your local `~/.agent-recall/` data. Fully offline (vendored assets), no Node and no build step.
+**The question this answers: does a correction actually change behavior, or does the same mistake come back?** A logged correction whose error class recurs after the rule was encoded is a *phantom gradient step* — the write cost was paid, the behavior never changed.
+
+The kit in [`experimental/harness-kit/`](experimental/harness-kit/) is a Claude Code harness layer that closes this loop on top of AgentRecall:
+
+| Piece | What it does |
+|---|---|
+| `ar-scoreboard.py` (SessionStart hook) | Health digest every session: correction flow, insight promotion rate, loop health, phantom counts, reflection cadence |
+| `ar-recurrence-check.py` (+ your `~/.agent-recall/taxonomy.json`, schema in `TAXONOMY-SCHEMA.md`) | Error-class taxonomy over your corrections; mechanical phantom detection (violation dated after its rule) |
+| `/arstart` · `/arsave` · `/arrecall` · `/arreflect` | The four memory verbs (open · save · search · consolidate) as slash commands |
+| `/arreflect` (every K sessions) | Periodic triage: confirm provisional matches, cluster new error classes, propose rule re-abstractions — **rule edits stay owner-gated** |
+| `ar-nudge.py` (UserPromptSubmit hook) | Surfaces overdue reflection mid-session — memory pushed to the moment of action, not left to be remembered |
+| `dispatch-model-guard.py` (PreToolUse hook, optional) | Warn-only guard for an explicit-model dispatch policy — an example of mechanizing a rule that text alone failed to enforce |
+
+North-star metric: **post-re-abstraction phantom rate → 0** for treated classes. First validation run (2026-07-14, one power-user harness): 8 error classes and 18 confirmed phantom gradient steps found in 109 corrections; 6 rules re-abstracted the same day.
+
+**Status: experimental.** Validated on one harness; Python 3 stdlib only; install steps and caveats in the kit's [README](experimental/harness-kit/README.md). Since v3.4.37 the same phenomenon is also measured natively: `failure_class` + the cross-project recurrence join.
+
+---
+
+## War Room Dashboard — Download & Deploy
+
+A local-first visual dashboard for your memory: an activity calendar, per-project status, corrections, and insights — all rendered from your local `~/.agent-recall/` data. Fully offline (vendored assets), no Node and no build step.
 
 <p align="center">
   <img src="warroom/static/preview.png" alt="AgentRecall War Room — Overview" width="900">
 </p>
 
-1. Download **`ar-warroom-v3.4.32.zip`** from the [latest GitHub Release](https://github.com/Goldentrii/AgentRecall/releases/latest).
+1. Download **`ar-warroom-v3.4.32.zip`** from the [latest GitHub Release](https://github.com/Goldentrii/AgentRecall-X/releases/latest).
 2. Unzip it, then serve it locally:
 
 ```bash
@@ -210,7 +265,7 @@ python3 -m http.server 8080
 
 3. Open **http://localhost:8080/AgentRecall.html**
 
-This is the recommended onboarding for **Hermes / OpenClaw / OpenCode** users too — one offline page to see everything your agent has learned.
+This is the recommended onboarding for Hermes / OpenClaw / OpenCode users too — one offline page to see everything your agent has learned.
 
 ---
 
@@ -218,14 +273,16 @@ This is the recommended onboarding for **Hermes / OpenClaw / OpenCode** users to
 
 TypeScript monorepo, 4 published packages: `core` (storage + tool logic), `mcp-server` (thin MCP wrappers), `sdk` (programmatic API), `cli` (the `ar` command). All memory is local markdown under `~/.agent-recall/projects/<slug>/` — `journal/`, `corrections/`, and `palace/` (rooms, skills, pipeline, awareness). An optional Supabase mirror adds pgvector semantic recall; all-local stays the default.
 
+Retrieval: keyword + RRF (Cormack 2009). FSRS-lite decay (Ebbinghaus → SuperMemo → FSRS-6). A Modern Hopfield re-rank primitive (Ramsauer 2020) is in the codebase but not wired into the default path — what runs today is BM25/keyword + RRF, plus optional vector search when `OPENAI_API_KEY` is set.
+
 ## Platform Compatibility
 
 | Platform | Mechanism | Status |
 |---|---|---|
-| Claude Code | MCP server + skill + hooks | ✅ Primary |
-| Cursor · Windsurf · VS Code (Copilot) · Codex | MCP server | ✅ |
-| Any JS/TS app | SDK (`agent-recall-sdk`) | ✅ |
-| Terminal / CI | CLI (`ar`) | ✅ |
+| Claude Code | MCP server + skill + hooks | Primary |
+| Cursor · Windsurf · VS Code (Copilot) · Codex | MCP server | Supported |
+| Any JS/TS app | SDK (`agent-recall-sdk`) | Supported |
+| Terminal / CI | CLI (`ar`) | Supported |
 
 ---
 
@@ -234,9 +291,10 @@ TypeScript monorepo, 4 published packages: `core` (storage + tool logic), `mcp-s
 - **Full reference** → [README.full.md](README.full.md)
 - **Docs** → [docs/](docs/) — command reference, architecture deep-dives
 - **Changelog** → [UPDATE-LOG.md](UPDATE-LOG.md) — phase-by-phase evolution + design reasoning
-- **Benchmark report** → [REPORT-2026-05-30.html](REPORT-2026-05-30.html) — Phase 6 visual report
+- **Benchmark spec** → [docs/proposals/2026-07-02-correction-transfer-benchmark-spec.md](docs/proposals/2026-07-02-correction-transfer-benchmark-spec.md)
+- **Landscape research** → [docs/research/agent-memory-landscape-2026-07.md](docs/research/agent-memory-landscape-2026-07.md)
 - **Skill** → [SKILL.md](SKILL.md) — Claude Code skill definition
-- **Community** → [Telegram](https://t.me/+ywZwoHrg3AM0NDVi) · [GitHub Issues](https://github.com/Goldentrii/AgentRecall/issues)
+- **Community** → [Telegram](https://t.me/+ywZwoHrg3AM0NDVi) · [GitHub Issues](https://github.com/Goldentrii/AgentRecall-X/issues)
 
 ## Contributing
 

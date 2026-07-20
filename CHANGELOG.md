@@ -6,6 +6,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.4.38] — 2026-07-20
+
+### Added
+
+- **Naming System v2** (spec: `docs/proposals/2026-07-20-naming-v2-spec.md`, designed by a 5-seat round table). Two-audience ruling: the filename is the human/triage index (immutable-at-birth fields only); a materialized per-store `_index.md` is the machine fast-path (mutable state lives there, never in the path).
+- **Shared sanitizer** `sanitizeName()`: lowercase + Unicode NFC + byte-capped (not UTF-16 chars) + structurally cannot emit `--` — one function behind project slugs, journal/correction/skill slugs.
+- **Materialized indexes**, regenerated atomically on write (regen failure never fails the write): `corrections/_index.md` (severity-first: severity/failure_class/status/date/rule), `journal/_index.md` (last 10, filename-derived), `palace/rooms/_index.md` (per-room overview).
+- **v2 journal grammar**: `none` sig/theme segments are omitted, never printed; 4th parser generation (SaveType-anchored, enum-membership classification) alongside the 3 legacy generations.
+- **v2 corrections grammar**: `{date}--{rule-slug}.json` — slug derives from the rule (leading interjections stripped, EN + CJK incl. full-width punctuation), no longer from the trigger utterance.
+- **Source-level guard test**: raw `projects` path construction outside `storage/paths.ts` now fails the suite — the bypass class is unrecreatable.
+
+### Fixed
+
+- **Case-fold corpus split**: `agentrecall` vs `AgentRecall` resolve to one directory via `resolveProjectDirName()` (existing-dir case-insensitive reuse; deterministic pick + stderr warning when a fork already exists). ~21 call sites that built project paths independently now route through `paths.ts`.
+- **Byte-vs-char filename budgets**: component caps are byte-aware (CJK/emoji slugs can no longer exceed the 255-byte filesystem limit while passing a char cap).
+- **Rewrite forks**: `retractCorrection`/`recordOutcome`/merge-consolidation and skill rewrites reuse the record's on-disk filename instead of recomputing it — a grammar change can no longer orphan-duplicate existing records.
+- **Vanishing-project hazard**: `isJournalFile` excludes underscore-prefixed files; an `_index.md` can no longer knock a project off the status board.
+- **Same-day journal TOCTOU**: decide-filename + write now run under a per-project file lock (lock keys case-normalized).
+- **FSRS reinforce lookup**: case-insensitive — legacy skills with uppercase slugs no longer silently starve of reinforcement.
+
+### Migration
+
+- Zero-rename, new-writes-only. Existing files keep their names permanently; all legacy generations keep parsing. Room/topic-level case-folding is explicitly deferred (spec §7).
+
+## [3.4.37] — 2026-07-14
+
+- RD-1: `failure_class` at capture (9-value enum) + cross-project recurrence join at session-end; Phase-0 eval PASS (first cross-project detection, 0/53 stride FPs). Experimental `experimental/harness-kit/`. Full notes: `warroom/changelog.html` and the [v3.4.37 GitHub Release](https://github.com/Goldentrii/AgentRecall-X/releases/tag/v3.4.37). *(Entry backfilled 2026-07-20 — this release shipped without a CHANGELOG.md entry.)*
+
 ## [3.4.36] — 2026-07-05
 
 ### BREAKING
