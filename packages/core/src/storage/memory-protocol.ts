@@ -13,21 +13,17 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getRoot } from "../types.js";
-import { sanitizeProject } from "./paths.js";
+import { projectSubPath } from "./paths.js";
 import { ensureDir } from "./fs-utils.js";
 
 const PROTOCOL_FILENAME = "MEMORY-PROTOCOL.md";
 
+// F2 fix (independent review, 2026-07-20): was sanitizeProject() only, with
+// NO existing-dir reuse — a differently-cased `project` would write
+// MEMORY-PROTOCOL.md into a NEW sibling directory instead of the project's
+// existing one. Now routes through paths.ts's projectSubPath.
 function projectRoot(project: string): string {
-  const safe = sanitizeProject(project);
-  const root = getRoot();
-  const resolved = path.join(root, "projects", safe);
-  const rootWithSep = root.endsWith(path.sep) ? root : root + path.sep;
-  if (!resolved.startsWith(rootWithSep)) {
-    throw new Error(`Invalid project name (path escape): ${project}`);
-  }
-  return resolved;
+  return projectSubPath(project);
 }
 
 const PROTOCOL_BODY = `# AgentRecall — Memory Protocol

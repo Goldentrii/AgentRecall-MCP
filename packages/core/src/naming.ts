@@ -42,6 +42,9 @@
  * readers should fall back from new → legacy.
  */
 
+import { sanitizeName } from "./storage/sanitize.js";
+import { PROJECTS_DIRNAME } from "./storage/paths.js";
+
 export type MemoryScope = "project" | "global";
 export type MemoryType = "episodic" | "semantic" | "procedural" | "narrative" | "correction" | "insight";
 
@@ -66,20 +69,18 @@ const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const TEMPORAL_REGEX = /^(?:\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2})?)?|0\d{3})$/;
 
 /**
- * Convert any input to a safe kebab-case slug ≤40 chars.
- * No dots (prevents traversal), no upper, no special chars.
+ * Convert any input to a safe kebab-case slug, byte-capped at `maxBytes`
+ * (naming-v2 spec §2 — was a UTF-16 char-slice, now byte-safe so a CJK/emoji
+ * slug can't exceed the filesystem's byte-budget). No dots (prevents
+ * traversal), no upper, no special chars. Delegates to the shared v2
+ * sanitizer (storage/sanitize.ts) so this grammar can't call-site-diverge
+ * from paths.ts/session.ts/corrections.ts.
+ *
+ * Param renamed maxLen → maxBytes (v2): existing positional callers are
+ * unaffected since the argument is still "a length cap in the 30-100 range".
  */
-export function toSlug(input: string, maxLen = 40): string {
-  if (!input) return "unnamed";
-  const safe = input
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")  // strip combining marks
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, maxLen)
-    .replace(/-+$/, "");
-  return safe || "unnamed";
+export function toSlug(input: string, maxBytes = 40): string {
+  return sanitizeName(input, maxBytes);
 }
 
 /**
@@ -93,7 +94,12 @@ export function canonicalPath(name: CanonicalName): string {
     parts.push("global", name.type);
   } else {
     if (!name.project) throw new Error("project required for scope=project");
-    parts.push("projects", toSlug(name.project, 100), name.type);
+    // F2 guard-test hygiene (independent review, 2026-07-20): route the
+    // "projects" directory-name literal through paths.ts's shared constant.
+    // Note: canonicalPath is a pure string builder (no fs access, no root) —
+    // there is no resolveProjectDirName concern here since nothing is
+    // written; this is purely about not re-inlining the literal.
+    parts.push(PROJECTS_DIRNAME, toSlug(name.project, 100), name.type);
   }
   // topic--temporal--slug.md or temporal--slug.md
   const fileParts: string[] = [];

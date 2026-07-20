@@ -7,8 +7,10 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getRoot } from "../types.js";
+import * as crypto from "node:crypto";
 import { ensureDir } from "./fs-utils.js";
+import { sanitizeName } from "./sanitize.js";
+import { journalDir, projectSubPath } from "./paths.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -197,18 +199,14 @@ export interface CorrectionKPI {
 // ---------------------------------------------------------------------------
 
 function correctionsDir(project: string): string {
-  // Hardened sanitizer — same rule as storage/paths.ts. No dots (prevents ".." escape).
-  const safe = (project || "unnamed")
-    .replace(/[^a-zA-Z0-9_\-]/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 100) || "unnamed";
-  const root = getRoot();
-  const resolved = path.join(root, "projects", safe, "corrections");
-  const rootSep = root.endsWith(path.sep) ? root : root + path.sep;
-  if (!resolved.startsWith(rootSep)) {
-    throw new Error(`Invalid project (path escape): ${project}`);
-  }
-  return resolved;
+  // v2: shared sanitizer + EXISTING-DIR REUSE RULE (naming-v2 spec §2) — was a
+  // local duplicate of the old char-preserving sanitizer, which was exactly
+  // the call-site divergence the spec calls out: corrections/ could resolve
+  // to a DIFFERENT case-folded directory than journal/palace for the same
+  // project. F2 fix (independent review, 2026-07-20): now routes through
+  // paths.ts's projectSubPath (was a hand-rolled path.join + inline escape
+  // check that duplicated, and could drift from, paths.ts's own guard).
+  return projectSubPath(project, "corrections");
 }
 
 function outcomesPath(project: string): string {
@@ -251,13 +249,88 @@ function detectSeverity(text: string): "p0" | "p1" {
   return p0Patterns.test(text) ? "p0" : "p1";
 }
 
-/** Slugify text for use in filenames (safe, lowercase, hyphenated). */
+/**
+ * Leading interjection / stop-phrase strip (naming-v2 spec §3, corrections
+ * row). A correction's `rule` text is frequently the raw human utterance
+ * ("No, that's wrong. Never publish without approval") — the slug should
+ * describe the RULE, not the acknowledgment it opens with. Repeats until no
+ * further match (so "No, wait, actually never publish..." fully strips).
+ */
+// F4 fix (independent review, 2026-07-20): the trailing separator class was
+// ASCII-only ([,.!?:;\s]), so a CJK interjection followed by full-width
+// punctuation (，。！？：；、 — the normal punctuation after "你错了"/"不对" in
+// real usage) never matched at all — the CJK branch of this regex was
+// effectively dead code. Added the full-width punctuation marks to the
+// separator class; ASCII behavior (and the "no rescue without a separator"
+// property that keeps "notification..." from being stripped) is unchanged.
+const INTERJECTION_PREFIX =
+  /^(no|yes|ok|okay|nope|yeah|wait|stop|hmm|but|actually|你错了|不对|不是|对|好的?)[,.!?:;\s，。！？：；、]+/i;
+
+// Exported for direct unit testing of the F4 fix (independent review,
+// 2026-07-20) — the full writeCorrection() pipeline runs this text through
+// the capture-quality gate first (isLikelyRealCorrection), which requires an
+// actionable-signal marker; that gate is orthogonal to (and would otherwise
+// obscure) the interjection-stripping behavior under test here. Not part of
+// the public index.ts barrel — internal-use export, same pattern as the
+// other test-only exports already in this file (splitSentences, dropHardNoise).
+export function stripInterjections(text: string): string {
+  let s = text;
+  // Bounded by construction: each pass strips a short, fixed prefix or makes
+  // no change (loop exits) — a correction rule is never long enough for this
+  // to run more than a handful of iterations.
+  for (;;) {
+    const next = s.replace(INTERJECTION_PREFIX, "");
+    if (next === s) return s;
+    s = next;
+  }
+}
+
+/**
+ * Slugify text for use in filenames — v2 grammar (naming-v2 spec §3, §6):
+ * strip leading interjections from the RULE text first, then sanitize via
+ * the shared v2 sanitizer, byte-capped at 48 bytes (corrections' slug
+ * budget). Falls back to sanitizing the ORIGINAL text when stripping leaves
+ * nothing behind.
+ */
 function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40);
+  const stripped = stripInterjections(text).trim();
+  return sanitizeName(stripped || text, 48);
+}
+
+/**
+ * Find the on-disk filename for an EXISTING correction record by id, by
+ * scanning and parsing every *.json file in the corrections dir.
+ *
+ * Rewrite paths (retractCorrection, recordOutcome, on-write consolidation)
+ * MUST reuse the file the record already lives at — recomputing a filename
+ * via `slugify(record.rule)` would drift the moment slugify's grammar
+ * changes (as it just did, v1 → v2): a record written under the OLD
+ * single-dash grammar would get rewritten to a NEW double-dash filename,
+ * leaving the original untouched on disk (violates "never rename/rewrite an
+ * existing file") AND creating a duplicate record with the same id (readers
+ * don't dedupe by id — every *.json file is a distinct record). Returns null
+ * when no matching file is found (defensive fallback only; the record was
+ * just read from this same directory by every current caller).
+ */
+function findExistingCorrectionFile(dir: string, id: string): string | null {
+  if (!fs.existsSync(dir)) return null;
+  let files: string[];
+  try {
+    files = fs.readdirSync(dir);
+  } catch {
+    return null;
+  }
+  for (const file of files) {
+    if (!file.endsWith(".json") || file.startsWith("_")) continue;
+    try {
+      const raw = fs.readFileSync(path.join(dir, file), "utf-8");
+      const parsed = JSON.parse(raw) as { id?: string };
+      if (parsed && parsed.id === id) return file;
+    } catch {
+      // skip malformed/unreadable — never throw from a lookup helper
+    }
+  }
+  return null;
 }
 
 function defaultWeight(severity: "p0" | "p1"): number {
@@ -278,6 +351,95 @@ function writeRecordAtomic(filepath: string, record: unknown): void {
   const tmp = `${filepath}.tmp.${process.pid}.${Date.now()}`;
   fs.writeFileSync(tmp, JSON.stringify(record, null, 2), { encoding: "utf-8", mode: 0o600 });
   fs.renameSync(tmp, filepath);
+}
+
+/** Sort rank for the corrections index — p0 first, unknown severities last. */
+function severityRank(severity: string | undefined): number {
+  switch (severity) {
+    case "p0": return 0;
+    case "p1": return 1;
+    case "p2": return 2;
+    case "p3": return 3;
+    default: return 4;
+  }
+}
+
+/**
+ * One-line, table-safe rendering of a correction's rule text (W2-1, naming-v2
+ * spec §4): collapse newlines/whitespace, escape markdown table pipes, then
+ * byte/char-cap at 80 chars with an ellipsis. Never throws on odd input.
+ */
+function ruleOneLiner(rule: string | undefined, maxLen = 80): string {
+  const oneLine = (rule ?? "").replace(/\s+/g, " ").trim().replace(/\|/g, "\\|");
+  if (oneLine.length <= maxLen) return oneLine || "(no rule text)";
+  return oneLine.slice(0, maxLen - 1).trimEnd() + "…";
+}
+
+/**
+ * W2-1 (naming-v2 spec §4) — regenerate corrections/_index.md, the
+ * materialized machine fast-path over the corrections store: a severity-first
+ * sorted table (`| severity | failure_class | status | date | rule |`),
+ * serving "show me my worst active pattern" via one `ls`+`cat` instead of
+ * reading every JSON file.
+ *
+ * ATOMIC (write-temp + rename) and re-derived from a FULL re-read of the
+ * store's *.json files on every call — source of truth is the files, never
+ * incremental in-memory state, so the index always matches disk regardless
+ * of caller.
+ *
+ * NEVER throws: regenerating the index must never fail the write that
+ * triggered it (writeCorrection / retractCorrection / recordOutcome). Any
+ * error is logged as a one-line stderr message and swallowed.
+ */
+export function regenerateCorrectionsIndex(project: string): void {
+  try {
+    const dir = correctionsDir(project);
+    ensureDir(dir);
+    const all = readCorrections(project); // full re-read of every *.json file
+
+    const activeCount = all.filter((r) => r.active !== false).length;
+    const retractedCount = all.length - activeCount;
+    const p0ActiveCount = all.filter((r) => r.severity === "p0" && r.active !== false).length;
+
+    // severity (p0>p1>p2>p3) → status (active first) → date desc
+    const rows = [...all].sort((a, b) => {
+      const sevDiff = severityRank(a.severity) - severityRank(b.severity);
+      if (sevDiff !== 0) return sevDiff;
+      const aActive = a.active !== false ? 0 : 1;
+      const bActive = b.active !== false ? 0 : 1;
+      if (aActive !== bActive) return aActive - bActive;
+      return (b.date ?? "").localeCompare(a.date ?? "");
+    });
+
+    const lines: string[] = [];
+    lines.push("# Corrections Index — regenerated on write; do not edit");
+    lines.push("");
+    lines.push(`Generated: ${new Date().toISOString()}`);
+    lines.push(`${activeCount} active / ${retractedCount} retracted / ${p0ActiveCount} p0-active`);
+    lines.push("");
+    lines.push("| severity | failure_class | status | date | rule |");
+    lines.push("|---|---|---|---|---|");
+    for (const r of rows) {
+      const status = r.active !== false ? "active" : "retracted";
+      const failureClass = r.failure_class ?? "other";
+      lines.push(`| ${r.severity} | ${failureClass} | ${status} | ${r.date} | ${ruleOneLiner(r.rule)} |`);
+    }
+
+    const content = lines.join("\n") + "\n";
+    const indexPath = path.join(dir, "_index.md");
+    const tmp = `${indexPath}.tmp-${crypto.randomBytes(4).toString("hex")}`;
+    fs.writeFileSync(tmp, content, "utf-8");
+    fs.renameSync(tmp, indexPath);
+  } catch (err) {
+    try {
+      process.stderr.write(
+        `[agent-recall] corrections index regeneration failed for "${project}": ` +
+        `${err instanceof Error ? err.message : String(err)}\n`
+      );
+    } catch {
+      /* a diagnostic write must never throw into the caller */
+    }
+  }
 }
 
 /**
@@ -662,16 +824,25 @@ export function writeCorrection(project: string, correction: CorrectionRecord): 
           ? { failure_class: record.failure_class }
           : {}),
     };
-    const mfile = `${merged.date}-${slugify(merged.rule || merged.id)}.json`;
+    // Rewrite: reuse the EXISTING file's name (never recompute via slugify —
+    // see findExistingCorrectionFile doc). Falls back to a fresh v2 filename
+    // only in the defensive case where the file has vanished mid-call.
+    const mfile = findExistingCorrectionFile(dir, existing.id)
+      ?? `${merged.date}--${slugify(merged.rule || merged.id)}.json`;
     writeRecordAtomic(path.join(dir, mfile), merged);
+    // W2-1: regenerate the materialized index on every corrections mutation.
+    regenerateCorrectionsIndex(project);
     return { written: true, merged: true, id: merged.id };
   }
 
-  const filename = `${record.date}-${slugify(record.rule || record.id)}.json`;
+  // Brand-new record — no existing file to preserve. v2 delimiter ("--").
+  const filename = `${record.date}--${slugify(record.rule || record.id)}.json`;
   const filepath = path.join(dir, filename);
 
   // Atomic write — tmp + rename, mode 0600
   writeRecordAtomic(filepath, record);
+  // W2-1: regenerate the materialized index on every corrections mutation.
+  regenerateCorrectionsIndex(project);
 
   return { written: true, merged: false, id: record.id };
 }
@@ -752,10 +923,15 @@ export function retractCorrection(
     ...(supersededBy !== undefined ? { superseded_by: supersededBy } : {}),
   };
 
-  const filename = `${updated.date}-${slugify(updated.rule || updated.id)}.json`;
+  // Rewrite — reuse the EXISTING file's name (see findExistingCorrectionFile
+  // doc); never recompute via slugify, or a v1-named file would orphan.
+  const filename = findExistingCorrectionFile(dir, updated.id)
+    ?? `${updated.date}--${slugify(updated.rule || updated.id)}.json`;
   const filepath = path.join(dir, filename);
   // Atomic rewrite — tmp + rename, mode 0600
   writeRecordAtomic(filepath, updated);
+  // W2-1: regenerate the materialized index on every corrections mutation.
+  regenerateCorrectionsIndex(project);
 
   return { success: true, id };
 }
@@ -869,10 +1045,19 @@ export function recordOutcome(outcome: CorrectionOutcome): void {
     ? Number(betaPosterior(heededC, recurC).toFixed(3))
     : (updated.weight ?? defaultWeight(updated.severity));
 
-  // Re-write the JSON file atomically (tmp + rename — prevents truncation on SIGTERM).
-  const filename = `${updated.date}-${slugify(updated.rule || updated.id)}.json`;
+  // Re-write the JSON file atomically (tmp + rename — prevents truncation on
+  // SIGTERM). Reuse the EXISTING filename (see findExistingCorrectionFile
+  // doc) — never recompute via slugify, or a v1-named file would orphan.
+  const filename = findExistingCorrectionFile(dir, updated.id)
+    ?? `${updated.date}--${slugify(updated.rule || updated.id)}.json`;
   const filepath = path.join(dir, filename);
   writeRecordAtomic(filepath, updated);
+  // W2-1: regenerate the materialized index on every corrections mutation.
+  // (The ledger-only early-returns above for triggered/not_triggered/unknown
+  // touch no per-record field the index renders — severity/status/date/rule/
+  // failure_class are all unchanged — so they deliberately skip this call,
+  // preserving the existing hot-path optimization documented above.)
+  regenerateCorrectionsIndex(outcome.project);
 }
 
 /**
@@ -1192,13 +1377,10 @@ export function listUnknownVerdicts(
   const allCorrections = readCorrections(project);
   const recordById = new Map(allCorrections.map((r) => [r.id, r]));
 
-  // Resolve journal file paths for targetDay
-  const root = getRoot();
-  const safe = (project || "unnamed")
-    .replace(/[^a-zA-Z0-9_\-]/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 100) || "unnamed";
-  const jDir = path.join(root, "projects", safe, "journal");
+  // Resolve journal file paths for targetDay — reuse paths.ts's journalDir
+  // (was a local re-derivation of the old sanitizer, same divergence risk
+  // fixed in correctionsDir above).
+  const jDir = journalDir(project);
   const journalPaths: string[] = [];
   if (fs.existsSync(jDir)) {
     try {

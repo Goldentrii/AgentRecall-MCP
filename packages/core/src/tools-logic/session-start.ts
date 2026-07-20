@@ -11,7 +11,7 @@ import { ensurePalaceInitialized, listRooms, isRoomStale, countRoomEntries } fro
 import { readIdentity } from "../palace/identity.js";
 import { readAwarenessState, fetchDashboardArchivedTitles } from "../palace/awareness.js";
 import { recallInsights, readInsightsIndex } from "../palace/insights-index.js";
-import { journalDirs } from "../storage/paths.js";
+import { journalDirs, projectSubPath } from "../storage/paths.js";
 import { extractSection } from "../helpers/sections.js";
 import { todayISO } from "../storage/fs-utils.js";
 import { readAlignmentLog, extractWatchPatterns, computeDecisionCalibration, type WatchForPattern } from "../helpers/alignment-patterns.js";
@@ -23,7 +23,6 @@ import { isJournalFile } from "../helpers/journal-filter.js";
 import { hasCaptureLogs, readRecentCaptures, type CaptureLogEntry } from "../helpers/journal-files.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getRoot } from "../types.js";
 import { readSupabaseConfig } from "../supabase/config.js";
 import { backfill } from "../supabase/sync.js";
 import { listMilestones } from "../palace/pipeline.js";
@@ -870,8 +869,10 @@ export async function sessionStart(input: SessionStartInput): Promise<SessionSta
 
 async function autoBackfill(project: string): Promise<void> {
   try {
-    const root = getRoot();
-    const projectDir = path.join(root, "projects", project);
+    // F2 fix (independent review, 2026-07-20): was a raw path.join with NO
+    // sanitization and no existing-dir reuse at all — routes through
+    // paths.ts now, so backfill scans the SAME dir session_start itself uses.
+    const projectDir = projectSubPath(project);
     if (!fs.existsSync(projectDir)) return;
 
     const files: Array<{ path: string; content: string; store: "journal" | "palace" | "awareness" | "digest"; room?: string }> = [];

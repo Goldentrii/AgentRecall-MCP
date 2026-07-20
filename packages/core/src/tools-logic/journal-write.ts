@@ -1,10 +1,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { resolveProject } from "../storage/project.js";
-import { journalDir, palaceDir, sanitizeSlug } from "../storage/paths.js";
+import { journalDir, palaceDir, sanitizeSlug, sanitizeProject } from "../storage/paths.js";
 import { ensureDir, todayISO } from "../storage/fs-utils.js";
+import { withLock } from "../storage/filelock.js";
 import { appendToSection } from "../helpers/sections.js";
-import { updateIndex } from "../helpers/journal-files.js";
+import { updateIndex, regenerateJournalIndex } from "../helpers/journal-files.js";
 import { ensurePalaceInitialized, roomExists, createRoom } from "../palace/rooms.js";
 import { fanOut } from "../palace/fan-out.js";
 import { generateFrontmatter } from "../palace/obsidian.js";
@@ -76,34 +77,57 @@ export async function journalWrite(input: JournalWriteInput): Promise<JournalWri
   const dir = journalDir(slug);
   ensureDir(dir);
 
-  // Intelligent naming (v3.4.1+): {date}--{saveType}--{sig}--{theme}--{slug}.md
-  // Falls back to legacy {date}.md when no saveType provided.
-  const basePath = path.join(dir, `${date}.md`);
-  const smartOpts = input.saveType
-    ? { saveType: input.saveType, content: input.content, sig: input.sig, theme: input.theme }
-    : undefined;
-  const fileName = journalFileName(date, fs.existsSync(basePath), smartOpts, dir);
-  const filePath = path.join(dir, fileName);
+  // W2-4 (naming-v2 spec §5 — known TOCTOU): the same-day filename DECISION
+  // (journalFileName's internal readdirSync "does today's file already
+  // exist?" scan) and the subsequent read-existing + write must run under
+  // ONE lock. Without it, two near-simultaneous writes (e.g. two session_end
+  // calls racing) can each independently decide "no file for today yet",
+  // each compute a DIFFERENT content-derived slug, and both create their own
+  // file — silently violating the "one file per day per project" invariant.
+  // Reuses the EXISTING filelock mechanism (arbitrary lock name), per spec:
+  // "bug fix, not new design" — no new locking primitive was introduced.
+  // Lock key is CASE-NORMALIZED via sanitizeProject: "AgentRecall" and
+  // "agentrecall" resolve to the same on-disk dir (resolveProjectDirName
+  // reuse rule), so they must also share one lock — a raw-slug key would
+  // let two case-variant callers race each other into the same day file.
+  const { filePath, updated } = withLock(`journal-day-${sanitizeProject(slug)}`, () => {
+    // Intelligent naming (v3.4.1+): {date}--{saveType}--{sig}--{theme}--{slug}.md
+    // Falls back to legacy {date}.md when no saveType provided.
+    const basePath = path.join(dir, `${date}.md`);
+    const smartOpts = input.saveType
+      ? { saveType: input.saveType, content: input.content, sig: input.sig, theme: input.theme }
+      : undefined;
+    const fileName = journalFileName(date, fs.existsSync(basePath), smartOpts, dir);
+    const fp = path.join(dir, fileName);
 
-  let existing = "";
-  if (fs.existsSync(filePath)) {
-    existing = fs.readFileSync(filePath, "utf-8");
-  } else if (!input.section || input.section !== "replace_all") {
-    // Obsidian-compatible frontmatter for new journal entries
-    const fm = generateFrontmatter({
-      type: "journal",
-      project: slug,
-      date,
-      tags: ["journal", slug],
-      created: new Date().toISOString(),
-    });
-    existing = `${fm}# ${date} — ${slug}\n`;
-  }
+    let existingContent = "";
+    if (fs.existsSync(fp)) {
+      existingContent = fs.readFileSync(fp, "utf-8");
+    } else if (!input.section || input.section !== "replace_all") {
+      // Obsidian-compatible frontmatter for new journal entries
+      const fm = generateFrontmatter({
+        type: "journal",
+        project: slug,
+        date,
+        tags: ["journal", slug],
+        created: new Date().toISOString(),
+      });
+      existingContent = `${fm}# ${date} — ${slug}\n`;
+    }
 
-  const sectionArg = input.section ?? null;
-  const updated = appendToSection(existing, input.content, sectionArg);
-  fs.writeFileSync(filePath, updated, "utf-8");
+    const sectionArg = input.section ?? null;
+    const upd = appendToSection(existingContent, input.content, sectionArg);
+    fs.writeFileSync(fp, upd, "utf-8");
+    return { filePath: fp, updated: upd };
+  });
+
+  // Index regeneration runs AFTER the lock is released — both index.md
+  // (pre-existing) and _index.md (W2-2, materialized fast-path) are DERIVED
+  // state; last-writer-wins is fine and holding the lock during a full
+  // journal-dir rescan would only extend the critical section for no benefit
+  // (naming-v2 spec §5: "Never hold the lock during _index regeneration").
   updateIndex(slug);
+  regenerateJournalIndex(slug);
 
   let palaceResult: JournalWriteResult["palace"] = null;
   // Trim-guard: a whitespace-only palace_room is truthy but createRoom now throws on it.

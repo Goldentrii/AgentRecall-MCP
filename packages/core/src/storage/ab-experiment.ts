@@ -63,7 +63,7 @@
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getRoot } from "../types.js";
+import { projectSubPath } from "./paths.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -111,17 +111,13 @@ export interface ABResultRow {
 
 function abArmsPath(project: string): string {
   // Reuse the corrections dir path — share the directory for co-location.
-  const safe = (project || "unnamed")
-    .replace(/[^a-zA-Z0-9_\-]/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 100) || "unnamed";
-  const root = getRoot();
-  const resolved = path.join(root, "projects", safe, "corrections");
-  const rootSep = root.endsWith(path.sep) ? root : root + path.sep;
-  if (!resolved.startsWith(rootSep)) {
-    throw new Error(`Invalid project (path escape): ${project}`);
-  }
-  return path.join(resolved, "_ab_arms.jsonl");
+  // F2 fix (independent review, 2026-07-20): was a hand-rolled sanitizer +
+  // path.join that skipped the v2 EXISTING-DIR reuse rule (resolveProjectDirName)
+  // — a differently-cased `project` string would silently resolve to a
+  // DIFFERENT _ab_arms.jsonl than the one corrections.ts's correctionsDir()
+  // reads/writes for the same logical project. Now routes through the same
+  // paths.ts helper every other store shares.
+  return path.join(projectSubPath(project, "corrections"), "_ab_arms.jsonl");
 }
 
 // ── Ordinal counter ───────────────────────────────────────────────────────────

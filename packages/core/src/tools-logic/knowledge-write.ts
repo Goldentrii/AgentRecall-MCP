@@ -2,8 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { ensureDir, todayISO } from "../storage/fs-utils.js";
 import { resolveProject } from "../storage/project.js";
-import { palaceDir } from "../storage/paths.js";
-import { getRoot } from "../types.js";
+import { palaceDir, projectSubPath } from "../storage/paths.js";
 import { ensurePalaceInitialized, roomExists, createRoom } from "../palace/rooms.js";
 import { fanOut } from "../palace/fan-out.js";
 import { updatePalaceIndex } from "../palace/index-manager.js";
@@ -31,7 +30,6 @@ export interface KnowledgeWriteResult {
 
 export async function knowledgeWrite(input: KnowledgeWriteInput): Promise<KnowledgeWriteResult> {
   const slug = await resolveProject(input.project);
-  const safe = slug.replace(/[^a-zA-Z0-9_\-\.]/g, "-");
   let safeCategory = input.category.replace(/[^a-zA-Z0-9_\-]/g, "-").toLowerCase();
 
   // Auto-slug: generate meaningful category name for generic categories
@@ -49,11 +47,10 @@ export async function knowledgeWrite(input: KnowledgeWriteInput): Promise<Knowle
   entry += `- **Fix:** ${input.fix}\n`;
   entry += `- **Severity:** ${severity}\n\n`;
 
-  const baseDir = getRoot();
-  const knowledgeDir = path.join(baseDir, "projects", safe, "knowledge");
-  if (!knowledgeDir.startsWith(baseDir)) {
-    throw new Error(`Invalid project name: ${slug}`);
-  }
+  // F2 fix (independent review, 2026-07-20): was a naive local sanitizer (no
+  // lowercase, no existing-dir reuse) — routes through paths.ts now, so
+  // knowledge/ always lands next to the SAME project's journal/palace.
+  const knowledgeDir = projectSubPath(slug, "knowledge");
   ensureDir(knowledgeDir);
   const legacyPath = path.join(knowledgeDir, `${safeCategory}.md`);
 

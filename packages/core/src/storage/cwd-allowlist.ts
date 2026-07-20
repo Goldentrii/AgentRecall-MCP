@@ -15,8 +15,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getRoot } from "../types.js";
-import { palaceDir } from "./paths.js";
+import { palaceDir, projectsRootDir } from "./paths.js";
 import { ensureDir } from "./fs-utils.js";
 
 export interface CwdAllowlist {
@@ -86,8 +85,7 @@ export function addCwdToAllowlist(slug: string, cwdPath: string): void {
 export function findProjectByCwd(cwd: string): string | null {
   if (!cwd || !cwd.startsWith("/")) return null;
   const normalized = normalizePath(cwd);
-  const root = getRoot();
-  const projectsDir = path.join(root, "projects");
+  const projectsDir = projectsRootDir();
   if (!fs.existsSync(projectsDir)) return null;
 
   let bestMatch: { slug: string; prefixLength: number } | null = null;

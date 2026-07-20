@@ -6,7 +6,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { getRoot, getLegacyRoot } from "../types.js";
+import { getLegacyRoot } from "../types.js";
+import { projectsRootDir } from "./paths.js";
 import type { ProjectInfo } from "../types.js";
 
 const execFileAsync = promisify(execFile);
@@ -174,7 +175,13 @@ export async function resolveProject(project: string | undefined): Promise<strin
     const detected = await detectProject();
     // Gate: block auto-detected slugs from creating new dirs if invalid
     if (!isValidProjectSlug(detected)) {
-      const projectDir = path.join(getRoot(), "projects", detected);
+      // Deliberately NOT routed through projectSubPath()/resolveProjectDirName:
+      // this is a raw existence probe for an ALREADY-INVALID slug (blocks new-dir
+      // creation unless legacy data already exists at this exact name) — running
+      // it through the sanitizing resolver would change what "exists" means for
+      // exactly the malformed inputs this gate exists to catch. Only the literal
+      // "projects" segment is routed through paths.ts (F2 fix, 2026-07-20).
+      const projectDir = path.join(projectsRootDir(), detected);
       if (!fs.existsSync(projectDir)) {
         throw new Error(
           `Auto-detected project slug "${detected}" is invalid (UUID, system dir, or deny-listed). ` +
@@ -188,7 +195,8 @@ export async function resolveProject(project: string | undefined): Promise<strin
 
   // Explicit slug: validate before allowing new directory creation
   if (!isValidProjectSlug(project)) {
-    const projectDir = path.join(getRoot(), "projects", project);
+    // See comment above — deliberately raw, not routed through resolveProjectDirName.
+    const projectDir = path.join(projectsRootDir(), project);
     if (!fs.existsSync(projectDir)) {
       throw new Error(
         `Invalid project slug "${project}". Slugs must contain at least one letter ` +
@@ -227,7 +235,7 @@ export function listAllProjects(): ProjectInfo[] {
   const projects = new Map<string, ProjectInfo>();
 
   // New location
-  const projectsDir = path.join(getRoot(), "projects");
+  const projectsDir = projectsRootDir();
   if (fs.existsSync(projectsDir)) {
     const dirs = fs.readdirSync(projectsDir);
     for (const slug of dirs) {

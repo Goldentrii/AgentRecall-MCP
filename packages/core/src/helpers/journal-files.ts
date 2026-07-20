@@ -4,8 +4,11 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import * as crypto from "node:crypto";
 import { journalDir, journalDirs } from "../storage/paths.js";
 import { ensureDir } from "../storage/fs-utils.js";
+import { isJournalFile } from "./journal-filter.js";
+import { parseJournalFileName } from "./journal-name-parser.js";
 import type { JournalEntry } from "../types.js";
 
 /**
@@ -303,4 +306,65 @@ function updateJsonlIndex(project: string, entries: JournalEntry[]): void {
   }
 
   fs.writeFileSync(jsonlPath, lines.join("\n") + "\n", "utf-8");
+}
+
+/**
+ * W2-2 (naming-v2 spec §4) — regenerate journal/_index.md, the materialized
+ * machine fast-path over the journal store: the last 10 entries, newest
+ * first, as `| date | saveType | sig | theme | slug |`. Rows are derived by
+ * PARSING existing filenames with parseJournalFileName — file CONTENTS are
+ * never opened, so this stays cheap even for a large journal directory.
+ *
+ * `isJournalFile` filters out capture logs, weekly rollups, `index.md`
+ * (the pre-existing Obsidian-style index) — and, critically, `_index.md`
+ * itself (underscore-prefixed files), so regenerating never counts its own
+ * previous output as an 11th entry.
+ *
+ * ATOMIC (write-temp + rename). NEVER throws: regeneration failure must
+ * never fail the journal write that triggered it — errors are logged to
+ * stderr as a one-liner and swallowed.
+ */
+export function regenerateJournalIndex(project: string): void {
+  try {
+    const dir = journalDir(project);
+    ensureDir(dir);
+    const files = fs.readdirSync(dir)
+      .filter(isJournalFile)
+      .sort()
+      .reverse()
+      .slice(0, 10);
+
+    const lines: string[] = [];
+    lines.push("# Journal Index — regenerated on write; do not edit");
+    lines.push("");
+    lines.push(`Generated: ${new Date().toISOString()}`);
+    lines.push(`${files.length} of last 10 entries shown, newest first.`);
+    lines.push("");
+    lines.push("| date | saveType | sig | theme | slug |");
+    lines.push("|---|---|---|---|---|");
+    for (const f of files) {
+      const parsed = parseJournalFileName(f);
+      const date = parsed.date || "—";
+      const saveType = parsed.saveType ?? "—";
+      const sig = parsed.sig ?? "—";
+      const theme = parsed.theme ?? "—";
+      const slug = parsed.slug ?? "—";
+      lines.push(`| ${date} | ${saveType} | ${sig} | ${theme} | ${slug} |`);
+    }
+
+    const content = lines.join("\n") + "\n";
+    const indexPath = path.join(dir, "_index.md");
+    const tmp = `${indexPath}.tmp-${crypto.randomBytes(4).toString("hex")}`;
+    fs.writeFileSync(tmp, content, "utf-8");
+    fs.renameSync(tmp, indexPath);
+  } catch (err) {
+    try {
+      process.stderr.write(
+        `[agent-recall] journal index regeneration failed for "${project}": ` +
+        `${err instanceof Error ? err.message : String(err)}\n`
+      );
+    } catch {
+      /* a diagnostic write must never throw into the caller */
+    }
+  }
 }

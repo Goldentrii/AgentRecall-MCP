@@ -10,7 +10,6 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getRoot } from "../types.js";
 import { readP0Corrections } from "../storage/corrections.js";
 import { readBehaviorPolicies } from "../storage/behavior-policies.js";
 import { readInsightsIndex } from "../palace/insights-index.js";
@@ -18,7 +17,7 @@ import { readIdentity } from "../palace/identity.js";
 import { ensureDir } from "../storage/fs-utils.js";
 import { listJournalFiles } from "./journal-files.js";
 import { extractSection } from "./sections.js";
-import { journalDir } from "../storage/paths.js";
+import { journalDir, projectSubPath } from "../storage/paths.js";
 
 const HARD_BUDGET = 2200;
 
@@ -218,14 +217,10 @@ export function generateHandoff(slug: string): string {
  * Never throws — errors are propagated to caller for fire-and-forget swallowing.
  */
 export function writeHandoff(slug: string): HandoffResult {
-  const root = getRoot();
-  // Sanitize slug for path safety (same pattern as sanitizeProject).
-  const safe = (slug || "unnamed")
-    .replace(/[^a-zA-Z0-9_\-]/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 100) || "unnamed";
-
-  const projectDir = path.join(root, "projects", safe);
+  // F2 fix (independent review, 2026-07-20): was a local naive sanitizer
+  // (no lowercase, no existing-dir reuse) — routes through paths.ts now, so
+  // handoff.md always lands next to the SAME project's journal/palace.
+  const projectDir = projectSubPath(slug || "unnamed");
   ensureDir(projectDir);
 
   const handoffPath = path.join(projectDir, "handoff.md");

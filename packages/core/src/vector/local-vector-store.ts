@@ -4,8 +4,7 @@
  */
 
 import { LocalIndex } from "vectra";
-import * as path from "node:path";
-import { getRoot } from "../types.js";
+import { projectSubPath } from "../storage/paths.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -29,8 +28,10 @@ type VectorMetadata = VectorItem & Record<string, string | number | boolean>;
  * Stored at: ~/.agent-recall/projects/<slug>/vector-index/
  */
 export function vectorIndexPath(project: string): string {
-  const safe = project.replace(/[^a-zA-Z0-9_\-\.]/g, "-");
-  return path.join(getRoot(), "projects", safe, "vector-index");
+  // F2 fix (independent review, 2026-07-20): was a local naive sanitizer with
+  // no existing-dir reuse — routes through paths.ts's projectSubPath so the
+  // vector index lives alongside journal/palace for the SAME resolved dir.
+  return projectSubPath(project, "vector-index");
 }
 
 // ---------------------------------------------------------------------------

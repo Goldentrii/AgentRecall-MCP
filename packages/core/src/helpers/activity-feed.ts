@@ -15,8 +15,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { palaceDir } from "../storage/paths.js";
-import { getRoot } from "../types.js";
+import { palaceDir, journalDir as journalDirPath, projectSubPath } from "../storage/paths.js";
 
 export interface ActivityEvent {
   ts: string;   // ISO-8601
@@ -94,8 +93,10 @@ function dateToTs(date: string): string {
 // ---------------------------------------------------------------------------
 
 function journalEvents(slug: string): ActivityEvent[] {
-  const journalDir = path.join(getRoot(), "projects", slug, "journal");
-  const files = safeReaddir(journalDir, (f) => f.endsWith(".md") && f !== "index.md");
+  // F2 fix (independent review, 2026-07-20): was a hand-rolled path.join that
+  // skipped the v2 existing-dir reuse rule — now reuses paths.ts's journalDir().
+  const jDir = journalDirPath(slug);
+  const files = safeReaddir(jDir, (f) => f.endsWith(".md") && f !== "index.md");
   const events: ActivityEvent[] = [];
 
   for (const f of files) {
@@ -105,7 +106,7 @@ function journalEvents(slug: string): ActivityEvent[] {
     if (!dateMatch) continue;
     const fileDate = dateMatch[1];
 
-    const content = safeRead(path.join(journalDir, f));
+    const content = safeRead(path.join(jDir, f));
     const created = content ? extractFrontmatterCreated(content) : null;
     const ts = created ?? dateToTs(fileDate);
 
@@ -129,7 +130,10 @@ function journalEvents(slug: string): ActivityEvent[] {
 }
 
 function correctionEvents(slug: string): ActivityEvent[] {
-  const corrDir = path.join(getRoot(), "projects", slug, "corrections");
+  // F2 fix (independent review, 2026-07-20): route through paths.ts instead
+  // of a hand-rolled path.join, so this reads the SAME corrections dir
+  // correctionsDir()/writeCorrection() writes to for the same project.
+  const corrDir = projectSubPath(slug, "corrections");
   const files = safeReaddir(
     corrDir,
     (f) => f.endsWith(".json") && !f.startsWith("_"),
@@ -168,13 +172,8 @@ function correctionEvents(slug: string): ActivityEvent[] {
 }
 
 function outcomeEvents(slug: string): ActivityEvent[] {
-  const outcomesPath = path.join(
-    getRoot(),
-    "projects",
-    slug,
-    "corrections",
-    "_outcomes.jsonl",
-  );
+  // F2 fix (independent review, 2026-07-20): route through paths.ts.
+  const outcomesPath = path.join(projectSubPath(slug, "corrections"), "_outcomes.jsonl");
   const raw = safeRead(outcomesPath);
   if (!raw) return [];
 

@@ -13,6 +13,26 @@ export type ThemeTag =
   | "version-bump" | "okr-aligned" | "phantom-project" | "none";
 
 /**
+ * Runtime-checkable mirrors of the two type unions above (SAME vocabulary,
+ * not new values) — naming-v2 spec §3's journal filename parser needs to
+ * classify an unlabeled filename segment by ENUM MEMBERSHIP ("is this token
+ * a sig or a theme?") rather than by position, since sig/theme are now
+ * omitted when absent and a 4-segment name is positionally ambiguous.
+ * journal-name-parser.ts imports these; do not let them drift from the type
+ * unions above.
+ */
+export const SIGNIFICANCE_TAGS: readonly SignificanceTag[] = [
+  "shipped", "milestone", "blocked", "critical",
+  "audit", "decision", "research", "recovery", "minor", "none",
+];
+
+export const THEME_TAGS: readonly ThemeTag[] = [
+  "naming-drift", "mcp-unavailable", "publish-gate", "cross-project",
+  "test-gap", "silent-failure", "multi-loop", "agent-fix",
+  "version-bump", "okr-aligned", "phantom-project", "none",
+];
+
+/**
  * Auto-classify significance from summary text.
  * Check in order, stop at first match. Default: "minor".
  */

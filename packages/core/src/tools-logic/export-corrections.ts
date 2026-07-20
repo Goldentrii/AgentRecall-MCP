@@ -18,7 +18,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getRoot } from "../types.js";
+import { projectsRootDir } from "../storage/paths.js";
 import { readCorrections } from "../storage/corrections.js";
 import type { CorrectionRecord } from "../storage/corrections.js";
 import { scrubForExport, SecretScanError } from "../storage/content-guard.js";
@@ -97,7 +97,7 @@ function toExport(rec: CorrectionRecord): CorrectionExport {
  * silently skip it.
  */
 function projectsWithCorrections(): string[] {
-  const dir = path.join(getRoot(), "projects");
+  const dir = projectsRootDir();
   const out: string[] = [];
   let slugs: string[] = [];
   try {

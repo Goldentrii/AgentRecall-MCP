@@ -5,7 +5,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getRoot } from "../types.js";
+import { projectsRootDir } from "../storage/paths.js";
 import { isJournalFile } from "../helpers/journal-filter.js";
 
 export type ProjectStatus = "active" | "blocked" | "complete" | "stale";
@@ -80,7 +80,7 @@ const STATUS_ORDER: Record<ProjectStatus, number> = {
 // ── main ─────────────────────────────────────────────────────────────────────
 
 export async function projectBoard(): Promise<ProjectBoardResult> {
-  const projectsDir = path.join(getRoot(), "projects");
+  const projectsDir = projectsRootDir();
   if (!fs.existsSync(projectsDir)) {
     return { projects: [], total: 0, date: new Date().toISOString().slice(0, 10) };
   }

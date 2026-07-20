@@ -8,7 +8,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { resolveProject } from "../storage/project.js";
-import { getRoot } from "../types.js";
 import { ensureDir, todayISO } from "../storage/fs-utils.js";
 import { extractKeywords, generateSlug } from "../helpers/auto-name.js";
 import { generateTags } from "../helpers/tag-generator.js";
@@ -21,7 +20,7 @@ import {
   type WatchForPattern,
 } from "../helpers/alignment-patterns.js";
 import { awarenessUpdate } from "./awareness-update.js";
-import { palaceDir } from "../storage/paths.js";
+import { palaceDir, projectSubPath } from "../storage/paths.js";
 import { listRooms } from "../palace/rooms.js";
 import { palaceWrite } from "./palace-write.js";
 import { predictCorrection, type PredictCorrectionResult } from "./predict-correction.js";
@@ -82,11 +81,10 @@ export interface CheckResult {
 }
 
 function alignmentLogPath(project: string): string {
-  const safe = project.replace(/[^a-zA-Z0-9_\-]/g, "-");
-  const root = getRoot();
-  const resolved = path.join(root, "projects", safe, "alignment-log.json");
-  if (!resolved.startsWith(root)) throw new Error(`Invalid project: ${project}`);
-  return resolved;
+  // F2 fix (independent review, 2026-07-20): was a naive local sanitizer (no
+  // lowercase, no existing-dir reuse), duplicated from
+  // helpers/alignment-patterns.ts's own copy — routes through paths.ts now.
+  return projectSubPath(project, "alignment-log.json");
 }
 
 function writeAlignmentLog(project: string, records: AlignmentRecord[]): void {

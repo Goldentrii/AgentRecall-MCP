@@ -13,14 +13,13 @@ import * as os from "node:os";
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { getRoot } from "../types.js";
 import { ensurePalaceInitialized } from "../palace/rooms.js";
 import { writeIdentity } from "../palace/identity.js";
 import { ensureDir, todayISO } from "../storage/fs-utils.js";
 import { palaceWrite } from "./palace-write.js";
 import { journalWrite } from "./journal-write.js";
 import { awarenessUpdate } from "./awareness-update.js";
-import { palaceDir, sanitizeProject } from "../storage/paths.js";
+import { palaceDir, sanitizeProject, projectsRootDir } from "../storage/paths.js";
 import { scrubSecretContent } from "../storage/content-guard.js";
 
 const execFileAsync = promisify(execFile);
@@ -481,8 +480,7 @@ function findGitRepos(dir: string, maxDepth: number, depth = 0): string[] {
 
 /** Get slugs of projects already in AR */
 function existingArSlugs(): Set<string> {
-  const root = getRoot();
-  const projectsDir = path.join(root, "projects");
+  const projectsDir = projectsRootDir();
   if (!fs.existsSync(projectsDir)) return new Set();
   try {
     return new Set(

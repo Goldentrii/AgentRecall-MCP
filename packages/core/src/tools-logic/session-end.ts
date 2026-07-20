@@ -16,7 +16,7 @@ import { readCorrections, readActiveCorrections, recordOutcome, readOutcomesForT
 import { ruleSignature, overlap } from "./check-action.js";
 import { recomputeBlindSpots } from "../storage/blind-spots-store.js";
 import { ensurePalaceInitialized, listRooms } from "../palace/rooms.js";
-import { journalDir } from "../storage/paths.js";
+import { journalDir, palaceDir, projectSubPath, projectsRootDir } from "../storage/paths.js";
 import { readAwarenessState } from "../palace/awareness.js";
 import { todayISO } from "../storage/fs-utils.js";
 import { getRoot } from "../types.js";
@@ -444,7 +444,7 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
           }));
 
         if (seeds.length > 0) {
-          const projectsDir = path.join(getRoot(), "projects");
+          const projectsDir = projectsRootDir();
           const allSlugs = fs.existsSync(projectsDir)
             ? fs.readdirSync(projectsDir).filter((s) => {
                 try {
@@ -698,7 +698,11 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
 
   // Count corrections for this project
   let correctionCount = 0;
-  const corrDir = `${root}/projects/${slug}/corrections`;
+  // F2 fix (independent review, 2026-07-20): was a raw template-literal path
+  // (bypassed resolveProjectDirName entirely, not just path.join call sites) —
+  // routes through paths.ts now, so the count matches what correctionsDir()
+  // actually reads/writes for this project.
+  const corrDir = projectSubPath(slug, "corrections");
   if (fs.existsSync(corrDir)) {
     correctionCount = fs.readdirSync(corrDir).filter(f => f.endsWith(".json")).length;
   }
@@ -719,7 +723,8 @@ export async function sessionEnd(input: SessionEndInput): Promise<SessionEndResu
   ];
 
   if (palaceConsolidated && roomNames.length > 0) {
-    const palacePath = `${root}/projects/${slug}/palace/`.replace(root, "~/.agent-recall");
+    // F2 fix (independent review, 2026-07-20): route through paths.ts (see corrDir above).
+    const palacePath = `${palaceDir(slug)}/`.replace(root, "~/.agent-recall");
     cardLines.push(`  Palace        ${palacePath}`);
     for (let i = 0; i < roomNames.length; i++) {
       const prefix = i === roomNames.length - 1 ? "└─" : "├─";

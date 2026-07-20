@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { resolveProject } from "../storage/project.js";
 import { palaceDir, sanitizeSlug } from "../storage/paths.js";
 import { ensureDir } from "../storage/fs-utils.js";
-import { ensurePalaceInitialized, createRoom, roomExists, updateRoomMeta, recordAccess } from "../palace/rooms.js";
+import { ensurePalaceInitialized, createRoom, roomExists, updateRoomMeta, recordAccess, regenerateRoomsIndex } from "../palace/rooms.js";
 import { fanOut } from "../palace/fan-out.js";
 import { updatePalaceIndex } from "../palace/index-manager.js";
 import { generateFrontmatter } from "../palace/obsidian.js";
@@ -126,6 +126,11 @@ export async function palaceWrite(input: PalaceWriteInput): Promise<PalaceWriteR
 
   const fanOutResult = fanOut(slug, safeRoom, targetTopic, content, input.connections ?? [], importance);
   updatePalaceIndex(slug);
+
+  // W2-3 (naming-v2 spec §4): regenerate palace/rooms/_index.md — no lock is
+  // held at this point (updateRoomMeta/recordAccess above already acquired
+  // and released their own locks), so this runs outside any critical section.
+  regenerateRoomsIndex(slug);
 
   appendToLog(slug, "palace_write", { room: safeRoom, topic: targetTopic, importance, fan_out_rooms: fanOutResult.updatedRooms });
 

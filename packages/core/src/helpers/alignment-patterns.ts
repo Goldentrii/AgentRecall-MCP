@@ -4,7 +4,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getRoot } from "../types.js";
+import { projectSubPath, roomDir } from "../storage/paths.js";
 import { extractKeywords } from "./auto-name.js";
 
 export interface AlignmentRecord {
@@ -23,13 +23,9 @@ export interface WatchForPattern {
 }
 
 function alignmentLogPath(project: string): string {
-  const safe = project.replace(/[^a-zA-Z0-9_\-\.]/g, "-");
-  const root = getRoot();
-  const resolved = path.join(root, "projects", safe, "alignment-log.json");
-  if (!resolved.startsWith(root)) {
-    throw new Error(`Invalid project: ${project}`);
-  }
-  return resolved;
+  // F2 fix (independent review, 2026-07-20): was a local naive sanitizer
+  // (no lowercase, no existing-dir reuse) — routes through paths.ts now.
+  return projectSubPath(project, "alignment-log.json");
 }
 
 export function readAlignmentLog(project: string): AlignmentRecord[] {
@@ -85,10 +81,10 @@ export interface CalibrationWarning {
 }
 
 export function computeDecisionCalibration(project: string): CalibrationWarning[] {
-  const safe = project.replace(/[^a-zA-Z0-9_\-]/g, "-");
-  const root = getRoot();
-  const decisionsDir = path.join(root, "projects", safe, "palace", "rooms", "decisions");
-  if (!decisionsDir.startsWith(root)) return [];
+  // F2 fix (independent review, 2026-07-20): reuse the existing roomDir()
+  // helper (paths.ts) instead of hand-rolling the same "palace/rooms/decisions"
+  // path with a naive local sanitizer.
+  const decisionsDir = roomDir(project, "decisions");
   if (!fs.existsSync(decisionsDir)) return [];
 
   let files: string[];

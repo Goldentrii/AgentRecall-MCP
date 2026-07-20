@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getRoot } from "../types.js";
+import { projectsRootDir, projectSubPath } from "../storage/paths.js";
 
 export interface KnowledgeReadInput {
   project?: string;
@@ -9,16 +9,18 @@ export interface KnowledgeReadInput {
 }
 
 export async function knowledgeRead(input: KnowledgeReadInput): Promise<string> {
-  const baseDir = getRoot();
-  const projectsDir = path.join(baseDir, "projects");
+  // Enumeration-root only — no per-project reuse risk, these are real on-disk
+  // slugs read straight from disk in the `else` branch below.
+  const projectsDir = projectsRootDir();
 
   let projectDirs: Array<{ slug: string; dir: string }> = [];
 
   if (input.project) {
-    const safe = input.project.replace(/[^a-zA-Z0-9_\-\.]/g, "-");
-    const dir = path.join(projectsDir, safe, "knowledge");
+    // F2 fix (independent review, 2026-07-20): was a naive local sanitizer
+    // (no lowercase, no existing-dir reuse) — routes through paths.ts now.
+    const dir = projectSubPath(input.project, "knowledge");
     if (fs.existsSync(dir)) {
-      projectDirs.push({ slug: safe, dir });
+      projectDirs.push({ slug: path.basename(path.dirname(dir)), dir });
     }
   } else {
     if (fs.existsSync(projectsDir)) {

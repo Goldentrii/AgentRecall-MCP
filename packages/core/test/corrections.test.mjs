@@ -51,7 +51,9 @@ describe("corrections storage", () => {
       active: false,
     });
 
-    const files = fs.readdirSync(correctionsDir("test-proj"));
+    // .json-only: writeCorrection also regenerates the _index.md sibling
+    // (W2-1, naming-v2 spec §4) — not a correction record.
+    const files = fs.readdirSync(correctionsDir("test-proj")).filter((f) => f.endsWith(".json"));
     assert.equal(files.length, 1);
     const stored = JSON.parse(fs.readFileSync(path.join(correctionsDir("test-proj"), files[0]), "utf-8"));
 

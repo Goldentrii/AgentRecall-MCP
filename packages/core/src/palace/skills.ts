@@ -19,8 +19,9 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { palaceDir, sanitizeSlug } from "../storage/paths.js";
+import { palaceDir } from "../storage/paths.js";
 import { ensureDir } from "../storage/fs-utils.js";
+import { sanitizeName } from "../storage/sanitize.js";
 import { generateFrontmatter } from "./obsidian.js";
 import { initFsrs, reinforce, score, type FsrsState, type FsrsScore } from "./fsrs.js";
 
@@ -131,7 +132,11 @@ export function parseSkillFile(filePath: string): Skill {
   const { meta: m, body } = parseFrontmatter(raw);
 
   const meta: SkillMeta = {
-    slug: String(m.slug ?? path.basename(filePath, ".md").split("-").slice(1).join("-")),
+    // Strip the "NNNN-" or v2 "NNNN--" order prefix to recover the slug when
+    // frontmatter lacks one. A plain split("-").slice(1) would leave a stray
+    // leading "-" on a double-dash filename ("0001--foo" → "-foo"); the regex
+    // strips the whole order-prefix (either delimiter width) in one shot.
+    slug: String(m.slug ?? path.basename(filePath, ".md").replace(/^\d+--?/, "")),
     name: String(m.name ?? ""),
     topic: String(m.topic ?? ""),
     triggers: Array.isArray(m.triggers) ? (m.triggers as string[]) : [],
@@ -219,17 +224,42 @@ function renderSkill(meta: SkillMeta, body: SkillBody): string {
   );
 }
 
+/**
+ * Find the existing skill filename at `order`, regardless of which
+ * delimiter it was written with (legacy "NNNN-slug.md" or v2
+ * "NNNN--slug.md"). Rewrite call sites (reinforceSkillFsrs,
+ * setSkillArchived) pass their own `order` back into writeSkill to update an
+ * EXISTING skill in place — if writeSkill always recomputed the filename
+ * with the NEW delimiter/sanitizer, a rewrite of a pre-v2 (single-dash)
+ * skill would silently create a SECOND, v2-named file at the same order
+ * instead of updating the original (the same orphan-duplicate bug fixed in
+ * storage/corrections.ts's findExistingCorrectionFile). Returns undefined
+ * when no file exists yet at this order (the brand-new-skill case).
+ */
+function findExistingSkillFile(dir: string, order: number): string | undefined {
+  if (!fs.existsSync(dir)) return undefined;
+  const prefix = `${zeroPad(order)}-`;
+  try {
+    return fs.readdirSync(dir).find((f) => f.endsWith(".md") && f.startsWith(prefix));
+  } catch {
+    return undefined;
+  }
+}
+
 export function writeSkill(project: string, meta: SkillMeta, body: SkillBody, order?: number): string {
   const dir = skillsDir(project);
   ensureDir(dir);
   const finalMeta: SkillMeta = {
     ...meta,
-    slug: sanitizeSlug(meta.slug || meta.name),
+    slug: sanitizeName(meta.slug || meta.name, 60),
     fsrs: meta.fsrs ?? initFsrs(meta.created || new Date().toISOString()),
     archived: meta.archived === true ? true : undefined,
   };
   const ord = order ?? nextSkillOrder(project);
-  const filename = `${zeroPad(ord)}-${finalMeta.slug}.md`;
+  // v2 delimiter ("--") for brand-new files; reuse the existing filename
+  // verbatim when rewriting a skill already on disk (see
+  // findExistingSkillFile doc).
+  const filename = findExistingSkillFile(dir, ord) ?? `${zeroPad(ord)}--${finalMeta.slug}.md`;
   const filePath = path.join(dir, filename);
   // Symlink guard
   try {
@@ -270,6 +300,19 @@ function hoursSince(iso: string | undefined, now: number): number {
  *   `REINFORCE_THROTTLE_HOURS` to bound write-amplification in git-mirrored
  *   memory (a hot skill recalled many times in one session writes once).
  * - BEST-EFFORT: a recall hit must NEVER throw — all errors are swallowed.
+ *
+ * F3 fix (independent review, 2026-07-20): the lookup used to require an
+ * EXACT match between the (now-lowercased) sanitized `slug` and the
+ * filename's slug portion. A legacy skill file written before the v2
+ * sanitizer (which preserved the caller's original case, e.g.
+ * "0005-Cloudflare-DNS-Setup.md") would never match a lowercase `safe`
+ * lookup — the skill silently never got reinforced, so its FSRS
+ * retrievability kept decaying toward `archive_candidate` regardless of how
+ * often it was actually recalled. The comparison is now case-insensitive on
+ * BOTH sides (this call site has no `order` to reuse findExistingSkillFile
+ * directly with — the fallback is a case-insensitive slug match instead;
+ * once the file is found, the REWRITE itself still goes through writeSkill's
+ * order-based findExistingSkillFile, so the on-disk filename is untouched).
  */
 export function reinforceSkillFsrs(
   project: string,
@@ -277,12 +320,15 @@ export function reinforceSkillFsrs(
   now: string = new Date().toISOString(),
 ): void {
   try {
-    const safe = sanitizeSlug(slug);
+    const safe = sanitizeName(slug, 60);
     const dir = skillsDir(project);
     if (!fs.existsSync(dir)) return;
+    // /^\d+--?/ strips either delimiter width (legacy single- or v2 double-dash).
+    // Case-insensitive comparison (F3): `safe` is always lowercase (sanitizeName),
+    // but a legacy file's on-disk slug may preserve its original case.
     const file = fs
       .readdirSync(dir)
-      .find((f) => f.endsWith(".md") && /^\d+-/.test(f) && f.replace(/^\d+-/, "").replace(/\.md$/, "") === safe);
+      .find((f) => f.endsWith(".md") && /^\d+-/.test(f) && f.replace(/^\d+--?/, "").replace(/\.md$/, "").toLowerCase() === safe);
     if (!file) return;
     const filePath = path.join(dir, file);
     const skill = parseSkillFile(filePath);

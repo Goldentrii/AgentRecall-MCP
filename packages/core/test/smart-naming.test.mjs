@@ -63,11 +63,13 @@ describe("Smart naming — journalFileName", () => {
     assert.ok(slug.length <= 35, `Slug too long: ${slug} (${slug.length} chars)`);
   });
 
-  it("parseable by split('--')", () => {
+  it("parseable by split('--') when sig+theme are both provided", () => {
     resetOwnedFiles();
     const name = journalFileName("2026-04-20", false, {
       saveType: "arsave",
       content: "Genome OS review completed. Gateway skill created.",
+      sig: "shipped",
+      theme: "agent-fix",
     });
     const base = name.replace(".md", "");
     const parts = base.split("--");
@@ -92,15 +94,30 @@ describe("Smart naming — journalFileName", () => {
     assert.equal(parts[3], "version-bump");
   });
 
-  it("defaults to none/none when sig/theme not provided", () => {
+  // naming-v2 spec §3: null sig/theme are OMITTED, never printed as "none".
+  it("omits sig/theme segments entirely when not provided (v2)", () => {
     resetOwnedFiles();
     const name = journalFileName("2026-05-04", false, {
       saveType: "arsave",
       content: "Routine session.",
     });
+    assert.ok(!name.includes("none"), `Name must never contain the literal "none": ${name}`);
     const parts = name.replace(".md", "").split("--");
-    assert.equal(parts.length, 5);
-    assert.equal(parts[2], "none");
-    assert.equal(parts[3], "none");
+    assert.equal(parts.length, 3, `Expected 3 parts (date, saveType, slug), got ${parts.length}: ${parts}`);
+    assert.equal(parts[0], "2026-05-04");
+    assert.equal(parts[1], "arsave");
+  });
+
+  it("omits only the missing tag when sig is provided but theme is not (v2)", () => {
+    resetOwnedFiles();
+    const name = journalFileName("2026-05-05", false, {
+      saveType: "arsave",
+      content: "Fixed the dream cron job.",
+      sig: "critical",
+    });
+    assert.ok(!name.includes("none"), `Name must never contain the literal "none": ${name}`);
+    const parts = name.replace(".md", "").split("--");
+    assert.equal(parts.length, 4, `Expected 4 parts (date, saveType, sig, slug), got ${parts.length}: ${parts}`);
+    assert.equal(parts[2], "critical");
   });
 });

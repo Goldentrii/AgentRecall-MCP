@@ -1,15 +1,24 @@
 /**
  * Session identity + intelligent file naming.
  *
- * Naming format (v3.4.1+):
+ * Naming format (v3.4.1 — v1):
  *   {date}--{save-type}--{sig}--{theme}--{topic-slug}.md
  *
- * Example: 2026-05-04--arsave--shipped--version-bump--v341-release.md
+ * Naming format (naming-v2 spec §3, 2026-07-20 — NEW WRITES ONLY):
+ *   {date}--{save-type}--[{sig}]--[{theme}]--{topic-slug}.md
+ *   sig==="none" and theme==="none" are OMITTED entirely — the literal string
+ *   "none" is never printed. Readers (journal-name-parser.ts) accept both
+ *   forms structurally; existing v1 files are never renamed.
+ *
+ * Example (v1, both tags populated — structurally identical under v2):
+ *   2026-05-04--arsave--shipped--version-bump--v341-release.md
+ * Example (v2, neither tag present):
+ *   2026-07-20--arsave--fixed-dream-cron.md
  *
  * - save-type: arsave / arsaveall / hook-end / hook-correction / capture / hook-archive
  * - sig: significance tag (SignificanceTag) — why this session matters
  * - theme: recurring theme tag (ThemeTag) — cross-session pattern
- * - topic-slug: semantic keywords from generateSlug(), max 35 chars
+ * - topic-slug: semantic keywords from generateSlug(), byte-capped at 35
  *
  * Falls back to legacy naming (YYYY-MM-DD.md) when no opts provided.
  */
@@ -18,6 +27,7 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { generateSlug } from "../helpers/auto-name.js";
+import { sanitizeName } from "./sanitize.js";
 import type { SignificanceTag, ThemeTag } from "../helpers/journal-sig-theme.js";
 
 /** 6-char hex ID, unique per process. Generated once on import. */
@@ -50,11 +60,26 @@ export interface SmartNameOpts {
 export type { SignificanceTag, ThemeTag } from "../helpers/journal-sig-theme.js";
 
 /**
- * Generate a semantic slug from content, capped at 35 chars.
+ * Generate a semantic slug from content, byte-capped at 35 bytes (naming-v2
+ * spec §2 — was a 35 UTF-16-char slice; a CJK/emoji-heavy slug could pass
+ * that cap yet exceed the filesystem's byte budget).
  */
 function topicSlug(content: string): string {
   const result = generateSlug(content);
-  return result.slug.slice(0, 35);
+  return sanitizeName(result.slug, 35);
+}
+
+/**
+ * Join non-empty tag segments with "--", OMITTING any segment whose value is
+ * "none" (naming-v2 spec §3: "null sig/theme OMITTED, never printed"). The
+ * literal string "none" must never appear in a new v2 filename.
+ */
+function joinTagSegments(saveType: string, sig: string, theme: string, slug: string): string {
+  const segments = [saveType];
+  if (sig !== "none") segments.push(sig);
+  if (theme !== "none") segments.push(theme);
+  segments.push(slug);
+  return segments.join("--");
 }
 
 /**
@@ -79,7 +104,16 @@ export function journalFileName(date: string, baseExists: boolean, opts?: SmartN
       const sigTag = opts.sig ?? "none";
       const themeTag = opts.theme ?? "none";
       const uniq = crypto.randomBytes(3).toString("hex");  // per-call random — unique across iterations
-      const name = `${date}--arsaveall--${sigTag}--${themeTag}--${slug}--${uniq}.md`;
+      // Same-day rule + this hex exception are UNCHANGED (naming-v2 spec §5) —
+      // only the none-omission grammar is new, for consistency with the
+      // non-arsaveall branch below (call-site divergence is exactly what v2
+      // closes: two near-identical functions should not print "none"
+      // differently).
+      const segments = [date, "arsaveall"];
+      if (sigTag !== "none") segments.push(sigTag);
+      if (themeTag !== "none") segments.push(themeTag);
+      segments.push(slug, uniq);
+      const name = `${segments.join("--")}.md`;
       if (dir) ownedFiles.add(`smart:${name}`);
       return name;
     }
@@ -109,7 +143,7 @@ export function journalFileName(date: string, baseExists: boolean, opts?: SmartN
     const slug = topicSlug(opts.content);
     const sigTag = opts.sig ?? "none";
     const themeTag = opts.theme ?? "none";
-    const name = `${date}--${opts.saveType}--${sigTag}--${themeTag}--${slug}.md`;
+    const name = `${date}--${joinTagSegments(opts.saveType, sigTag, themeTag, slug)}.md`;
 
     if (dir) {
       ownedFiles.add(`smart:${name}`);
@@ -152,7 +186,7 @@ export function captureLogFileName(date: string, baseExists: boolean, opts?: Sma
     const slug = topicSlug(opts.content);
     const sigTag = opts.sig ?? "none";
     const themeTag = opts.theme ?? "none";
-    return `${date}--capture--${sigTag}--${themeTag}--${slug}.md`;
+    return `${date}--${joinTagSegments("capture", sigTag, themeTag, slug)}.md`;
   }
 
   // Legacy naming
